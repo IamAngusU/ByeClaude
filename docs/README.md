@@ -14,8 +14,8 @@ The shortest safe workflow is still:
 ```sh
 byeclaude scan
 byeclaude clean --apply
-# review the rewritten graph
-byeclaude clean --apply --push
+# review the rewritten graph and note the printed backup ID
+byeclaude push --backup BACKUP_ID
 ```
 
 If you already ran the local rewrite, do not run `clean --apply` a second time just to push. Publish the reviewed rewritten refs with normal Git.

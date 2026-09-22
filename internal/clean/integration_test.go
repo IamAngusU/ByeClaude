@@ -665,3 +665,74 @@ func TestRewriteRefusesOperationInProgress(t *testing.T) {
 		t.Fatalf("expected in-progress operation error, got %v", err)
 	}
 }
+
+func TestPushBackupAfterReviewUpdatesRemote(t *testing.T) {
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	git(t, t.TempDir(), "init", "--bare", "-q", remote)
+	local := t.TempDir()
+	git(t, local, "init", "-q")
+	git(t, local, "config", "user.name", "Angus Test")
+	git(t, local, "config", "user.email", "angus@example.com")
+	git(t, local, "remote", "add", "origin", remote)
+	if err := os.WriteFile(filepath.Join(local, "a.txt"), []byte("a\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, local, "add", "a.txt")
+	git(t, local, "commit", "-q", "-m", "feat\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	branch := git(t, local, "branch", "--show-current")
+	git(t, local, "push", "-q", "-u", "origin", branch)
+
+	repo, err := gitx.Open(local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, _, err := Rewrite(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	desired := git(t, local, "rev-parse", "HEAD")
+	if err := PushBackup(repo, "origin", report.Backup); err != nil {
+		t.Fatal(err)
+	}
+	if got := git(t, remote, "rev-parse", "refs/heads/"+branch); got != desired {
+		t.Fatalf("remote=%s want rewrite result %s", got, desired)
+	}
+	// Publishing the same recorded result twice is a no-op, not a lease error.
+	if err := PushBackup(repo, "origin", report.Backup); err != nil {
+		t.Fatalf("idempotent push: %v", err)
+	}
+}
+
+func TestPushBackupRefusesLocalMovementAfterReview(t *testing.T) {
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	git(t, t.TempDir(), "init", "--bare", "-q", remote)
+	local := t.TempDir()
+	git(t, local, "init", "-q")
+	git(t, local, "config", "user.name", "Angus Test")
+	git(t, local, "config", "user.email", "angus@example.com")
+	git(t, local, "remote", "add", "origin", remote)
+	if err := os.WriteFile(filepath.Join(local, "a.txt"), []byte("a\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, local, "add", "a.txt")
+	git(t, local, "commit", "-q", "-m", "feat\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	branch := git(t, local, "branch", "--show-current")
+	git(t, local, "push", "-q", "-u", "origin", branch)
+
+	repo, err := gitx.Open(local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, _, err := Rewrite(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(local, "later.txt"), []byte("later\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, local, "add", "later.txt")
+	git(t, local, "commit", "-q", "-m", "later local work")
+	if err := PushBackup(repo, "origin", report.Backup); err == nil || !strings.Contains(err.Error(), "moved since rewrite") {
+		t.Fatalf("expected local-movement refusal, got %v", err)
+	}
+}

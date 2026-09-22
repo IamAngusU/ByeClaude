@@ -50,8 +50,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: IamAngusU/ByeClaude@v0.1.0
+      - uses: IamAngusU/ByeClaude@main
 ```
+
+Until the first tagged release exists, the example above follows `main`. After a release, pin the action to a release tag or, for the strongest supply-chain stability, an exact commit SHA.
 
 The action runs the equivalent of:
 

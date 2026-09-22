@@ -12,7 +12,7 @@ If that passes, inspect whether the rewritten default branch and relevant tags w
 
 ByeClaude does not remove those external references.
 
-## `clean --apply --push` says the remote moved
+## `push --backup ID` says the remote moved
 
 That is the intended force-with-lease protection.
 
@@ -24,6 +24,8 @@ git log --oneline --decorate --graph --all --max-count=40
 ```
 
 Do not replace the guarded push with an unconditional `git push --force` just to make the error disappear.
+
+If ByeClaude says a **local** ref moved since the recorded rewrite, that is a different guard: you changed local history after reviewing it. Re-run the audit and make a fresh rewrite decision instead of publishing an older snapshot implicitly.
 
 ## ByeClaude refuses because the repository is shallow
 

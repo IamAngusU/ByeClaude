@@ -45,24 +45,25 @@ matches     2
   c0b7bd296ec4  Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
 ```
 
-Nothing changed. Review the result, then rewrite locally:
+Nothing changed. When you are ready, rewrite locally:
 
 ```sh
 byeclaude clean --apply
 ```
 
-ByeClaude creates a local backup under `refs/byeclaude/backups/...`, rewrites the necessary commit DAG, updates local heads/tags in one ref transaction, then rescans the result.
+ByeClaude creates a local backup, records the exact rewritten ref tips, rewrites the necessary commit DAG, updates local heads/tags in one ref transaction, then rescans the result. The command prints the backup ID.
 
-When the rewritten history is exactly what you expect:
+Review the graph and working tree. Then publish exactly that recorded rewrite:
 
 ```sh
-byeclaude clean --apply --push
+git log --oneline --decorate --graph --all --max-count=40
+byeclaude push --backup BACKUP_ID
 ```
 
-That last command is intentionally explicit. A remote rewrite changes commit IDs for everyone using those refs.
+The reviewed push fails if a local ref moved after the rewrite or if a collaborator moved the remote ref you are about to replace. A remote rewrite changes commit IDs for everyone using those refs.
 
 > [!TIP]
-> Already ran `clean --apply` and reviewed the result? Do not run it again just to push. Use normal Git to publish the already rewritten refs.
+> `byeclaude clean --apply --push` remains available as a one-shot shortcut when you deliberately do not need an inspection gap between rewrite and publish.
 
 ## It scans more than the current branch
 
@@ -125,10 +126,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: IamAngusU/ByeClaude@v0.1.0
+      - uses: IamAngusU/ByeClaude@main
 ```
 
-The action checks reachable history and fails CI when the trailer appears. It **does not** rewrite or force-push from CI.
+Until the first tagged release exists, the example follows `main`. After a release, pin to a release tag or exact commit SHA. The action checks reachable history and fails CI when the trailer appears. It **does not** rewrite or force-push from CI.
 
 For old quiet branches as well as active PRs, add a scheduled run. [CI and hook guide](docs/automation.md).
 
@@ -167,11 +168,13 @@ During a rewrite it:
 4. verifies that the matching trailers are gone;
 5. leaves GitHub unchanged unless `--push` was requested.
 
+After local review, `byeclaude push --backup BACKUP_ID` binds publication to the old ref tips and the exact rewrite result recorded by that operation. If your local ref moved after review, ByeClaude refuses to publish it.
+
 A built-in remote update only touches refs that already exist on the selected remote. It uses an **atomic push** plus an explicit **force-with-lease** expectation for every changed remote ref. If somebody moved a branch after your local copy, Git rejects the update instead of letting ByeClaude overwrite their work.
 
 ```sh
 byeclaude backups
-byeclaude restore --backup 20260922T183653Z --apply
+byeclaude restore --backup BACKUP_ID --apply
 ```
 
 Restore is local only. It never republishes the old history for you.
@@ -180,29 +183,15 @@ Restore is local only. It never republishes the old history for you.
 
 ## Install
 
-### Linux / macOS
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.sh | sh
-```
-
-### Windows PowerShell
-
-```powershell
-irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.ps1 | iex
-```
-
-The installers download the matching release binary and verify it against the published SHA-256 checksum file before installation.
-
-### Go
+### Go / source
 
 Requires Git and Go 1.23+:
 
 ```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@latest
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@main
 ```
 
-### Build from source
+Or build the checked-out source:
 
 ```sh
 git clone https://github.com/IamAngusU/ByeClaude.git
@@ -211,7 +200,28 @@ go test ./...
 go build -o byeclaude ./cmd/byeclaude
 ```
 
-Release builds are published for Linux, macOS and Windows on amd64 and arm64.
+### Release installers
+
+Tagged releases are configured to publish checksum-verified binaries for Linux, macOS and Windows on amd64 and arm64. The installer URLs below become usable once the first tagged release exists.
+
+<details>
+<summary><strong>Installer commands</strong></summary>
+
+Linux / macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.ps1 | iex
+```
+
+Both installers download the matching asset from `releases/latest` and verify it against the published SHA-256 checksum file before installation.
+
+</details>
 
 ## Command desk
 
@@ -230,7 +240,7 @@ byeclaude clean
 byeclaude clean --apply
 byeclaude backups
 byeclaude restore --backup ID --apply
-byeclaude clean --apply --push
+byeclaude push --backup ID
 ```
 
 | Intent | Behavior |
@@ -241,9 +251,9 @@ byeclaude clean --apply --push
 | `clean` | Preview only; no refs move. |
 | `clean --apply` | Rewrite locally after preflight checks and create backup refs. |
 | `restore --backup ID --apply` | Restore local heads/tags from a ByeClaude backup. |
-| `clean --apply --push` | Explicit guarded rewrite of already-existing remote refs. |
+| `push --backup ID` | Publish exactly the recorded, reviewed rewrite with atomic force-with-lease. |
 
-Every command accepts `--repo PATH` where applicable. GitHub stays untouched unless `--push` is present.
+Every command accepts `--repo PATH` where applicable. `clean --apply --push` is still available as a one-shot rewrite-and-publish shortcut. Otherwise GitHub stays untouched until the explicit `push` command.
 
 </details>
 
@@ -253,7 +263,7 @@ ByeClaude cleans **Git commit attribution**. It does not edit pull-request text,
 
 GitHub contributor statistics can lag behind a force-push or rewritten default branch. Old commit IDs may also remain referenced by forks, pull requests, caches or other clones even after your normal branches are clean.
 
-This is pre-1.0 software. The repository includes integration coverage for linear and merge histories, branches, tags, backups/restores, remote lease races, atomic push behavior, shallow clones, worktrees, replace refs, notes and SHA-256 repositories. Platform CI runs the Go test suite on Linux, macOS and Windows, with the race detector additionally exercised on Linux.
+This is pre-1.0 software. The repository includes integration coverage for linear and merge histories, branches, tags, backups/restores, remote lease races, atomic push behavior, shallow clones, worktrees, replace refs, notes and SHA-256 repositories. Platform CI is configured to run the Go test suite on Linux, macOS and Windows, with the race detector additionally exercised on Linux.
 
 ## Documentation
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="306" viewBox="0 0 800 306" role="img" aria-labelledby="title description">
 <title id="title">ByeClaude command desk</title>
-<desc id="description">Seven real ByeClaude commands covering audit, prevention, local rewrite, backups and guarded remote update. This is a static command reference; copyable text is in the README.</desc>
+<desc id="description">Seven real ByeClaude commands covering audit, prevention, local rewrite, backups and publishing an exact reviewed rewrite. This is a static command reference; copyable text is in the README.</desc>
 <style>.bg{fill:#f6f5f1;stroke:#deddd7}.fg{fill:#242421}.muted{fill:#676a61}.line{stroke:#deddd7}.dot{fill:#a5a89d}.safe{fill:#edeee7}.sans{font-family:Arial,Helvetica,sans-serif}.mono{font-family:Consolas,Menlo,monospace}@media(prefers-color-scheme:dark){.bg{fill:#242622;stroke:#44473f}.fg{fill:#f1f0e9}.muted{fill:#b5b7ac}.line{stroke:#44473f}.dot{fill:#858b79}.safe{fill:#30352b}}</style>
 <path class="bg" d="M25 1H775C797.8 1 799 2.2 799 25V281C799 303.8 797.8 305 775 305H25C2.2 305 1 303.8 1 281V25C1 2.2 2.2 1 25 1Z"/>
 <path class="line" d="M1 48H799"/>
@@ -27,15 +27,15 @@
 
 <text class="muted mono" x="26" y="198" font-size="14">›</text>
 <text class="fg mono" x="45" y="198" font-size="13.5">byeclaude clean --apply</text>
-<text class="muted sans" x="555" y="198" font-size="12">Rewrite locally + create backup</text>
+<text class="muted sans" x="555" y="198" font-size="12">Rewrite locally + record result</text>
 
 <text class="muted mono" x="26" y="228" font-size="14">›</text>
 <text class="fg mono" x="45" y="228" font-size="13.5">byeclaude backups</text>
 <text class="muted sans" x="555" y="228" font-size="12">List local recovery points</text>
 
 <text class="muted mono" x="26" y="258" font-size="14">›</text>
-<text class="fg mono" x="45" y="258" font-size="13.5">byeclaude clean --apply --push</text>
-<text class="muted sans" x="555" y="258" font-size="12">Atomic lease-guarded remote update</text>
+<text class="fg mono" x="45" y="258" font-size="13.5">byeclaude push --backup ID</text>
+<text class="muted sans" x="555" y="258" font-size="12">Publish exactly the reviewed rewrite</text>
 
 <text class="muted sans" x="45" y="291" font-size="10">COMMAND REFERENCE · Copyable text below</text>
 </svg>

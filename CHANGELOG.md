@@ -10,6 +10,7 @@ All notable changes to ByeClaude are documented here.
 - Add `byeclaude check` for CI-safe attribution enforcement, including optional fetched remote-tracking refs.
 - Add transactional local history rewriting with backup refs, annotated-tag retargeting, and explicit signature handling.
 - Add guarded remote updates behind `--push` using atomic force-with-lease semantics.
+- Add `push --backup ID` for review-then-publish workflows, bound to the exact recorded rewrite result.
 - Add a conservative local `commit-msg` hook, backup listing, and local ref restore.
 
 ### Safety and correctness

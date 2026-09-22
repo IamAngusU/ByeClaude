@@ -284,6 +284,8 @@ func Rewrite(repo *gitx.Repo) (model.RewriteReport, map[string]string, error) {
 	tx.WriteString("start\n")
 	for _, r := range refs {
 		newSHA := newRefs[r.Name]
+		suffix := strings.TrimPrefix(r.Name, "refs/")
+		fmt.Fprintf(&tx, "create refs/byeclaude/results/%s/%s %s\n", id, suffix, newSHA)
 		if newSHA == r.SHA {
 			continue
 		}
@@ -291,10 +293,8 @@ func Rewrite(repo *gitx.Repo) (model.RewriteReport, map[string]string, error) {
 		report.RefsUpdated++
 	}
 	tx.WriteString("prepare\ncommit\n")
-	if report.RefsUpdated > 0 {
-		if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {
-			return report, mapping, fmt.Errorf("update refs: %w", err)
-		}
+	if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {
+		return report, mapping, fmt.Errorf("update refs: %w", err)
 	}
 	return report, mapping, nil
 }
@@ -383,6 +383,49 @@ func Push(repo *gitx.Repo, remote string, oldRefs []Ref) error {
 	if err != nil {
 		return err
 	}
+	return pushRefs(repo, remote, oldRefs, current)
+}
+
+// PushBackup publishes exactly the rewrite result recorded for one backup ID.
+// It refuses if a local head/tag moved after that rewrite, so a review-then-push
+// workflow cannot accidentally publish unrelated later local work.
+func PushBackup(repo *gitx.Repo, remote, id string) error {
+	oldRefs, err := BackupLocalRefs(repo, id)
+	if err != nil {
+		return err
+	}
+	desiredRefs, err := ResultLocalRefs(repo, id)
+	if err != nil {
+		return err
+	}
+	if len(oldRefs) == 0 {
+		return fmt.Errorf("backup %q not found", id)
+	}
+	if len(desiredRefs) == 0 {
+		return fmt.Errorf("rewrite result for backup %q not found; this backup predates review-then-push support", id)
+	}
+
+	current, err := LocalRefs(repo)
+	if err != nil {
+		return err
+	}
+	currentByName := make(map[string]string, len(current))
+	for _, ref := range current {
+		currentByName[ref.Name] = ref.SHA
+	}
+	for _, desired := range desiredRefs {
+		got, ok := currentByName[desired.Name]
+		if !ok {
+			return fmt.Errorf("local ref %s no longer exists; refusing to publish rewrite %s", desired.Name, id)
+		}
+		if got != desired.SHA {
+			return fmt.Errorf("local ref %s moved since rewrite %s; expected %s, now %s", desired.Name, id, desired.SHA, got)
+		}
+	}
+	return pushRefs(repo, remote, oldRefs, desiredRefs)
+}
+
+func pushRefs(repo *gitx.Repo, remote string, oldRefs, desiredRefs []Ref) error {
 	remoteRefs, err := remoteHeadsAndTags(repo, remote)
 	if err != nil {
 		return err
@@ -391,27 +434,32 @@ func Push(repo *gitx.Repo, remote string, oldRefs []Ref) error {
 	for _, r := range oldRefs {
 		old[r.Name] = r.SHA
 	}
-	sort.Slice(current, func(i, j int) bool { return current[i].Name < current[j].Name })
-	args := []string{"push", "--atomic"}
-	for _, r := range current {
+	sort.Slice(desiredRefs, func(i, j int) bool { return desiredRefs[i].Name < desiredRefs[j].Name })
+
+	type update struct {
+		ref      Ref
+		expected string
+	}
+	var updates []update
+	for _, r := range desiredRefs {
 		expected, ok := old[r.Name]
-		_, existsRemote := remoteRefs[r.Name]
-		if !ok || expected == r.SHA || !existsRemote {
+		remoteSHA, existsRemote := remoteRefs[r.Name]
+		if !ok || expected == r.SHA || !existsRemote || remoteSHA == r.SHA {
 			continue
 		}
-		args = append(args, "--force-with-lease="+r.Name+":"+expected)
+		updates = append(updates, update{ref: r, expected: expected})
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
+	args := []string{"push", "--atomic"}
+	for _, u := range updates {
+		args = append(args, "--force-with-lease="+u.ref.Name+":"+u.expected)
 	}
 	args = append(args, remote)
-	for _, r := range current {
-		expected, ok := old[r.Name]
-		_, existsRemote := remoteRefs[r.Name]
-		if !ok || expected == r.SHA || !existsRemote {
-			continue
-		}
-		args = append(args, r.SHA+":"+r.Name)
-	}
-	if len(args) == 3 {
-		return nil
+	for _, u := range updates {
+		args = append(args, u.ref.SHA+":"+u.ref.Name)
 	}
 	_, err = repo.Run(args...)
 	return err
@@ -438,6 +486,39 @@ func remoteHeadsAndTags(repo *gitx.Repo, remote string) (map[string]string, erro
 
 func JSON(v any) string { b, _ := json.MarshalIndent(v, "", "  "); return string(b) }
 
+func snapshotLocalRefs(repo *gitx.Repo, namespace, id string) ([]Ref, error) {
+	prefix := "refs/byeclaude/" + namespace + "/" + id + "/"
+	out, err := repo.Run("for-each-ref", "--format=%(refname)%00%(objectname)", prefix)
+	if err != nil {
+		return nil, err
+	}
+	var refs []Ref
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.Split(line, "\x00")
+		if len(parts) != 2 {
+			continue
+		}
+		suffix := strings.TrimPrefix(parts[0], prefix)
+		if !strings.HasPrefix(suffix, "heads/") && !strings.HasPrefix(suffix, "tags/") {
+			continue
+		}
+		refs = append(refs, Ref{Name: "refs/" + suffix, SHA: parts[1]})
+	}
+	sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+	return refs, nil
+}
+
+func BackupLocalRefs(repo *gitx.Repo, id string) ([]Ref, error) {
+	return snapshotLocalRefs(repo, "backups", id)
+}
+
+func ResultLocalRefs(repo *gitx.Repo, id string) ([]Ref, error) {
+	return snapshotLocalRefs(repo, "results", id)
+}
+
 func BackupRefs(repo *gitx.Repo) ([]string, error) {
 	out, err := repo.Run("for-each-ref", "--format=%(refname)", "refs/byeclaude/backups")
 	if err != nil {
@@ -461,26 +542,9 @@ func Restore(repo *gitx.Repo, id string) (int, error) {
 	if err := Preflight(repo); err != nil {
 		return 0, err
 	}
-	prefix := "refs/byeclaude/backups/" + id + "/"
-	out, err := repo.Run("for-each-ref", "--format=%(refname)%00%(objectname)", prefix)
+	items, err := BackupLocalRefs(repo, id)
 	if err != nil {
 		return 0, err
-	}
-	type pair struct{ ref, sha string }
-	var items []pair
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		if line == "" {
-			continue
-		}
-		parts := strings.Split(line, "\x00")
-		if len(parts) != 2 {
-			continue
-		}
-		suffix := strings.TrimPrefix(parts[0], prefix)
-		if !strings.HasPrefix(suffix, "heads/") && !strings.HasPrefix(suffix, "tags/") {
-			continue
-		}
-		items = append(items, pair{ref: "refs/" + suffix, sha: parts[1]})
 	}
 	if len(items) == 0 {
 		return 0, fmt.Errorf("backup %q not found", id)
@@ -489,13 +553,13 @@ func Restore(repo *gitx.Repo, id string) (int, error) {
 	var tx strings.Builder
 	tx.WriteString("start\n")
 	for _, item := range items {
-		currentOut, err := repo.Run("show-ref", "--verify", "--hash", item.ref)
+		currentOut, err := repo.Run("show-ref", "--verify", "--hash", item.Name)
 		if err != nil {
-			fmt.Fprintf(&tx, "create %s %s\n", item.ref, item.sha)
+			fmt.Fprintf(&tx, "create %s %s\n", item.Name, item.SHA)
 			continue
 		}
 		current := strings.TrimSpace(string(currentOut))
-		fmt.Fprintf(&tx, "update %s %s %s\n", item.ref, item.sha, current)
+		fmt.Fprintf(&tx, "update %s %s %s\n", item.Name, item.SHA, current)
 	}
 	tx.WriteString("prepare\ncommit\n")
 	if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {

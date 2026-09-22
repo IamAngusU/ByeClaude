@@ -26,6 +26,8 @@ func main() {
 		err = runCheck(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
+	case "push":
+		err = runPush(os.Args[2:])
 	case "hook":
 		err = runHook(os.Args[2:])
 	case "backups":
@@ -55,12 +57,13 @@ Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--json]
   byeclaude clean --apply [--repo PATH] [--push] [--remote origin] [--json]
+  byeclaude push --backup ID [--repo PATH] [--remote origin]
   byeclaude hook install|remove [--repo PATH]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
 
-Nothing is rewritten unless --apply is present. Nothing is pushed unless --push is present.
+Nothing is rewritten unless --apply is present. Remote writes require either --push on clean or the explicit push command.
 `)
 }
 
@@ -191,6 +194,35 @@ func runClean(args []string) error {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
 	fmt.Println("verify      no matching Claude co-author trailers remain in local heads/tags")
+	return nil
+}
+
+func runPush(args []string) error {
+	fs := flag.NewFlagSet("push", flag.ContinueOnError)
+	repoPath, _ := common(fs)
+	backup := fs.String("backup", "", "backup ID printed by clean --apply")
+	remote := fs.String("remote", "origin", "remote to update")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *backup == "" {
+		return fmt.Errorf("--backup is required; use the ID printed by clean --apply")
+	}
+	repo, err := gitx.Open(*repoPath)
+	if err != nil {
+		return err
+	}
+	report, err := clean.Scan(repo)
+	if err != nil {
+		return err
+	}
+	if len(report.Matches) != 0 {
+		return fmt.Errorf("local history still contains %d matching trailer(s); refusing to publish", len(report.Matches))
+	}
+	if err := clean.PushBackup(repo, *remote, *backup); err != nil {
+		return err
+	}
+	fmt.Printf("push        %s updated from rewrite backup %s using atomic force-with-lease\n", *remote, *backup)
 	return nil
 }
 

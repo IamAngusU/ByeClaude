@@ -57,16 +57,22 @@ A restore only moves local refs. It does not force-push the old history to a rem
 
 ## Remote update model
 
-`byeclaude clean --apply --push` does not publish every local ref it can see.
+After a local rewrite, the recommended reviewed publish path is:
 
-It first inspects the selected remote and only prepares updates for branches/tags that already exist there. Each update carries the expected old object ID from before the rewrite. Git then receives one atomic push using force-with-lease semantics.
+```sh
+byeclaude push --backup BACKUP_ID
+```
+
+The backup ID identifies both the original ref tips and the exact rewritten result recorded by that operation. ByeClaude refuses this reviewed push if a local head or tag moved after the rewrite, so later local work cannot be published accidentally through the old review decision.
+
+The publisher inspects the selected remote and only prepares updates for branches/tags that already exist there. Each update carries the expected old object ID from before the rewrite. Git then receives one atomic push using force-with-lease semantics. A remote ref that already equals the recorded rewrite result is treated as complete, making a retry idempotent.
 
 That gives two useful properties:
 
 1. a local-only branch does not get published accidentally;
 2. if a collaborator moved a remote ref after your local copy, the whole atomic update fails instead of overwriting the newer tip.
 
-This is still a force push. The guard makes it narrower, not harmless.
+This is still a force push. The guard makes it narrower, not harmless. `clean --apply --push` remains available as a one-shot shortcut when you deliberately do not need an inspection gap between rewrite and publish.
 
 ## Signatures
 

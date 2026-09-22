@@ -43,8 +43,9 @@ A prose example in the commit body remains untouched. So does a human such as `C
 6. Write a new commit object only when the message or a parent ID changed.
 7. Rewrite annotated tags whose target changed.
 8. Create backup refs for the original local heads/tags.
-9. Update normal branch/tag refs in one ref transaction.
-10. Rescan rewritten history and require zero matches.
+9. Record the exact rewritten heads/tags under a private result-ref namespace.
+10. Update normal branch/tag refs in one ref transaction.
+11. Rescan rewritten history and require zero matches.
 
 The tree line is never changed, so the checked-in file snapshot for each logical commit stays the same.
 
@@ -83,11 +84,18 @@ refs/byeclaude/backups/<UTC timestamp>/heads/...
 refs/byeclaude/backups/<UTC timestamp>/tags/...
 ```
 
-Those refs keep the original objects reachable locally. They are intentionally excluded from the built-in push operation.
+Those refs keep the original objects reachable locally. ByeClaude also records the corresponding rewritten tips under:
+
+```text
+refs/byeclaude/results/<UTC timestamp>/heads/...
+refs/byeclaude/results/<UTC timestamp>/tags/...
+```
+
+Both private namespaces are excluded from normal scans and remote publication. The paired snapshots are what make `byeclaude push --backup ID` able to prove which reviewed rewrite it is about to publish.
 
 ## Remote update
 
-A remote history rewrite is a coordination event. ByeClaude first inspects the remote and only targets branch/tag refs that already exist there. It then uses an atomic push with explicit force-with-lease expectations based on the pre-rewrite local refs.
+A remote history rewrite is a coordination event. The recommended flow is `clean --apply`, review the local graph, then `push --backup ID`. Before publishing, ByeClaude verifies that the current local heads/tags still match the recorded rewrite result. It then inspects the remote and only targets branch/tag refs that already exist there, using an atomic push with explicit force-with-lease expectations based on the pre-rewrite backup refs.
 
 A changed remote tip causes the whole push to fail instead of being overwritten, and local-only refs are not published as a side effect.
 
