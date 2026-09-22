@@ -4,34 +4,28 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+### Product
+
+- Add dry-run scanning for Claude/Anthropic `Co-Authored-By` trailers across reachable local history.
+- Add `byeclaude check` for CI-safe attribution enforcement, including optional fetched remote-tracking refs.
+- Add transactional local history rewriting with backup refs, annotated-tag retargeting, and explicit signature handling.
+- Add guarded remote updates behind `--push` using atomic force-with-lease semantics.
+- Add a conservative local `commit-msg` hook, backup listing, and local ref restore.
+
+### Safety and correctness
+
+- Restrict matches to the real final trailer block so body-text examples are not rewritten.
+- Preserve non-Claude co-authors, commit trees, author/committer identity and timestamps, and merge parent order.
+- Refuse unsafe rewrite states including shallow clones, dirty worktrees, detached `HEAD`, replace refs, Git notes, multiple linked worktrees, and active Git sequencer operations.
+- Refuse to overwrite an unrelated `commit-msg` hook or silently ignore an external `core.hooksPath`.
+- Avoid publishing local-only refs during built-in remote rewrites and reject concurrent remote movement.
+- Cover SHA-1 and SHA-256 repositories, merge DAGs, annotated tags, restore, remote lease races, and atomic multi-ref pushes in integration tests.
+
+### Project
+
 - Add the first ByeClaude brand mark with light and dark WebP assets.
 - Rebuild the README around scan, prevention, rewrite semantics, recovery, and installation.
 - Add focused documentation for safety, automation, troubleshooting, and rewrite internals.
+- Add a reusable GitHub Action and a self-guard workflow.
 - Expand CI with Linux race tests plus native macOS and Windows test/build jobs.
-- Add a reusable GitHub Action with optional remote-tracking ref coverage.
-
-- Add SHA-256 repository and merge-topology rewrite coverage.
-
-- Refuse rewrites when Git notes are present so notes are not silently stranded on old commit IDs.
-
-- Refuse hook installation when `core.hooksPath` is externally configured instead of pretending the default hook will run.
-
-- Refuse rewrites while a Git sequencer/merge/rebase-style operation is in progress.
-
-- Add `byeclaude check` for CI-safe attribution enforcement.
-- Add a reusable GitHub Action and self-guard workflow.
-- Restrict scan matches to the real final trailer block, avoiding body-text false positives.
-- Refuse to overwrite an existing third-party `commit-msg` hook.
-- Refuse rewrites with detached HEAD, replace refs, or multiple linked worktrees.
-- Add integration coverage for all local branches/tags, detached HEAD audit, shallow clones, remote push leases, and stale-remote rejection.
-- Make built-in multi-ref remote rewrites atomic in addition to force-with-lease protected.
-
-### Added
-
-- Dry-run scanning for Claude/Anthropic `Co-Authored-By` trailers.
-- Transactional local history rewriting with backup refs.
-- Annotated-tag rewriting and explicit signature handling.
-- Force-with-lease remote updates behind an explicit `--push` flag.
-- Local `commit-msg` hook for preventing future matching trailers.
-- Backup listing and local ref restore.
-- Cross-platform release builds and checksum-verifying installers.
+- Add checksum-verifying installers and cross-platform release builds for Linux, macOS, and Windows on amd64 and arm64.
