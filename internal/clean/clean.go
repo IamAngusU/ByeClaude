@@ -3,6 +3,8 @@ package clean
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -198,7 +200,13 @@ func inProgressOperation(gitDir string) string {
 	return ""
 }
 
-func backupID() string { return time.Now().UTC().Format("20060102T150405Z-000000000") }
+func backupID() (string, error) {
+	var nonce [6]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", fmt.Errorf("generate backup ID: %w", err)
+	}
+	return time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(nonce[:]), nil
+}
 
 func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 	var b strings.Builder
@@ -224,7 +232,10 @@ func Rewrite(repo *gitx.Repo) (model.RewriteReport, map[string]string, error) {
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	id := backupID()
+	id, err := backupID()
+	if err != nil {
+		return model.RewriteReport{}, nil, err
+	}
 	if err := createBackups(repo, refs, id); err != nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("create backup refs: %w", err)
 	}
