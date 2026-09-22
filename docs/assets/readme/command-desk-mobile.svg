@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="430" viewBox="0 0 390 430" role="img" aria-labelledby="title description">
+<title id="title">ByeClaude command desk mobile</title>
+<desc id="description">Mobile command reference for audit, prevention, rewrite, backup and publishing a reviewed rewrite.</desc>
+<style>.bg{fill:#f6f5f1;stroke:#deddd7}.fg{fill:#242421}.muted{fill:#676a61}.line{stroke:#deddd7}.dot{fill:#a5a89d}.safe{fill:#edeee7}.sans{font-family:Arial,Helvetica,sans-serif}.mono{font-family:Consolas,Menlo,monospace}@media(prefers-color-scheme:dark){.bg{fill:#242622;stroke:#44473f}.fg{fill:#f1f0e9}.muted{fill:#b5b7ac}.line{stroke:#44473f}.dot{fill:#858b79}.safe{fill:#30352b}}</style>
+<path class="bg" d="M20 1H370C388 1 389 2 389 20V410C389 428 388 429 370 429H20C2 429 1 428 1 410V20C1 2 2 1 20 1Z"/>
+<path class="line" d="M1 48H389"/>
+<g class="dot"><rect x="20" y="20" width="8" height="8" rx="3"/><rect x="35" y="20" width="8" height="8" rx="3"/><rect x="50" y="20" width="8" height="8" rx="3"/></g>
+<text class="fg sans" x="75" y="29" font-size="12" font-weight="600">byeclaude / commands</text>
+<text class="muted sans" x="370" y="28" text-anchor="end" font-size="9" letter-spacing=".8">AUDIT · REWRITE</text>
+
+<rect class="safe" x="12" y="59" width="366" height="46" rx="9"/>
+<text class="fg mono" x="25" y="78" font-size="12.5">› byeclaude scan</text>
+<text class="muted sans" x="39" y="95" font-size="10.5">Read-only history audit</text>
+
+<text class="fg mono" x="25" y="127" font-size="12.5">› byeclaude check --include-remotes</text>
+<text class="muted sans" x="39" y="144" font-size="10.5">CI-friendly fetched-ref guard</text>
+
+<text class="fg mono" x="25" y="176" font-size="12.5">› byeclaude hook install</text>
+<text class="muted sans" x="39" y="193" font-size="10.5">Prevent future trailers locally</text>
+
+<text class="fg mono" x="25" y="225" font-size="12.5">› byeclaude clean</text>
+<text class="muted sans" x="39" y="242" font-size="10.5">Preview rewrite; change nothing</text>
+
+<text class="fg mono" x="25" y="274" font-size="12.5">› byeclaude clean --apply</text>
+<text class="muted sans" x="39" y="291" font-size="10.5">Rewrite locally + record result</text>
+
+<text class="fg mono" x="25" y="323" font-size="12.5">› byeclaude backups</text>
+<text class="muted sans" x="39" y="340" font-size="10.5">List local recovery points</text>
+
+<text class="fg mono" x="25" y="372" font-size="12.5">› byeclaude push --backup ID</text>
+<text class="muted sans" x="39" y="389" font-size="10.5">Publish exactly the reviewed rewrite</text>
+
+<text class="muted sans" x="25" y="414" font-size="9.5">COMMAND REFERENCE · Copyable text below</text>
+</svg>

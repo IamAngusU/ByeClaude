@@ -226,7 +226,10 @@ Both installers download the matching asset from `releases/latest` and verify it
 ## Command desk
 
 <p align="center">
-  <img src="docs/assets/readme/command-desk.svg" width="800" alt="ByeClaude command desk with audit, prevention, local rewrite, backup and guarded push commands.">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/readme/command-desk-mobile.svg">
+    <img src="docs/assets/readme/command-desk.svg" width="800" alt="ByeClaude command desk with audit, prevention, local rewrite, backup and guarded push commands.">
+  </picture>
 </p>
 
 <details>
