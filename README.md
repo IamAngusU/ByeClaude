@@ -10,10 +10,10 @@
 <p align="center">Scan the history you actually have. Rewrite only when you explicitly ask. Keep the trailer out with a local hook or a read-only CI guard.</p>
 
 <p align="center">
-  <a href="https://github.com/IamAngusU/ByeClaude/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/IamAngusU/ByeClaude?display_name=tag&sort=semver&style=flat-square"></a>
-  <a href="https://github.com/IamAngusU/ByeClaude/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/IamAngusU/ByeClaude/ci.yml?branch=main&label=tests&style=flat-square"></a>
-  <a href="go.mod"><img alt="Go 1.23+" src="https://img.shields.io/badge/Go-1.23%2B-111111?style=flat-square&logo=go&logoColor=white"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-111111?style=flat-square"></a>
+  <a href="#30-second-flow"><img src="docs/assets/readme/badge-default.svg" height="34" alt="Read-only by default"></a>
+  <a href="#safety-first"><img src="docs/assets/readme/badge-safety.svg" height="34" alt="Backup and guarded leases"></a>
+  <a href="#install"><img src="docs/assets/readme/badge-platforms.svg" height="34" alt="Windows, Linux and macOS"></a>
+  <a href="LICENSE"><img src="docs/assets/readme/badge-license.svg" height="34" alt="MIT license"></a>
 </p>
 
 <p align="center"><a href="#30-second-flow">Quick start</a> · <a href="#keep-it-clean">Keep it clean</a> · <a href="#what-the-rewrite-changes">Rewrite model</a> · <a href="#safety-first">Safety</a> · <a href="#install">Install</a> · <a href="docs/README.md">Docs</a></p>
@@ -215,18 +215,37 @@ Release builds are published for Linux, macOS and Windows on amd64 and arm64.
 
 ## Command desk
 
-```text
-byeclaude scan [--include-remotes] [--json]    inspect reachable history
-byeclaude check [--include-remotes] [--json]   same audit, CI-friendly exit code
-byeclaude clean --apply                        rewrite locally + create backup refs
-byeclaude clean --apply --push                 rewrite + guarded remote update
-byeclaude hook install                         strip future matching trailers locally
-byeclaude hook remove                          remove only ByeClaude's own hook
-byeclaude backups                              list local rewrite backups
-byeclaude restore --backup ID --apply          move local refs back to a backup
+<p align="center">
+  <img src="docs/assets/readme/command-desk.svg" width="800" alt="ByeClaude command desk with audit, prevention, local rewrite, backup and guarded push commands.">
+</p>
+
+<details>
+<summary><strong>Copy commands and recovery path</strong></summary>
+
+```sh
+byeclaude scan
+byeclaude check --include-remotes
+byeclaude hook install
+byeclaude clean
+byeclaude clean --apply
+byeclaude backups
+byeclaude restore --backup ID --apply
+byeclaude clean --apply --push
 ```
 
-Every command accepts `--repo PATH` where applicable. `clean` does nothing without `--apply`, and GitHub stays untouched unless `--push` is present.
+| Intent | Behavior |
+| --- | --- |
+| `scan` | Read-only audit of reachable local history. |
+| `check --include-remotes` | CI-friendly audit including fetched remote-tracking refs. |
+| `hook install` | Prevent matching trailers in future local commits. |
+| `clean` | Preview only; no refs move. |
+| `clean --apply` | Rewrite locally after preflight checks and create backup refs. |
+| `restore --backup ID --apply` | Restore local heads/tags from a ByeClaude backup. |
+| `clean --apply --push` | Explicit guarded rewrite of already-existing remote refs. |
+
+Every command accepts `--repo PATH` where applicable. GitHub stays untouched unless `--push` is present.
+
+</details>
 
 ## Scope and limitations
 
