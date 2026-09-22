@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible ByeClaude failure
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: ByeClaude version
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: git
+    attributes:
+      label: Git version
+      placeholder: git version 2.x
+    validations:
+      required: true
+  - type: textarea
+    id: repo_shape
+    attributes:
+      label: Repository shape
+      description: Describe branches, merges, tags, shallow/full clone, and whether the worktree was clean.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Prefer commands that create a synthetic repository. Do not post private history.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Actual output
+      render: text
+    validations:
+      required: true

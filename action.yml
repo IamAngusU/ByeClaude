@@ -1,0 +1,33 @@
+name: ByeClaude attribution guard
+description: Fail CI when reachable fetched history contains a Claude/Anthropic Co-Authored-By trailer.
+author: Angus Uelsmann
+
+inputs:
+  include-remotes:
+    description: Also scan fetched remote-tracking refs.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache: false
+    - name: Check Git history
+      shell: bash
+      env:
+        BYECLAUDE_INCLUDE_REMOTES: ${{ inputs.include-remotes }}
+      run: |
+        args=""
+        if [ "$BYECLAUDE_INCLUDE_REMOTES" = "true" ]; then
+          args="--include-remotes"
+        fi
+        cd "$GITHUB_ACTION_PATH"
+        go run ./cmd/byeclaude check $args --repo "$GITHUB_WORKSPACE"
+
+branding:
+  icon: git-branch
+  color: gray-dark

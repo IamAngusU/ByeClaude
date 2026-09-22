@@ -1,0 +1,28 @@
+name: Feature or hardening idea
+description: Propose a narrow improvement to ByeClaude.
+title: "[idea] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ByeClaude deliberately keeps its rewrite surface small. Explain the Git state or workflow you want to support, not only the UI you would like to see.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What repository state or workflow is hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired behavior
+      description: What should ByeClaude do, and what should it refuse to do?
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety considerations
+      description: Could this affect refs, signatures, worktrees, hooks, remotes, or concurrent pushes?
