@@ -51,7 +51,6 @@ func TestHookInstallRefusesCustomHooksPath(t *testing.T) {
 	}
 }
 
-
 func TestHookInstallEmbedsRulesFile(t *testing.T) {
 	dir := t.TempDir()
 	runGit(t, dir, "init", "-q")
