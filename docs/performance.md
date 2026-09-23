@@ -78,3 +78,33 @@ scripts/benchmark-batch.sh
 ```
 
 The batch command itself reports per-repository `prepare`, `scan`, and `total` timing plus aggregate wall time, summed scan/prepare time, repository counts, commit counts, matches and failures. This makes batch metrics part of normal product output rather than something available only in a benchmark script.
+
+
+### Default batch development measurement
+
+A development run on **23 September 2026** used the default synthetic batch shape:
+
+- Linux x86-64;
+- Git 2.47.3;
+- Go 1.23.2;
+- a shared container exposing 5 vCPUs on an AMD EPYC 9V74 host;
+- 8 local repositories;
+- 500 linear commits per repository, **4,000 commits total**;
+- one match in every third repository, producing 2 matching repositories;
+- 4 parallel workers.
+
+Measured around the **batch process only**, after the fixture repositories and binary had already been created:
+
+| Metric | Observed |
+| --- | ---: |
+| Batch wall time | 1.44 s |
+| Sum of per-repository scan time | 5.76 s |
+| Peak RSS | ~12.6 MiB |
+| Repositories scanned | 8 |
+| Commits scanned | 4,000 |
+| Matching trailers | 2 |
+| Failed repositories | 0 |
+
+The summed scan time is intentionally larger than wall time because four repositories are scanned concurrently. Prepare time was below 1 ms for these local paths.
+
+This measurement does **not** represent GitHub network performance. Remote batch runs also include temporary mirror preparation, authentication, GitHub/API latency and repository transfer. Remote audits use `--filter=blob:none`, but the current alpha does not persist a mirror cache between runs.
