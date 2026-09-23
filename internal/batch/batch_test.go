@@ -125,10 +125,10 @@ func TestRunBatchPlanAggregatesRewriteImpact(t *testing.T) {
 	git(t, dir, "commit", "-q", "-m", "descendant")
 
 	report, err := Run(context.Background(), []Spec{{
-		Name: "plan",
-		Source: dir,
+		Name:       "plan",
+		Source:     dir,
 		Visibility: "local",
-		Local: true,
+		Local:      true,
 	}}, Options{Jobs: 1, Matcher: preset.Claude(), Selection: "fixture-plan", Plan: true})
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,6 @@ func TestRunBatchPlanAggregatesRewriteImpact(t *testing.T) {
 		t.Fatalf("unexpected plan impact: %#v", report)
 	}
 }
-
 
 func TestIsolatedPublicGitEnvironment(t *testing.T) {
 	env := []string{
