@@ -20,8 +20,8 @@ func (v *repeatedFlag) Set(value string) error {
 }
 
 func runBatch(args []string) error {
-	if len(args) == 0 || (args[0] != "scan" && args[0] != "check") {
-		return fmt.Errorf("batch requires scan or check")
+	if len(args) == 0 || (args[0] != "scan" && args[0] != "check" && args[0] != "plan") {
+		return fmt.Errorf("batch requires scan, check, or plan")
 	}
 	mode := args[0]
 	fs := flag.NewFlagSet("batch "+mode, flag.ContinueOnError)
@@ -97,6 +97,7 @@ func runBatch(args []string) error {
 		Matcher:        matcher,
 		IncludeRemotes: *includeRemotes,
 		Selection:      selection,
+		Plan:           mode == "plan",
 	})
 	if err != nil {
 		return err
@@ -136,10 +137,29 @@ func printBatchReport(report batchpkg.Report) {
 		)
 		if result.Error != "" {
 			fmt.Printf("       %s\n", result.Error)
+		} else if report.Operation == "plan" {
+			fmt.Printf("       rewrite %d commits · %d descendants · %d parent links · %d refs · ~%d object writes\n",
+				result.CommitsToRewrite,
+				result.DescendantCommits,
+				result.ParentLinksToRewrite,
+				result.RefsToMove,
+				result.ObjectWritesEstimate,
+			)
 		}
 	}
 	fmt.Printf("\nsummary     %d scanned · %d clean · %d with matches (%.2f%%) · %d failed\n", report.Scanned, report.CleanRepositories, report.MatchedRepositories, report.RepositoryMatchPct, report.FailedRepositories)
 	fmt.Printf("history     %d commits · %d matched commits (%.2f%%) · %d matching trailers\n", report.Commits, report.MatchedCommits, report.CommitMatchPct, report.Matches)
+	if report.Operation == "plan" {
+		fmt.Printf("impact      %d commits · %d descendants · %d parent links · %d refs · %d tag objects · %d signatures · ~%d object writes\n",
+			report.CommitsToRewrite,
+			report.DescendantCommits,
+			report.ParentLinksToRewrite,
+			report.RefsToMove,
+			report.AnnotatedTagsToRewrite,
+			report.SignaturesAtRisk,
+			report.ObjectWritesEstimate,
+		)
+	}
 	if len(report.RuleMatches) > 0 {
 		keys := make([]string, 0, len(report.RuleMatches))
 		for key := range report.RuleMatches {

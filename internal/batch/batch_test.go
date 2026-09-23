@@ -115,3 +115,32 @@ func TestRunRemoteMirrorTarget(t *testing.T) {
 		t.Fatalf("unexpected metrics: %#v", report.Results)
 	}
 }
+
+
+func TestRunBatchPlanAggregatesRewriteImpact(t *testing.T) {
+	dir := makeRepo(t, "plan-repo", "assistant\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("descendant\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "b.txt")
+	git(t, dir, "commit", "-q", "-m", "descendant")
+
+	report, err := Run(context.Background(), []Spec{{
+		Name: "plan",
+		Source: dir,
+		Visibility: "local",
+		Local: true,
+	}}, Options{Jobs: 1, Matcher: preset.Claude(), Selection: "fixture-plan", Plan: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Operation != "plan" {
+		t.Fatalf("operation=%q", report.Operation)
+	}
+	if report.MatchedCommits != 1 || report.CommitsToRewrite != 2 || report.DescendantCommits != 1 {
+		t.Fatalf("unexpected plan counts: %#v", report)
+	}
+	if report.ParentLinksToRewrite != 1 || report.RefsToMove != 1 || report.ObjectWritesEstimate != 2 {
+		t.Fatalf("unexpected plan impact: %#v", report)
+	}
+}

@@ -54,7 +54,15 @@ duration    184ms
   c0b7bd296ec4  [claude-anthropic] Claude Sonnet 4 <noreply@anthropic.com>
 ```
 
-Nothing changed. When you are ready, rewrite locally:
+Nothing changed. See the actual rewrite impact before touching history:
+
+```sh
+byeclaude plan
+```
+
+`plan` reports matched commits, descendants that would get new IDs, parent links to reconnect, affected branch/tag refs, annotated tags, signatures at risk and an approximate number of new Git objects. It is read-only.
+
+When you are ready, rewrite locally:
 
 > [!WARNING]
 > **Signed commits/tags that must be rewritten cannot keep their old valid signatures.** A signature covers the original Git object bytes. ByeClaude reports dropped signature fields, but it cannot make the old signature valid on the new object. If preserving signed history matters more than removing attribution, stop here. [Details](docs/safety.md#signatures).
@@ -157,6 +165,14 @@ A dated local default-batch sanity run scanned **8 repositories / 4,000 syntheti
 ### Why these benchmarks are not an SLA
 
 That is not a speed warning. ByeClaude is currently a local alpha CLI, not a hosted service with a contractual uptime, latency, support or compatibility commitment. The benchmark numbers are reproducible development measurements on named hardware. A future hosted ByeClaude API could define an SLA separately once its worker pool, caching, quotas and operating environment are known.
+
+Need the cost of a possible rewrite without changing anything?
+
+```sh
+byeclaude batch plan --repo owner/repository
+```
+
+That uses the temporary mirror to calculate rewrite impact, including descendant commits, parent-link reconnections, refs, tag objects, signature risk and estimated object writes. [Planning metrics](docs/planning.md).
 
 [Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
 
@@ -350,8 +366,10 @@ Both installers download the matching asset from `releases/latest` and verify it
 
 ```sh
 byeclaude scan
+byeclaude plan
 byeclaude check --include-remotes
 byeclaude batch scan --owner IamAngusU --public
+byeclaude batch plan --repo owner/repository
 byeclaude hook install
 byeclaude clean
 byeclaude clean --apply
@@ -363,8 +381,10 @@ byeclaude push --backup ID
 | Intent | Behavior |
 | --- | --- |
 | `scan` | Read-only audit of reachable local history. |
+| `plan` | Read-only rewrite-impact graph: descendants, parent links, refs, tags, signatures and object-write estimate. |
 | `check --include-remotes` | CI-friendly audit including fetched remote-tracking refs. |
 | `batch scan` | Read-only audit of explicit repos or public/private/all GitHub owner scopes, with metrics by default. |
+| `batch plan` | Run the same read-only rewrite-impact calculation across remote/local repository targets. |
 | `hook install` | Prevent matching trailers in future local commits. |
 | `clean` | Preview only; no refs move. |
 | `clean --apply` | Rewrite locally after preflight checks and create backup refs. |
@@ -374,8 +394,6 @@ byeclaude push --backup ID
 Every command accepts `--repo PATH` where applicable. `clean --apply --push` is still available as a one-shot rewrite-and-publish shortcut. Otherwise GitHub stays untouched until the explicit `push` command.
 
 </details>
-
-## Scope and limitations
 
 ## JSON as a backend/API building block
 
@@ -389,7 +407,7 @@ A future AI/style/slop scanner should therefore be a separate heuristic evidence
 
 ByeClaude cleans **Git commit attribution**. It does not edit pull-request text, issues, comments, external forks, GitHub caches, or repository objects you never fetched.
 
-Internally, the Git DAG rewriter is matcher-agnostic; the Claude/Anthropic identity lives in a separate built-in preset. The alpha CLI intentionally keeps that preset fixed rather than exposing an arbitrary history-rewrite regex. [Matching architecture](docs/matching.md).
+Internally, the Git DAG rewriter is matcher-agnostic; Claude/Anthropic remains the built-in default, while validated structured `--rules` files can classify several declared co-author identities without exposing arbitrary history-rewrite regexes. [Matching architecture](docs/matching.md).
 
 GitHub contributor statistics can lag behind a force-push or rewritten default branch. Old commit IDs may also remain referenced by forks, pull requests, caches or other clones even after your normal branches are clean.
 
@@ -402,6 +420,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 - [Multiple attribution rules](docs/rules.md)
 - [Evidence model](docs/evidence.md)
 - [Service/API integration](docs/service.md)
+- [Rewrite planning](docs/planning.md)
 - [Batch repository audit](docs/batch.md)
 - [Fixture repository suite](docs/fixtures.md)
 - [Safety, backups and recovery](docs/safety.md)

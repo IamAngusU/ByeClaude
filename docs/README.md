@@ -9,6 +9,8 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Multiple attribution rules](rules.md) | You want Claude plus other declared co-author identities in one validated rule set. |
 | [Evidence model](evidence.md) | You want to distinguish factual Git attribution from heuristic AI-involvement signals. |
 | [Service / API integration](service.md) | You want to use ByeClaude JSON as a backend engine for a website or service. |
+| [Rewrite planning](planning.md) | You want to know how much of the DAG, refs and signatures a cleanup would affect before changing anything. |
+| [GitHub identity enrichment](identity.md) | You want account-level metrics without conflating Git author strings with GitHub user IDs. |
 | [Batch repository audit](batch.md) | You want to audit named repositories, all public repos, private repos, or both with built-in metrics. |
 | [Safety and recovery](safety.md) | You are preparing to rewrite a shared repository or need to restore a local backup. |
 | [Hooks and GitHub Actions](automation.md) | You want Claude attribution blocked before merge or future commit creation. |
@@ -20,6 +22,7 @@ The shortest safe workflow is still:
 
 ```sh
 byeclaude scan
+byeclaude plan
 byeclaude clean --apply
 # review the rewritten graph and note the printed backup ID
 byeclaude push --backup BACKUP_ID

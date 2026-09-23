@@ -35,6 +35,13 @@ type RepoMetrics struct {
 	CommitMatchPct float64        `json:"commit_match_pct"`
 	Matches        int            `json:"matches"`
 	RuleMatches    map[string]int `json:"rule_matches"`
+	CommitsToRewrite       int `json:"commits_to_rewrite,omitempty"`
+	DescendantCommits      int `json:"descendant_commits_to_rewrite,omitempty"`
+	ParentLinksToRewrite   int `json:"parent_links_to_rewrite,omitempty"`
+	RefsToMove             int `json:"refs_to_move,omitempty"`
+	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
+	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
+	ObjectWritesEstimate   int `json:"object_writes_estimate,omitempty"`
 	PrepareMS      int64          `json:"prepare_ms"`
 	ScanMS         int64          `json:"scan_ms"`
 	TotalMS        int64          `json:"total_ms"`
@@ -43,6 +50,7 @@ type RepoMetrics struct {
 
 type Report struct {
 	Selection           string         `json:"selection"`
+	Operation           string         `json:"operation"`
 	Jobs                int            `json:"jobs"`
 	Repositories        int            `json:"repositories"`
 	Scanned             int            `json:"scanned"`
@@ -55,6 +63,13 @@ type Report struct {
 	CommitMatchPct      float64        `json:"commit_match_pct"`
 	Matches             int            `json:"matches"`
 	RuleMatches         map[string]int `json:"rule_matches"`
+	CommitsToRewrite       int `json:"commits_to_rewrite,omitempty"`
+	DescendantCommits      int `json:"descendant_commits_to_rewrite,omitempty"`
+	ParentLinksToRewrite   int `json:"parent_links_to_rewrite,omitempty"`
+	RefsToMove             int `json:"refs_to_move,omitempty"`
+	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
+	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
+	ObjectWritesEstimate   int `json:"object_writes_estimate,omitempty"`
 	PrepareMS           int64          `json:"prepare_ms_sum"`
 	ScanMS              int64          `json:"scan_ms_sum"`
 	WallMS              int64          `json:"wall_ms"`
@@ -67,6 +82,7 @@ type Options struct {
 	Matcher        attribution.Matcher
 	IncludeRemotes bool
 	Selection      string
+	Plan           bool
 }
 
 func DefaultJobs() int {
@@ -94,6 +110,7 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 	started := time.Now()
 	report := Report{
 		Selection:    opts.Selection,
+		Operation:    map[bool]string{true: "plan", false: "scan"}[opts.Plan],
 		Jobs:         opts.Jobs,
 		Repositories: len(specs),
 		RuleMatches:  map[string]int{},
@@ -158,6 +175,13 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 		report.Commits += result.Commits
 		report.MatchedCommits += result.MatchedCommits
 		report.Matches += result.Matches
+		report.CommitsToRewrite += result.CommitsToRewrite
+		report.DescendantCommits += result.DescendantCommits
+		report.ParentLinksToRewrite += result.ParentLinksToRewrite
+		report.RefsToMove += result.RefsToMove
+		report.AnnotatedTagsToRewrite += result.AnnotatedTagsToRewrite
+		report.SignaturesAtRisk += result.SignaturesAtRisk
+		report.ObjectWritesEstimate += result.ObjectWritesEstimate
 		for ruleID, count := range result.RuleMatches {
 			report.RuleMatches[ruleID] += count
 		}
@@ -207,6 +231,29 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		result.Error = err.Error()
 		return result
 	}
+	if opts.Plan {
+		plan, err := clean.Plan(repo, opts.Matcher)
+		result.ScanMS = time.Since(scanStarted).Milliseconds()
+		result.TotalMS = time.Since(started).Milliseconds()
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
+		result.Commits = plan.Commits
+		result.MatchedCommits = plan.MatchedCommits
+		result.CommitMatchPct = plan.CommitMatchPct
+		result.Matches = len(plan.Matches)
+		result.RuleMatches = plan.RuleMatches
+		result.CommitsToRewrite = plan.CommitsToRewrite
+		result.DescendantCommits = plan.DescendantCommits
+		result.ParentLinksToRewrite = plan.ParentLinksToRewrite
+		result.RefsToMove = plan.RefsToMove
+		result.AnnotatedTagsToRewrite = plan.AnnotatedTagsToRewrite
+		result.SignaturesAtRisk = plan.SignaturesAtRisk
+		result.ObjectWritesEstimate = plan.ObjectWritesEstimate
+		return result
+	}
+
 	scan, err := clean.ScanIncludingRemotes(repo, opts.IncludeRemotes, opts.Matcher)
 	result.ScanMS = time.Since(scanStarted).Milliseconds()
 	result.TotalMS = time.Since(started).Milliseconds()

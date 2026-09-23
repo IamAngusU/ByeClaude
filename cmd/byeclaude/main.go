@@ -10,6 +10,7 @@ import (
 	"github.com/IamAngusU/ByeClaude/internal/attribution"
 	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/model"
 	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
 
@@ -26,6 +27,8 @@ func main() {
 		err = runScan(os.Args[2:])
 	case "check":
 		err = runCheck(os.Args[2:])
+	case "plan":
+		err = runPlan(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
 	case "batch":
@@ -60,9 +63,11 @@ func usage() {
 Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--rules FILE] [--json]
+  byeclaude plan [--repo PATH] [--rules FILE] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
+  byeclaude batch plan ...
   byeclaude clean --apply [--repo PATH] [--rules FILE] [--push] [--remote origin] [--json]
   byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
   byeclaude hook install|remove [--repo PATH] [--rules FILE]
@@ -159,6 +164,54 @@ func runCheck(args []string) error {
 	return nil
 }
 
+func runPlan(args []string) error {
+	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
+	repoPath, jsonOut := common(fs)
+	rulesFile := rulesFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	matcher, err := resolveMatcher(*rulesFile)
+	if err != nil {
+		return err
+	}
+	repo, err := gitx.Open(*repoPath)
+	if err != nil {
+		return err
+	}
+	report, err := clean.Plan(repo, matcher)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		fmt.Println(clean.JSON(report))
+		return nil
+	}
+	printPlanReport(report)
+	return nil
+}
+
+func printPlanReport(report model.PlanReport) {
+	fmt.Printf("repository   %s\n", report.Repository)
+	fmt.Printf("commits      %d\n", report.Commits)
+	fmt.Printf("matched      %d (%.2f%%)\n", report.MatchedCommits, report.CommitMatchPct)
+	fmt.Printf("trailers     %d\n", len(report.Matches))
+	fmt.Printf("rewrite      %d commit(s)\n", report.CommitsToRewrite)
+	fmt.Printf("descendants  %d\n", report.DescendantCommits)
+	fmt.Printf("connections  %d parent link(s)\n", report.ParentLinksToRewrite)
+	fmt.Printf("refs         %d (%d branch(es), %d tag ref(s))\n", report.RefsToMove, report.BranchesToMove, report.TagRefsToMove)
+	fmt.Printf("tag objects  %d annotated tag(s)\n", report.AnnotatedTagsToRewrite)
+	fmt.Printf("signatures   %d at risk\n", report.SignaturesAtRisk)
+	fmt.Printf("objects      ~%d write(s)\n", report.ObjectWritesEstimate)
+	fmt.Printf("duration     %s\n", metricDuration(report.DurationMS))
+	if len(report.AffectedRefs) > 0 {
+		fmt.Println("affected")
+		for _, ref := range report.AffectedRefs {
+			fmt.Printf("  %s\n", ref)
+		}
+	}
+}
+
 func runClean(args []string) error {
 	fs := flag.NewFlagSet("clean", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
@@ -177,17 +230,17 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	before, err := clean.Scan(repo, matcher)
+	plan, err := clean.Plan(repo, matcher)
 	if err != nil {
 		return err
 	}
-	if len(before.Matches) == 0 {
+	if len(plan.Matches) == 0 {
 		fmt.Println("No matching attribution trailers found. Nothing to do.")
 		return nil
 	}
 	if !*apply {
-		fmt.Printf("Found %d matching trailer(s) across %d scanned commits.\n", len(before.Matches), before.Commits)
-		fmt.Println("Dry run only. Re-run with: byeclaude clean --apply")
+		printPlanReport(plan)
+		fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
 		return nil
 	}
 	oldRefs, err := clean.LocalRefs(repo)

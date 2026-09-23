@@ -149,3 +149,17 @@ byeclaude push --repo ./reviewed-clone --backup BACKUP_ID
 ```
 
 The local backup/result snapshots and force-with-lease checks remain tied to one repository and one reviewed rewrite.
+
+
+## Rewrite planning across repositories
+
+`batch plan` uses the same repository selection and bounded worker pool as `batch scan`, but calculates rewrite impact instead of only attribution counts:
+
+```sh
+byeclaude batch plan --repo owner/repository
+byeclaude batch plan --owner owner --public --rules ./rules.json
+```
+
+Per repository and in aggregate it can report commits that would be rewritten, descendant-only rewrites, parent links that need reconnecting, refs to move, annotated tag objects, signatures at risk and approximate Git object writes.
+
+This remains read-only. There is intentionally no account-wide `batch clean` command in the alpha.

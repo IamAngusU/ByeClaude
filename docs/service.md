@@ -34,9 +34,21 @@ byeclaude batch scan \
 
 Account-wide public audits can use `--owner OWNER --public`; authenticated private audits should use short-lived server-side credentials rather than exposing a GitHub token to browser JavaScript.
 
+## Rewrite-cost preview
+
+Before offering a sanitize action, a worker can run:
+
+```sh
+byeclaude batch plan --repo owner/repo --rules ./declared-ai-v1.json --json
+```
+
+The plan reports not just matches, but the actual graph work: descendant commits that would receive new IDs, parent links to reconnect, refs/tags that move, signatures at risk and approximate commit/tag object writes. That is a much better capacity signal than raw match count.
+
+The current project does not attach a price or proprietary compute-unit model to those numbers. They are exposed for transparency and future capacity planning.
+
 ## Useful product metrics
 
-GitHub username is not the same thing as a Git author identity. One person can commit with several names/emails, and a GitHub account association may be unavailable offline. If the website wants a statistic for "user X", treat account-to-author mapping as an explicit enrichment step and show how identities were grouped.
+GitHub username is not the same thing as a Git author identity. One person can commit with several names/emails, and a GitHub account association may be unavailable offline. If the website wants a statistic for "user X", treat account-to-author mapping as an explicit enrichment step and show how identities were grouped. See [GitHub identity enrichment](identity.md).
 
 
 From declared Git attribution, a service can calculate and display:
