@@ -27,6 +27,8 @@ func main() {
 		err = runCheck(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
+	case "batch":
+		err = runBatch(os.Args[2:])
 	case "push":
 		err = runPush(os.Args[2:])
 	case "hook":
@@ -57,6 +59,9 @@ func usage() {
 Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--json]
+  byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
+  byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
+  byeclaude batch check ...
   byeclaude clean --apply [--repo PATH] [--push] [--remote origin] [--json]
   byeclaude push --backup ID [--repo PATH] [--remote origin]
   byeclaude hook install|remove [--repo PATH]
@@ -93,7 +98,7 @@ func runScan(args []string) error {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
-	fmt.Printf("repository  %s\ncommits     %d\nmatches     %d\n", report.Repository, report.Commits, len(report.Matches))
+	fmt.Printf("repository  %s\ncommits     %d\nmatches     %d\nduration    %s\n", report.Repository, report.Commits, len(report.Matches), metricDuration(report.DurationMS))
 	for _, m := range report.Matches {
 		fmt.Printf("  %.12s  %s\n", m.Commit, m.Line)
 	}
@@ -121,7 +126,7 @@ func runCheck(args []string) error {
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 	} else {
-		fmt.Printf("repository  %s\ncommits     %d\nmatches     %d\n", report.Repository, report.Commits, len(report.Matches))
+		fmt.Printf("repository  %s\ncommits     %d\nmatches     %d\nduration    %s\n", report.Repository, report.Commits, len(report.Matches), metricDuration(report.DurationMS))
 		for _, m := range report.Matches {
 			fmt.Printf("  %.12s  %s\n", m.Commit, m.Line)
 		}
@@ -185,7 +190,7 @@ func runClean(args []string) error {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
-	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten)
+	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\nduration    %s\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten, metricDuration(report.DurationMS))
 	if report.SignaturesDropped > 0 {
 		fmt.Printf("signatures  %d signature/mergetag field(s) dropped because rewritten objects cannot retain valid signatures\n", report.SignaturesDropped)
 	}

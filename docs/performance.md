@@ -50,3 +50,31 @@ Observed wall time was approximately:
 These numbers are a development sanity check, not an SLA or cross-platform comparison. Commit creation time was excluded. The fixture has one linear branch, identical trees, no network, no remote push, no large tag set, and no real-world storage contention.
 
 Use the script on your own repositories' target hardware if performance matters to a rollout.
+
+
+## Batch benchmark
+
+Batch auditing has a separate reproducible fixture:
+
+```sh
+scripts/benchmark-batch.sh
+```
+
+Defaults:
+
+- 8 local repositories;
+- 500 linear commits per repository;
+- one matching trailer in every third repository;
+- 4 parallel workers.
+
+Override the shape explicitly:
+
+```sh
+BYECLAUDE_BATCH_REPOS=16 \
+BYECLAUDE_BATCH_COMMITS=1000 \
+BYECLAUDE_BATCH_MATCH_EVERY=4 \
+BYECLAUDE_BATCH_JOBS=4 \
+scripts/benchmark-batch.sh
+```
+
+The batch command itself reports per-repository `prepare`, `scan`, and `total` timing plus aggregate wall time, summed scan/prepare time, repository counts, commit counts, matches and failures. This makes batch metrics part of normal product output rather than something available only in a benchmark script.

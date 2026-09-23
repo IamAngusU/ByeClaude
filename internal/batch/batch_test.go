@@ -1,0 +1,111 @@
+package batch
+
+import (
+	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/IamAngusU/ByeClaude/internal/preset"
+)
+
+func git(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func makeRepo(t *testing.T, name, message string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), name)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Batch Test")
+	git(t, dir, "config", "user.email", "batch@example.invalid")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte(name+"\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "a.txt")
+	git(t, dir, "commit", "-q", "-m", message)
+	return dir
+}
+
+func TestRunLocalBatchAggregatesMetrics(t *testing.T) {
+	cleanRepo := makeRepo(t, "clean-repo", "clean")
+	dirtyRepo := makeRepo(t, "dirty-repo", "feat\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+
+	report, err := Run(context.Background(), []Spec{
+		{Name: "clean", Source: cleanRepo, Visibility: "local", Local: true},
+		{Name: "dirty", Source: dirtyRepo, Visibility: "local", Local: true},
+	}, Options{Jobs: 2, Matcher: preset.Claude(), IncludeRemotes: true, Selection: "fixture"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Repositories != 2 || report.Scanned != 2 || report.FailedRepositories != 0 {
+		t.Fatalf("unexpected counts: %#v", report)
+	}
+	if report.CleanRepositories != 1 || report.MatchedRepositories != 1 || report.Matches != 1 {
+		t.Fatalf("unexpected match counts: %#v", report)
+	}
+	if report.Commits != 2 {
+		t.Fatalf("commits=%d want 2", report.Commits)
+	}
+	if len(report.Results) != 2 || report.Results[0].Repository != "clean" || report.Results[1].Repository != "dirty" {
+		t.Fatalf("results not stable/sorted: %#v", report.Results)
+	}
+	for _, result := range report.Results {
+		if result.TotalMS < 0 || result.ScanMS < 0 || result.PrepareMS < 0 {
+			t.Fatalf("negative metric: %#v", result)
+		}
+	}
+}
+
+func TestResolveExplicitSupportsLocalAndSlug(t *testing.T) {
+	local := makeRepo(t, "local", "clean")
+	specs, err := ResolveExplicit([]string{local, "IamAngusU/ByeClaude", "IamAngusU/ByeClaude"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 2 {
+		t.Fatalf("spec count=%d want 2: %#v", len(specs), specs)
+	}
+	if !specs[0].Local || specs[0].Visibility != "local" {
+		t.Fatalf("local spec=%#v", specs[0])
+	}
+	if specs[1].Source != "https://github.com/IamAngusU/ByeClaude.git" {
+		t.Fatalf("slug source=%q", specs[1].Source)
+	}
+}
+
+func TestRunRemoteMirrorTarget(t *testing.T) {
+	source := makeRepo(t, "remote-source", "feat\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	bare := filepath.Join(t.TempDir(), "remote.git")
+	cmd := exec.Command("git", "clone", "--bare", "-q", source, bare)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("create bare remote: %v\n%s", err, out)
+	}
+
+	report, err := Run(context.Background(), []Spec{{
+		Name:       "fixture/remote",
+		Source:     "file://" + bare,
+		Visibility: "unknown",
+	}}, Options{Jobs: 1, Matcher: preset.Claude(), IncludeRemotes: true, Selection: "remote-fixture"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Scanned != 1 || report.MatchedRepositories != 1 || report.Matches != 1 || report.FailedRepositories != 0 {
+		t.Fatalf("unexpected report: %#v", report)
+	}
+	if len(report.Results) != 1 || report.Results[0].TotalMS < report.Results[0].ScanMS {
+		t.Fatalf("unexpected metrics: %#v", report.Results)
+	}
+}

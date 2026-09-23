@@ -86,6 +86,7 @@ func Scan(repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error
 }
 
 func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribution.Matcher) (model.ScanReport, error) {
+	started := time.Now()
 	if matcher == nil {
 		return model.ScanReport{}, fmt.Errorf("attribution matcher is required")
 	}
@@ -122,6 +123,7 @@ func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribut
 			report.Matches = append(report.Matches, model.Match{Commit: sha, Author: author, Email: email, Line: strings.TrimSpace(line)})
 		}
 	}
+	report.DurationMS = time.Since(started).Milliseconds()
 	return report, nil
 }
 
@@ -225,6 +227,7 @@ func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 }
 
 func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport, map[string]string, error) {
+	started := time.Now()
 	if matcher == nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
 	}
@@ -314,6 +317,7 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 	if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {
 		return report, mapping, fmt.Errorf("update refs: %w", err)
 	}
+	report.DurationMS = time.Since(started).Milliseconds()
 	return report, mapping, nil
 }
 

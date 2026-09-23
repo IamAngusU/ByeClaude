@@ -11,6 +11,7 @@ type ScanReport struct {
 	Repository string  `json:"repository"`
 	Commits    int     `json:"commits_scanned"`
 	Matches    []Match `json:"matches"`
+	DurationMS int64   `json:"duration_ms"`
 }
 
 type RewriteReport struct {
@@ -21,4 +22,5 @@ type RewriteReport struct {
 	RefsUpdated       int    `json:"refs_updated"`
 	TagsRewritten     int    `json:"tags_rewritten"`
 	SignaturesDropped int    `json:"signatures_dropped"`
+	DurationMS        int64  `json:"duration_ms"`
 }

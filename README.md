@@ -25,6 +25,7 @@ Claude Code can add a `Co-Authored-By: Claude … <noreply@anthropic.com>` trail
 | You want to… | ByeClaude does… |
 | --- | --- |
 | Find old Claude co-author trailers | Scans every commit reachable from local heads, tags and `HEAD`; optionally fetched remotes too. |
+| Audit several repositories or an account | Read-only batch scan by explicit repo, public/private/all scope, with bounded concurrency and timing metrics by default. |
 | Remove them | Rewrites matching commit messages and the descendants whose parent IDs must change. File trees stay untouched. |
 | Keep them from coming back | Installs a conservative `commit-msg` hook and ships a read-only GitHub Actions guard. |
 | Avoid clobbering shared work | Creates local backup refs, blocks unsafe repository states, and uses atomic force-with-lease for remote updates. |
@@ -41,6 +42,7 @@ byeclaude scan
 repository  /work/project
 commits     184
 matches     2
+duration    184ms
   8a51b8b9dbd1  Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
   c0b7bd296ec4  Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
 ```
@@ -86,6 +88,60 @@ byeclaude check --include-remotes
 ```
 
 Dangling objects, unfetched GitHub-internal PR refs and external forks are not silently treated as rewrite targets. [Exact scope](docs/how-it-works.md#what-is-and-is-not-scanned).
+
+
+## Audit many repositories
+
+Batch mode is deliberately **read-only** in this alpha. It can discover repositories, create temporary metadata-only mirrors, scan them concurrently and report per-repository plus aggregate metrics. It cannot account-wide force-push.
+
+A specific GitHub repository:
+
+```sh
+byeclaude batch scan --repo IamAngusU/ContextBridge
+```
+
+Several explicit repositories:
+
+```sh
+byeclaude batch scan \
+  --repo IamAngusU/ContextBridge \
+  --repo IamAngusU/ByeClaude
+```
+
+All public repositories owned by an account:
+
+```sh
+byeclaude batch scan --owner IamAngusU --public
+```
+
+Private repositories, or public + private together, use `GH_TOKEN` or `GITHUB_TOKEN`:
+
+```sh
+GH_TOKEN=... byeclaude batch scan --owner IamAngusU --private
+GH_TOKEN=... byeclaude batch scan --owner IamAngusU --all
+```
+
+With a token, omit `--owner` to use the authenticated GitHub login:
+
+```sh
+GH_TOKEN=... byeclaude batch scan --all
+```
+
+`--repo` also accepts clone URLs and existing local repository paths. Public GitHub slugs need no token. ByeClaude intentionally has no `--token` flag, so a credential does not need to be put in shell history.
+
+Normal batch output measures **prepare / mirror time, Git scan time and total time per repository**, then reports wall time, summed prepare/scan time, repositories scanned/clean/matched/failed, total reachable commits and total matching trailers. Parallelism defaults to `min(CPU, 4)` and can be changed with `--jobs 1..32`.
+
+```text
+summary     6 scanned · 2 clean · 4 with matches · 0 failed
+history     16 commits · 4 matching trailers
+timing      32ms wall · <1ms prepare sum · 97ms scan sum
+```
+
+Those timings are from the small local fixture suite and are not a performance claim. Use `--json` for stable millisecond fields, or `batch check` when matches should make CI fail.
+
+Remote batch scans use temporary `--mirror --filter=blob:none` clones and delete the workspace afterwards. The current alpha deliberately has no persistent mirror cache.
+
+[Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
 
 ## Keep it clean
 
@@ -238,6 +294,7 @@ Both installers download the matching asset from `releases/latest` and verify it
 ```sh
 byeclaude scan
 byeclaude check --include-remotes
+byeclaude batch scan --owner IamAngusU --public
 byeclaude hook install
 byeclaude clean
 byeclaude clean --apply
@@ -250,6 +307,7 @@ byeclaude push --backup ID
 | --- | --- |
 | `scan` | Read-only audit of reachable local history. |
 | `check --include-remotes` | CI-friendly audit including fetched remote-tracking refs. |
+| `batch scan` | Read-only audit of explicit repos or public/private/all GitHub owner scopes, with metrics by default. |
 | `hook install` | Prevent matching trailers in future local commits. |
 | `clean` | Preview only; no refs move. |
 | `clean --apply` | Rewrite locally after preflight checks and create backup refs. |
@@ -268,12 +326,14 @@ Internally, the Git DAG rewriter is matcher-agnostic; the Claude/Anthropic ident
 
 GitHub contributor statistics can lag behind a force-push or rewritten default branch. Old commit IDs may also remain referenced by forks, pull requests, caches or other clones even after your normal branches are clean.
 
-This is pre-1.0 software. The repository includes integration coverage for linear and merge histories, branches, tags, backups/restores, remote lease races, atomic push behavior, shallow clones, worktrees, replace refs, notes and SHA-256 repositories. Platform CI is configured to run the Go test suite on Linux, macOS and Windows, with the race detector additionally exercised on Linux.
+This is pre-1.0 software. The repository includes integration coverage for linear and merge histories, branches, tags, backups/restores, remote lease races, atomic push behavior, shallow clones, worktrees, replace refs, notes, SHA-256 repositories, custom attribution matchers and batch aggregation. A six-repository disposable fixture suite exercises the real batch CLI. Platform CI is configured to run the Go test suite on Linux, macOS and Windows, with the race detector additionally exercised on Linux.
 
 ## Documentation
 
 - [How the rewrite works](docs/how-it-works.md)
 - [Matching architecture](docs/matching.md)
+- [Batch repository audit](docs/batch.md)
+- [Fixture repository suite](docs/fixtures.md)
 - [Safety, backups and recovery](docs/safety.md)
 - [Hooks and GitHub Actions](docs/automation.md)
 - [Troubleshooting](docs/troubleshooting.md)

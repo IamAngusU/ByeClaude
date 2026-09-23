@@ -32,6 +32,8 @@ jobs:
         run: go vet ./...
       - name: Race tests
         run: go test -race ./...
+      - name: Fixture suite
+        run: scripts/verify-fixture-suite.sh
       - name: Attribution guard
         run: go run ./cmd/byeclaude check --include-remotes
       - name: Build
