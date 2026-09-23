@@ -356,24 +356,33 @@ go build -o byeclaude ./cmd/byeclaude
 
 ### Release installers
 
-Tagged releases are configured to publish checksum-verified binaries for Linux, macOS and Windows on amd64 and arm64. The installer URLs below become usable once the first tagged release exists.
+Tagged releases are configured to publish checksum-verified binaries for Linux, macOS and Windows on amd64 and arm64. Alpha tags are published as GitHub prereleases rather than being presented as stable releases.
 
 <details>
 <summary><strong>Installer commands</strong></summary>
 
-Linux / macOS:
+After a stable release exists, Linux / macOS can follow `releases/latest`:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.sh | sh
 ```
 
-Windows PowerShell:
+For an alpha/prerelease, pin the exact tag explicitly:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.sh | BYECLAUDE_VERSION=v0.1.0-alpha.1 sh
+```
+
+Windows PowerShell supports the same version override:
 
 ```powershell
+$env:BYECLAUDE_VERSION = 'v0.1.0-alpha.1'
 irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/main/install.ps1 | iex
 ```
 
-Both installers download the matching asset from `releases/latest` and verify it against the published SHA-256 checksum file before installation.
+The installers verify the selected binary against the release's published SHA-256 checksum file. `BYECLAUDE_VERSION` accepts `latest` or an explicit `v...` tag.
+
+</details>
 
 </details>
 
