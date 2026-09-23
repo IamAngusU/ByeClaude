@@ -144,7 +144,7 @@ func printBatchReport(report batchpkg.Report) {
 				result.ParentLinksToRewrite,
 				result.RefsToMove,
 				result.ObjectWritesEstimate,
-				result.RewriteReady,
+				result.RewriteReady != nil && *result.RewriteReady,
 			)
 			if result.RewriteBlocker != "" {
 				fmt.Printf("       blocker: %s\n", result.RewriteBlocker)

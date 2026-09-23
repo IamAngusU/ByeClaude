@@ -72,6 +72,9 @@ func TestRunLocalBatchAggregatesMetrics(t *testing.T) {
 		if result.TotalMS < 0 || result.ScanMS < 0 || result.PrepareMS < 0 {
 			t.Fatalf("negative metric: %#v", result)
 		}
+		if result.RewriteReady != nil {
+			t.Fatalf("scan result unexpectedly includes rewrite_ready: %#v", result)
+		}
 	}
 }
 

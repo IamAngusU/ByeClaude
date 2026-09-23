@@ -42,7 +42,7 @@ type RepoMetrics struct {
 	AnnotatedTagsToRewrite int            `json:"annotated_tags_to_rewrite,omitempty"`
 	SignaturesAtRisk       int            `json:"signatures_at_risk,omitempty"`
 	ObjectWritesEstimate   int            `json:"object_writes_estimate,omitempty"`
-	RewriteReady           bool           `json:"rewrite_ready"`
+	RewriteReady           *bool          `json:"rewrite_ready,omitempty"`
 	RewriteBlocker         string         `json:"rewrite_blocker,omitempty"`
 	PrepareMS              int64          `json:"prepare_ms"`
 	ScanMS                 int64          `json:"scan_ms"`
@@ -188,7 +188,7 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 		report.SignaturesAtRisk += result.SignaturesAtRisk
 		report.ObjectWritesEstimate += result.ObjectWritesEstimate
 		if opts.Plan {
-			if result.RewriteReady {
+			if result.RewriteReady != nil && *result.RewriteReady {
 				report.RewriteReadyRepositories++
 			} else {
 				report.BlockedRepositories++
@@ -263,7 +263,8 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		result.AnnotatedTagsToRewrite = plan.AnnotatedTagsToRewrite
 		result.SignaturesAtRisk = plan.SignaturesAtRisk
 		result.ObjectWritesEstimate = plan.ObjectWritesEstimate
-		result.RewriteReady = plan.RewriteReady
+		ready := plan.RewriteReady
+		result.RewriteReady = &ready
 		result.RewriteBlocker = plan.RewriteBlocker
 		return result
 	}
