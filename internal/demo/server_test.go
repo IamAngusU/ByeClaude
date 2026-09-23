@@ -129,3 +129,21 @@ func TestAuditRepositoryFailureReturns502(t *testing.T) {
 		t.Fatalf("status=%d body=%s", res.Code, res.Body.String())
 	}
 }
+
+
+func TestAuditTimeoutReturns504(t *testing.T) {
+	server, err := New(preset.Claude(), 1, 20*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.audit = func(ctx context.Context, _ string, _ bool) (batch.Report, error) {
+		<-ctx.Done()
+		return batch.Report{}, ctx.Err()
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/audits", strings.NewReader(`{"repository":"owner/repo"}`))
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+	if res.Code != http.StatusGatewayTimeout {
+		t.Fatalf("status=%d body=%s", res.Code, res.Body.String())
+	}
+}
