@@ -38,6 +38,8 @@ jobs:
         run: go run ./cmd/byeclaude check --include-remotes
       - name: Build
         run: go build -trimpath ./cmd/byeclaude
+      - name: Demo image
+        run: docker build -f deploy/demo/Dockerfile .
 
   platform:
     name: Tests / ${{ matrix.os }}
