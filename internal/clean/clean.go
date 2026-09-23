@@ -57,6 +57,7 @@ func refsFromNamespacesContext(ctx context.Context, repo *gitx.Repo, namespaces 
 	}
 	return refs, nil
 }
+
 func commitsForRefs(repo *gitx.Repo, refs []Ref) ([]string, error) {
 	return commitsForRefsContext(context.Background(), repo, refs)
 }
@@ -91,6 +92,7 @@ func commitsForRefsContext(ctx context.Context, repo *gitx.Repo, refs []Ref) ([]
 	}
 	return commits, nil
 }
+
 func Scan(repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error) {
 	return ScanContext(context.Background(), repo, matcher)
 }
@@ -166,6 +168,7 @@ func ScanIncludingRemotesContext(ctx context.Context, repo *gitx.Repo, includeRe
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, nil
 }
+
 func Preflight(repo *gitx.Repo) error {
 	return PreflightContext(context.Background(), repo)
 }
