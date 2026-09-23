@@ -49,16 +49,18 @@ The first correctness-oriented implementation measured approximately:
 
 ### Persistent object reader measurement
 
-The scanner now streams commit objects through one `git cat-file --batch` process instead of spawning one Git process per commit. A follow-up run on the same class of 5,000-commit synthetic linear history, with one match at commit 1,000, measured:
+The scanner and rewrite reader now stream commit objects through one `git cat-file --batch` process instead of spawning one Git process per commit. A follow-up run on the same 5,000-commit synthetic linear history, with one match at commit 1,000, measured:
 
 | Operation | Wall time | Peak RSS |
 | --- | ---: | ---: |
-| Scan 5,000 commits | ~0.26 s | ~11.9 MiB |
-| Plan rewrite impact | ~0.29 s | ~11.3 MiB |
+| Scan 5,000 commits | ~0.23 s | ~11.7 MiB |
+| Plan rewrite impact | ~0.24 s | ~11.7 MiB |
+| Rewrite 4,001 commits | ~6.81 s | ~13.9 MiB |
+| Verify 5,000 commits | ~0.23 s | ~10.8 MiB |
 
-That is roughly a **20× reduction in scan wall time** for this synthetic case. Plan includes descendant propagation, parent-link counting, ref/tag impact and rewrite preflight.
+The CLI's own rewrite timer reported about **6.30 s** inside the ~6.81 s process wall time. The scan is roughly **22× faster** than the first correctness-oriented implementation in this synthetic case, while the 4,001-commit rewrite is about **3× faster**. Plan includes descendant propagation, parent-link counting, ref/tag impact and rewrite preflight.
 
-The write phase is a different workload: creating thousands of new commit objects remains intentionally correctness-first and is not represented by the scan/plan speedup.
+The rewrite remains intentionally correctness-first: commit creation still follows parent dependencies, so the read-side streaming optimization does not turn the DAG write into an unsafe parallel rewrite.
 
 These numbers are a development sanity check, not an SLA or cross-platform comparison. Commit creation time was excluded. The fixture has one linear branch, identical trees, no network, no remote push, no large tag set, and no real-world storage contention.
 
@@ -108,17 +110,17 @@ A development run on **23 September 2026** used the default synthetic batch shap
 
 Measured around the **batch process only**, after the fixture repositories and binary had already been created:
 
-| Metric | Observed |
-| --- | ---: |
-| Batch wall time | 1.44 s |
-| Sum of per-repository scan time | 5.76 s |
-| Peak RSS | ~12.6 MiB |
-| Repositories scanned | 8 |
-| Commits scanned | 4,000 |
-| Matching trailers | 2 |
-| Failed repositories | 0 |
+| Metric | First implementation | Current streamed reader |
+| --- | ---: | ---: |
+| Batch wall time | 1.44 s | ~0.09 s |
+| Sum of per-repository scan time | 5.76 s | ~0.36 s |
+| Peak RSS | ~12.6 MiB | ~11.6 MiB |
+| Repositories scanned | 8 | 8 |
+| Commits scanned | 4,000 | 4,000 |
+| Matching trailers | 2 | 2 |
+| Failed repositories | 0 | 0 |
 
-The summed scan time is intentionally larger than wall time because four repositories are scanned concurrently. Prepare time was below 1 ms for these local paths.
+The current CLI reported **92 ms** aggregate wall time and **358 ms** summed per-repository scan time in this run. The summed scan time is intentionally larger than wall time because four repositories are scanned concurrently. Prepare time was below 1 ms for these local paths.
 
 This measurement does **not** represent GitHub network performance. Remote batch runs also include temporary mirror preparation, authentication, GitHub/API latency and repository transfer. Remote audits use `--filter=blob:none`, but the current alpha does not persist a mirror cache between runs.
 
