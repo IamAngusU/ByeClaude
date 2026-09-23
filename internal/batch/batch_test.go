@@ -181,3 +181,25 @@ func TestIsolatedPublicGitEnvironment(t *testing.T) {
 		t.Fatalf("isolation controls missing: %s", joined)
 	}
 }
+
+
+func TestCloneGitEnvironmentNeverForwardsTokenWhenCredentialsDisabled(t *testing.T) {
+	env := []string{"HOME=/tmp/example", "PATH=/usr/bin"}
+	got := cloneGitEnvironment(env, "https://github.com/owner/repo.git", "super-secret-token", true)
+	joined := strings.Join(got, "\n")
+	if strings.Contains(joined, "super-secret-token") ||
+		strings.Contains(joined, "Authorization:") ||
+		strings.Contains(joined, "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader") {
+		t.Fatalf("credential-disabled clone environment leaked auth config: %s", joined)
+	}
+}
+
+func TestCloneGitEnvironmentAddsTokenForAuthenticatedGitHubClone(t *testing.T) {
+	got := cloneGitEnvironment([]string{"PATH=/usr/bin"}, "https://github.com/owner/private.git", "secret", false)
+	joined := strings.Join(got, "\n")
+	if !strings.Contains(joined, "GIT_CONFIG_COUNT=1") ||
+		!strings.Contains(joined, "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader") ||
+		!strings.Contains(joined, "GIT_CONFIG_VALUE_0=Authorization: basic ") {
+		t.Fatalf("authenticated GitHub clone config missing: %s", joined)
+	}
+}

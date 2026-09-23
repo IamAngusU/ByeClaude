@@ -290,18 +290,7 @@ func cloneMirror(ctx context.Context, source, dest, token string, disableCredent
 		args = append([]string{"-c", "credential.helper="}, args...)
 	}
 	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Env = os.Environ()
-	if disableCredentials {
-		cmd.Env = isolatedPublicGitEnvironment(cmd.Env)
-	}
-	if token != "" && isGitHubHTTPS(source) {
-		cmd.Env = append(cmd.Env,
-			"GIT_CONFIG_COUNT=1",
-			"GIT_CONFIG_KEY_0=http.https://github.com/.extraheader",
-			"GIT_CONFIG_VALUE_0=Authorization: basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token)),
-			"GIT_TERMINAL_PROMPT=0",
-		)
-	}
+	cmd.Env = cloneGitEnvironment(os.Environ(), source, token, disableCredentials)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
@@ -311,6 +300,24 @@ func cloneMirror(ctx context.Context, source, dest, token string, disableCredent
 		return fmt.Errorf("clone %s: %w: %s", source, err, msg)
 	}
 	return nil
+}
+
+func cloneGitEnvironment(env []string, source, token string, disableCredentials bool) []string {
+	if disableCredentials {
+		// Public demo mode is a hard credential boundary. Even if a future caller
+		// accidentally supplies a token, do not forward it into Git.
+		return isolatedPublicGitEnvironment(env)
+	}
+	out := append([]string(nil), env...)
+	if token != "" && isGitHubHTTPS(source) {
+		out = append(out,
+			"GIT_CONFIG_COUNT=1",
+			"GIT_CONFIG_KEY_0=http.https://github.com/.extraheader",
+			"GIT_CONFIG_VALUE_0=Authorization: basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token)),
+			"GIT_TERMINAL_PROMPT=0",
+		)
+	}
+	return out
 }
 
 func isolatedPublicGitEnvironment(env []string) []string {
