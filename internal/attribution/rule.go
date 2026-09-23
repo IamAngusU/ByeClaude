@@ -71,7 +71,6 @@ func (r Rule) Match(name, email string) bool {
 	return nameOK && emailOK
 }
 
-
 func (r Rule) MatchIDs(name, email string) []string {
 	if !r.Match(name, email) {
 		return nil
