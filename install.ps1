@@ -6,7 +6,38 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitect
     default { throw "Unsupported architecture: $_" }
 }
 $asset = "byeclaude_windows_${arch}.exe"
-$base = "https://github.com/$repo/releases/latest/download"
+$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION } else { 'latest' }
+if ($version -eq 'latest') {
+    $base = "https://github.com/$repo/releases/latest/download"
+}
+elseif ($version -match '^v[0-9A-Za-z._+-]+
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("byeclaude-" + [guid]::NewGuid())
+New-Item -ItemType Directory -Path $tmp | Out-Null
+try {
+    $bin = Join-Path $tmp 'byeclaude.exe'
+    $sums = Join-Path $tmp 'SHA256SUMS.txt'
+    Invoke-WebRequest "$base/$asset" -OutFile $bin
+    Invoke-WebRequest "$base/SHA256SUMS.txt" -OutFile $sums
+    $line = Get-Content $sums | Where-Object { $_ -match "\s$([regex]::Escape($asset))$" } | Select-Object -First 1
+    if (-not $line) { throw 'Checksum entry not found' }
+    $expected = ($line -split '\s+')[0].ToLowerInvariant()
+    $actual = (Get-FileHash -Algorithm SHA256 $bin).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) { throw 'Checksum mismatch' }
+    $dest = if ($env:BYECLAUDE_INSTALL_DIR) { $env:BYECLAUDE_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\ByeClaude' }
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    Copy-Item $bin (Join-Path $dest 'byeclaude.exe') -Force
+    Write-Host "Installed byeclaude to $dest\byeclaude.exe"
+    Write-Host "Add that directory to PATH if it is not already present."
+}
+finally {
+    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+}
+) {
+    $base = "https://github.com/$repo/releases/download/$version"
+}
+else {
+    throw "BYECLAUDE_VERSION must be 'latest' or a v-prefixed tag"
+}
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("byeclaude-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
