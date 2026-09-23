@@ -116,7 +116,6 @@ func TestRunRemoteMirrorTarget(t *testing.T) {
 	}
 }
 
-
 func TestRunBatchPlanAggregatesRewriteImpact(t *testing.T) {
 	dir := makeRepo(t, "plan-repo", "assistant\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
 	if err := os.WriteFile(filepath.Join(dir, "b.txt"), []byte("descendant\n"), 0644); err != nil {
