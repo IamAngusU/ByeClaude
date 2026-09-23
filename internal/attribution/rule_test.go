@@ -33,7 +33,6 @@ func TestExactEmailCanMatchWithoutNameConstraint(t *testing.T) {
 	}
 }
 
-
 func TestRuleSetReturnsMatchingRuleIDs(t *testing.T) {
 	set := RuleSet{Rules: []Rule{
 		{RuleID: "claude", NameContains: []string{"claude"}, EmailDomains: []string{"anthropic.com"}},
