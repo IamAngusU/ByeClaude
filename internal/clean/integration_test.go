@@ -739,7 +739,6 @@ func TestPushBackupRefusesLocalMovementAfterReview(t *testing.T) {
 	}
 }
 
-
 func TestRewriteWithCustomMatcher(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q")
