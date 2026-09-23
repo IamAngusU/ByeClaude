@@ -47,10 +47,11 @@ byeclaude scan
 ```text
 repository  /work/project
 commits     184
-matches     2
+matched     2 (1.09%)
+trailers    2
 duration    184ms
-  8a51b8b9dbd1  Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
-  c0b7bd296ec4  Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>
+  8a51b8b9dbd1  [claude-anthropic] Claude Opus 4.8 <noreply@anthropic.com>
+  c0b7bd296ec4  [claude-anthropic] Claude Sonnet 4 <noreply@anthropic.com>
 ```
 
 Nothing changed. When you are ready, rewrite locally:
@@ -151,6 +152,11 @@ Those timings are from the small local fixture suite and are not a performance c
 Remote batch scans use temporary `--mirror --filter=blob:none` clones and delete the workspace afterwards. The current alpha deliberately has no persistent mirror cache.
 
 A dated local default-batch sanity run scanned **8 repositories / 4,000 synthetic commits in 1.44 s wall time** with about **12.6 MiB peak RSS** using 4 workers. It excludes network clone time and is not an SLA. [Methodology and caveats](docs/performance.md#default-batch-development-measurement).
+
+
+### Why these benchmarks are not an SLA
+
+That is not a speed warning. ByeClaude is currently a local alpha CLI, not a hosted service with a contractual uptime, latency, support or compatibility commitment. The benchmark numbers are reproducible development measurements on named hardware. A future hosted ByeClaude API could define an SLA separately once its worker pool, caching, quotas and operating environment are known.
 
 [Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
 
@@ -273,6 +279,20 @@ byeclaude restore --backup BACKUP_ID --apply
 Restore is local only. It never republishes the old history for you.
 
 [Safety and recovery](docs/safety.md).
+
+## Use it, don't fork it
+
+Most users do **not** need to fork ByeClaude.
+
+During the alpha before the first tagged release, the shortest path is:
+
+```sh
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@main
+```
+
+After the first alpha release, the preferred path will be the published release binary / checksum-verifying installer. A fork only makes sense when you want to change the engine itself or maintain your own product variant. Multi-provider attribution does not require a fork; use `--rules FILE`.
+
+For continuous repository enforcement, use the GitHub Action in addition to the local CLI. The local hook protects one developer's commits; a required CI check can protect the shared branch from commits that bypass local hooks.
 
 ## Install
 
