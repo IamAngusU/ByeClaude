@@ -27,18 +27,18 @@ type Spec struct {
 }
 
 type RepoMetrics struct {
-	Repository      string         `json:"repository"`
-	Visibility      string         `json:"visibility"`
-	Source          string         `json:"source"`
-	Commits         int            `json:"commits"`
-	MatchedCommits  int            `json:"matched_commits"`
-	CommitMatchPct  float64        `json:"commit_match_pct"`
-	Matches         int            `json:"matches"`
-	RuleMatches     map[string]int `json:"rule_matches"`
-	PrepareMS  int64  `json:"prepare_ms"`
-	ScanMS     int64  `json:"scan_ms"`
-	TotalMS    int64  `json:"total_ms"`
-	Error      string `json:"error,omitempty"`
+	Repository     string         `json:"repository"`
+	Visibility     string         `json:"visibility"`
+	Source         string         `json:"source"`
+	Commits        int            `json:"commits"`
+	MatchedCommits int            `json:"matched_commits"`
+	CommitMatchPct float64        `json:"commit_match_pct"`
+	Matches        int            `json:"matches"`
+	RuleMatches    map[string]int `json:"rule_matches"`
+	PrepareMS      int64          `json:"prepare_ms"`
+	ScanMS         int64          `json:"scan_ms"`
+	TotalMS        int64          `json:"total_ms"`
+	Error          string         `json:"error,omitempty"`
 }
 
 type Report struct {
@@ -55,10 +55,10 @@ type Report struct {
 	CommitMatchPct      float64        `json:"commit_match_pct"`
 	Matches             int            `json:"matches"`
 	RuleMatches         map[string]int `json:"rule_matches"`
-	PrepareMS           int64         `json:"prepare_ms_sum"`
-	ScanMS              int64         `json:"scan_ms_sum"`
-	WallMS              int64         `json:"wall_ms"`
-	Results             []RepoMetrics `json:"results"`
+	PrepareMS           int64          `json:"prepare_ms_sum"`
+	ScanMS              int64          `json:"scan_ms_sum"`
+	WallMS              int64          `json:"wall_ms"`
+	Results             []RepoMetrics  `json:"results"`
 }
 
 type Options struct {
