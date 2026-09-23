@@ -152,16 +152,13 @@ func planTag(
 		return tagPlanResult{}, err
 	}
 	text := string(raw)
-	sep := strings.Index(text, "
-
-")
+	sep := strings.Index(text, "\n\n")
 	if sep < 0 {
 		return tagPlanResult{}, fmt.Errorf("invalid tag object %s", sha)
 	}
 	head, msg := text[:sep], text[sep+2:]
 	var target, typ string
-	for _, line := range strings.Split(head, "
-") {
+	for _, line := range strings.Split(head, "\n") {
 		if strings.HasPrefix(line, "object ") {
 			target = strings.TrimSpace(strings.TrimPrefix(line, "object "))
 		}
