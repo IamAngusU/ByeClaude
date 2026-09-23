@@ -291,7 +291,7 @@ func cloneMirror(ctx context.Context, source, dest, token string, disableCredent
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Env = os.Environ()
 	if disableCredentials {
-		cmd.Env = append(cmd.Env, "GIT_TERMINAL_PROMPT=0")
+		cmd.Env = isolatedPublicGitEnvironment(cmd.Env)
 	}
 	if token != "" && isGitHubHTTPS(source) {
 		cmd.Env = append(cmd.Env,
@@ -310,6 +310,37 @@ func cloneMirror(ctx context.Context, source, dest, token string, disableCredent
 		return fmt.Errorf("clone %s: %w: %s", source, err, msg)
 	}
 	return nil
+}
+
+func isolatedPublicGitEnvironment(env []string) []string {
+	blockedExact := map[string]bool{
+		"GIT_CONFIG_COUNT":                  true,
+		"GIT_CONFIG_GLOBAL":                 true,
+		"GIT_CONFIG_SYSTEM":                 true,
+		"GIT_CONFIG_NOSYSTEM":               true,
+		"GIT_DIR":                           true,
+		"GIT_WORK_TREE":                     true,
+		"GIT_INDEX_FILE":                    true,
+		"GIT_OBJECT_DIRECTORY":              true,
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+		"GIT_COMMON_DIR":                    true,
+	}
+	out := make([]string, 0, len(env)+3)
+	for _, entry := range env {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		if blockedExact[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return append(out,
+		"GIT_CONFIG_NOSYSTEM=1",
+		"GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_TERMINAL_PROMPT=0",
+	)
 }
 
 func isGitHubHTTPS(source string) bool {

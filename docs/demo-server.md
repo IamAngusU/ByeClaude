@@ -18,6 +18,7 @@ The built-in server is intentionally narrower than the CLI:
 - accepts `owner/repository`, not arbitrary clone URLs;
 - constructs the `https://github.com/owner/repository.git` URL server-side;
 - disables Git credential helpers for its clone command;
+- ignores host-level Git URL rewrites and system/global Git config for public demo clones;
 - never accepts a GitHub token from the browser;
 - no checkout and no execution of repository scripts/hooks;
 - temporary mirror workspace removed after each audit;

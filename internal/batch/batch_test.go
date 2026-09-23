@@ -143,3 +143,39 @@ func TestRunBatchPlanAggregatesRewriteImpact(t *testing.T) {
 		t.Fatalf("unexpected plan impact: %#v", report)
 	}
 }
+
+
+func TestIsolatedPublicGitEnvironment(t *testing.T) {
+	env := []string{
+		"HOME=/tmp/example",
+		"GIT_CONFIG_COUNT=2",
+		"GIT_CONFIG_KEY_0=url.file:///tmp/evil.insteadOf",
+		"GIT_CONFIG_VALUE_0=https://github.com/",
+		"GIT_CONFIG_GLOBAL=/tmp/global-config",
+		"GIT_CONFIG_SYSTEM=/tmp/system-config",
+		"GIT_DIR=/tmp/forced.git",
+		"PATH=/usr/bin",
+	}
+	got := isolatedPublicGitEnvironment(env)
+	joined := strings.Join(got, "\n")
+	for _, forbidden := range []string{
+		"GIT_CONFIG_COUNT=",
+		"GIT_CONFIG_KEY_0=",
+		"GIT_CONFIG_VALUE_0=",
+		"GIT_DIR=/tmp/forced.git",
+		"GIT_CONFIG_GLOBAL=/tmp/global-config",
+		"GIT_CONFIG_SYSTEM=/tmp/system-config",
+	} {
+		if strings.Contains(joined, forbidden) {
+			t.Fatalf("isolated environment retained %q: %s", forbidden, joined)
+		}
+	}
+	if !strings.Contains(joined, "HOME=/tmp/example") || !strings.Contains(joined, "PATH=/usr/bin") {
+		t.Fatalf("ordinary environment was removed: %s", joined)
+	}
+	if !strings.Contains(joined, "GIT_CONFIG_NOSYSTEM=1") ||
+		!strings.Contains(joined, "GIT_CONFIG_GLOBAL="+os.DevNull) ||
+		!strings.Contains(joined, "GIT_TERMINAL_PROMPT=0") {
+		t.Fatalf("isolation controls missing: %s", joined)
+	}
+}
