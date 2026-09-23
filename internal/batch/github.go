@@ -23,6 +23,7 @@ type githubRepo struct {
 
 type githubUser struct {
 	Login string `json:"login"`
+	ID    int64  `json:"id"`
 }
 
 type GitHubClient struct {

@@ -17,6 +17,8 @@ func runIdentity(args []string) error {
 	includeRemotes := fs.Bool("include-remotes", true, "include fetched remote-tracking refs")
 	includePullRefs := fs.Bool("include-pull-refs", true, "include refs/pull/* when present")
 	jsonOut := fs.Bool("json", false, "machine-readable JSON")
+	var githubUsers repeatedFlag
+	fs.Var(&githubUsers, "github-user", "GitHub login to resolve to a numeric account ID; repeat for multiple users")
 	var githubIDs repeatedFlag
 	fs.Var(&githubIDs, "github-id", "numeric GitHub account ID to locate; repeat for multiple IDs")
 	if err := fs.Parse(args); err != nil {
