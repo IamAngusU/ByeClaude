@@ -19,6 +19,8 @@ All notable changes to ByeClaude are documented here.
 - Add matched-commit percentages, repository-match percentages, declared co-author identity and per-rule counts to JSON reports.
 - Add read-only rewrite planning for single repositories and batch targets, including descendant propagation, parent-link reconnections, affected refs/tags, signature risk and estimated object writes.
 - Add GitHub identity-enrichment guidance so account-level metrics keep Git author strings separate from durable GitHub identities.
+- Add an embedded read-only demo server/UI for public GitHub repositories with strict owner/name validation, bounded in-flight work, per-audit timeouts and no mutation endpoint.
+- Add demo Docker/Caddy deployment examples and disable Git credential helpers inside public demo clone jobs.
 - Add evidence/API documentation that keeps declared Git metadata separate from heuristic AI-involvement signals.
 - Add a six-repository disposable fixture suite plus automated batch smoke verification and a synthetic batch benchmark.
 - Report scan and rewrite duration in normal single-repository output and JSON reports.

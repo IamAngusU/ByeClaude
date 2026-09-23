@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ByeClaude · Git attribution audit</title>
+<style>
+:root{color-scheme:light dark;--bg:#f7f7f4;--fg:#181a17;--muted:#6b7067;--line:#dedfd9;--soft:#efefe9;--accent:#181a17}
+@media(prefers-color-scheme:dark){:root{--bg:#1f211e;--fg:#f3f3ed;--muted:#afb3a9;--line:#3b3e38;--soft:#292c27;--accent:#f3f3ed}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{width:min(820px,calc(100% - 36px));margin:8vh auto 64px}.brand{display:flex;align-items:center;gap:12px;font-weight:760;letter-spacing:-.02em}.mark{width:28px;height:28px;position:relative}.mark:before{content:"";position:absolute;left:3px;right:3px;top:13px;height:2px;background:var(--fg);border-radius:3px}.mark i{position:absolute;width:8px;height:8px;border:2px solid var(--fg);border-radius:50%;top:10px;background:var(--bg)}.mark i:first-child{left:0}.mark i:last-child{right:0}.mark b{position:absolute;width:14px;height:2px;background:var(--fg);transform:rotate(-45deg);left:10px;top:8px;border-radius:3px}.mark b:after{content:"";position:absolute;left:12px;top:-3px;width:5px;height:5px;border:2px solid var(--fg);border-radius:50%;background:var(--bg)}
+h1{font-size:clamp(34px,6vw,66px);line-height:.98;letter-spacing:-.055em;margin:64px 0 18px;max-width:720px}.lead{font-size:18px;color:var(--muted);max-width:650px;margin:0 0 40px}
+form{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px;border:1px solid var(--line);border-radius:18px;background:var(--soft)}
+input,select,button{font:inherit;border:0;border-radius:12px;height:46px}input{min-width:0;padding:0 14px;background:transparent;color:var(--fg);outline:none}select{padding:0 12px;background:var(--bg);color:var(--fg)}button{padding:0 18px;background:var(--accent);color:var(--bg);font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:wait}
+.meta{display:flex;gap:18px;flex-wrap:wrap;margin:14px 4px 0;color:var(--muted);font-size:13px}.dot:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#3fa45b;margin:0 7px 1px 0}
+#out{margin-top:48px}.status{color:var(--muted);min-height:24px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:20px}.metric{padding:22px 12px 22px 0}.metric strong{display:block;font-size:28px;letter-spacing:-.04em}.metric span{color:var(--muted);font-size:12px}.rows{margin-top:24px}.row{display:flex;justify-content:space-between;gap:18px;padding:10px 0;border-bottom:1px solid var(--line)}.row span:first-child{color:var(--muted)}details{margin-top:24px}summary{cursor:pointer;color:var(--muted)}pre{overflow:auto;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--soft);padding:16px;border-radius:14px}
+footer{margin-top:70px;color:var(--muted);font-size:12px}@media(max-width:650px){form{grid-template-columns:1fr}select,button{width:100%}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main>
+<div class="brand"><span class="mark"><i></i><i></i><b></b></span>ByeClaude</div>
+<h1>Inspect declared AI attribution in Git history.</h1>
+<p class="lead">Paste a public GitHub repository. ByeClaude scans Git metadata only. Plan mode also estimates how much of the commit graph a cleanup would have to reconstruct.</p>
+<form id="form">
+<input id="repo" autocomplete="off" spellcheck="false" placeholder="owner/repository" aria-label="GitHub repository" required>
+<select id="mode" aria-label="Audit mode"><option value="scan">Scan</option><option value="plan">Plan cleanup</option></select>
+<button id="go" type="submit">Audit repo</button>
+</form>
+<div class="meta"><span class="dot">Public GitHub repos only</span><span>Read-only</span><span>No repository code is executed</span></div>
+<section id="out"><div class="status" id="status"></div><div id="result"></div></section>
+<footer>Declared Git attribution is evidence of commit metadata, not a measurement of how many lines were written by AI.</footer>
+</main>
+<script>
+const form=document.querySelector('#form'),repo=document.querySelector('#repo'),mode=document.querySelector('#mode'),button=document.querySelector('#go'),status=document.querySelector('#status'),result=document.querySelector('#result');
+const n=v=>new Intl.NumberFormat().format(v??0), pct=v=>(v??0).toFixed(2)+'%';
+function metric(value,label){return '<div class="metric"><strong>'+value+'</strong><span>'+label+'</span></div>'}
+form.addEventListener('submit',async e=>{
+ e.preventDefault(); button.disabled=true; result.innerHTML=''; status.textContent='Auditing Git history…';
+ try{
+  const res=await fetch('/v1/audits',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({repository:repo.value.trim(),mode:mode.value})});
+  const data=await res.json(); if(!res.ok)throw new Error(data.error||'Audit failed');
+  const r=data.results?.[0]||{}, planning=data.operation==='plan';
+  let metrics=metric(n(r.commits),'reachable commits')+metric(n(r.matched_commits),pct(r.commit_match_pct)+' matched')+metric(n(r.matches),'matching trailers')+metric((r.total_ms??0)+' ms','repository total');
+  let rows='';
+  if(planning){
+   rows+='<div class="row"><span>Commits to rewrite</span><strong>'+n(r.commits_to_rewrite)+'</strong></div>';
+   rows+='<div class="row"><span>Descendant-only rewrites</span><strong>'+n(r.descendant_commits_to_rewrite)+'</strong></div>';
+   rows+='<div class="row"><span>Parent connections to rebuild</span><strong>'+n(r.parent_links_to_rewrite)+'</strong></div>';
+   rows+='<div class="row"><span>Refs to move</span><strong>'+n(r.refs_to_move)+'</strong></div>';
+   rows+='<div class="row"><span>Estimated Git object writes</span><strong>~'+n(r.object_writes_estimate)+'</strong></div>';
+   rows+='<div class="row"><span>Rewrite ready</span><strong>'+(r.rewrite_ready?'yes':'no')+'</strong></div>';
+   if(r.rewrite_blocker)rows+='<div class="row"><span>Blocker</span><strong>'+escapeHTML(r.rewrite_blocker)+'</strong></div>';
+  }
+  const rules=Object.entries(data.rule_matches||{}).map(([k,v])=>k+'='+v).join(' · ');
+  if(rules)rows+='<div class="row"><span>Rules</span><strong>'+escapeHTML(rules)+'</strong></div>';
+  result.innerHTML='<div class="metrics">'+metrics+'</div><div class="rows">'+rows+'</div><details><summary>Raw JSON evidence</summary><pre>'+escapeHTML(JSON.stringify(data,null,2))+'</pre></details>';
+  status.textContent=data.selection+' · '+data.operation;
+ }catch(err){status.textContent=err.message}
+ finally{button.disabled=false}
+});
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script>
+</body>
+</html>

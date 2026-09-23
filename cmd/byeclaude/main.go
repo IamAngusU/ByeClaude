@@ -33,6 +33,8 @@ func main() {
 		err = runClean(os.Args[2:])
 	case "batch":
 		err = runBatch(os.Args[2:])
+	case "serve":
+		err = runServe(os.Args[2:])
 	case "push":
 		err = runPush(os.Args[2:])
 	case "hook":
@@ -68,6 +70,7 @@ Usage:
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
   byeclaude batch plan ...
+  byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
   byeclaude clean --apply [--repo PATH] [--rules FILE] [--push] [--remote origin] [--json]
   byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
   byeclaude hook install|remove [--repo PATH] [--rules FILE]

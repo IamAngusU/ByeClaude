@@ -170,6 +170,7 @@ Need the cost of a possible rewrite without changing anything?
 
 ```sh
 byeclaude batch plan --repo owner/repository
+byeclaude serve --listen 127.0.0.1:8080
 ```
 
 That uses the temporary mirror to calculate rewrite impact, including descendant commits, parent-link reconnections, refs, tag objects, signature risk and estimated object writes. [Planning metrics](docs/planning.md).
@@ -296,6 +297,18 @@ Restore is local only. It never republishes the old history for you.
 
 [Safety and recovery](docs/safety.md).
 
+## Run a public demo
+
+ByeClaude now includes a small **read-only web demo**:
+
+```sh
+byeclaude serve
+```
+
+Open `http://127.0.0.1:8080`, enter a public GitHub `owner/repository`, then choose **Scan** or **Plan cleanup**. The embedded UI calls the same attribution/batch engine as the CLI.
+
+The server deliberately accepts no arbitrary clone URL, no browser-supplied GitHub token and exposes no cleanup/push endpoint. It bounds concurrent audits and applies a per-job timeout. A Dockerfile and Caddy example are included for VPS deployment. [Public VPS demo](docs/demo-server.md).
+
 ## Use it, don't fork it
 
 Most users do **not** need to fork ByeClaude.
@@ -385,6 +398,7 @@ byeclaude push --backup ID
 | `check --include-remotes` | CI-friendly audit including fetched remote-tracking refs. |
 | `batch scan` | Read-only audit of explicit repos or public/private/all GitHub owner scopes, with metrics by default. |
 | `batch plan` | Run the same read-only rewrite-impact calculation across remote/local repository targets. |
+| `serve` | Start the public-repo-only read-only demo UI/API with bounded concurrency and timeouts. |
 | `hook install` | Prevent matching trailers in future local commits. |
 | `clean` | Preview only; no refs move. |
 | `clean --apply` | Rewrite locally after preflight checks and create backup refs. |
@@ -420,6 +434,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 - [Multiple attribution rules](docs/rules.md)
 - [Evidence model](docs/evidence.md)
 - [Service/API integration](docs/service.md)
+- [Public VPS demo](docs/demo-server.md)
 - [Rewrite planning](docs/planning.md)
 - [Batch repository audit](docs/batch.md)
 - [Fixture repository suite](docs/fixtures.md)

@@ -4,6 +4,18 @@ ByeClaude is a CLI today, but its JSON output is deliberately suitable as a back
 
 A website can accept a repository selection, run a read-only audit in an isolated worker, and store the JSON result. The service should preserve the evidence class rather than turning Git metadata into stronger authorship claims.
 
+## Built-in public demo
+
+For the simplest VPS proof of concept, ByeClaude now ships:
+
+```sh
+byeclaude serve
+```
+
+It serves an embedded UI plus `POST /v1/audits` for **public GitHub repositories only**. The demo accepts only a normalized `owner/repository` slug, disables Git credential helpers for those clone jobs, bounds in-flight audits and exposes scan/plan only.
+
+That server is a useful demonstration boundary, not the eventual authenticated private-repository architecture described below. See [Public VPS demo](demo-server.md).
+
 ## Suggested service boundary
 
 A future service could expose something like:

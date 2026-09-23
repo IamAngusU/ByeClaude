@@ -42,7 +42,7 @@ type RepoMetrics struct {
 	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
 	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
 	ObjectWritesEstimate   int    `json:"object_writes_estimate,omitempty"`
-	RewriteReady           bool   `json:"rewrite_ready,omitempty"`
+	RewriteReady           bool   `json:"rewrite_ready"`
 	RewriteBlocker         string `json:"rewrite_blocker,omitempty"`
 	PrepareMS      int64          `json:"prepare_ms"`
 	ScanMS         int64          `json:"scan_ms"`
@@ -86,7 +86,8 @@ type Options struct {
 	Matcher        attribution.Matcher
 	IncludeRemotes bool
 	Selection      string
-	Plan           bool
+	Plan               bool
+	DisableCredentials bool
 }
 
 func DefaultJobs() int {
@@ -224,7 +225,7 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 	if !spec.Local {
 		prepareStarted := time.Now()
 		dest := filepath.Join(workspace, fmt.Sprintf("%04d-%s.git", index, safeName(spec.Name)))
-		if err := cloneMirror(ctx, spec.Source, dest, opts.Token); err != nil {
+		if err := cloneMirror(ctx, spec.Source, dest, opts.Token, opts.DisableCredentials); err != nil {
 			result.PrepareMS = time.Since(prepareStarted).Milliseconds()
 			result.TotalMS = time.Since(started).Milliseconds()
 			result.Error = err.Error()
@@ -282,9 +283,16 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 	return result
 }
 
-func cloneMirror(ctx context.Context, source, dest, token string) error {
-	cmd := exec.CommandContext(ctx, "git", "clone", "--mirror", "--filter=blob:none", "--quiet", source, dest)
+func cloneMirror(ctx context.Context, source, dest, token string, disableCredentials bool) error {
+	args := []string{"clone", "--mirror", "--filter=blob:none", "--quiet", source, dest}
+	if disableCredentials {
+		args = append([]string{"-c", "credential.helper="}, args...)
+	}
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Env = os.Environ()
+	if disableCredentials {
+		cmd.Env = append(cmd.Env, "GIT_TERMINAL_PROMPT=0")
+	}
 	if token != "" && isGitHubHTTPS(source) {
 		cmd.Env = append(cmd.Env,
 			"GIT_CONFIG_COUNT=1",

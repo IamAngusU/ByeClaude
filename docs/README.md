@@ -9,6 +9,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Multiple attribution rules](rules.md) | You want Claude plus other declared co-author identities in one validated rule set. |
 | [Evidence model](evidence.md) | You want to distinguish factual Git attribution from heuristic AI-involvement signals. |
 | [Service / API integration](service.md) | You want to use ByeClaude JSON as a backend engine for a website or service. |
+| [Public VPS demo](demo-server.md) | You want a one-binary public-repository demo with an embedded UI, bounded work and no mutation endpoints. |
 | [Rewrite planning](planning.md) | You want to know how much of the DAG, refs and signatures a cleanup would affect before changing anything. |
 | [GitHub identity enrichment](identity.md) | You want account-level metrics without conflating Git author strings with GitHub user IDs. |
 | [Batch repository audit](batch.md) | You want to audit named repositories, all public repos, private repos, or both with built-in metrics. |
