@@ -138,7 +138,7 @@ func printBatchReport(report batchpkg.Report) {
 			fmt.Printf("       %s\n", result.Error)
 		}
 	}
-	fmt.Printf("\nsummary     %d scanned · %d clean · %d with matches · %d failed\n", report.Scanned, report.CleanRepositories, report.MatchedRepositories, report.FailedRepositories)
+	fmt.Printf("\nsummary     %d scanned · %d clean · %d with matches (%.2f%%) · %d failed\n", report.Scanned, report.CleanRepositories, report.MatchedRepositories, report.RepositoryMatchPct, report.FailedRepositories)
 	fmt.Printf("history     %d commits · %d matched commits (%.2f%%) · %d matching trailers\n", report.Commits, report.MatchedCommits, report.CommitMatchPct, report.Matches)
 	if len(report.RuleMatches) > 0 {
 		keys := make([]string, 0, len(report.RuleMatches))
