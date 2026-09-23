@@ -211,7 +211,7 @@ An example multi-tool ruleset is in [`examples/rules/multi-ai.example.json`](exa
 byeclaude hook install
 ```
 
-The installed `commit-msg` hook removes only matching Claude + Anthropic co-author trailers before the commit is created. Other co-authors remain intact.
+The installed `commit-msg` hook removes only co-author trailers matching the active rule set before the commit is created. Without `--rules`, that means the built-in Claude/Anthropic rule. Other co-authors remain intact.
 
 ByeClaude refuses to overwrite an unrelated existing `commit-msg` hook. It also refuses installation when `core.hooksPath` points somewhere else instead of pretending a hook was installed successfully.
 
@@ -261,7 +261,7 @@ That is why this cannot be a cosmetic GitHub toggle.
 | Author / committer | Preserved. |
 | Author / committer timestamps | Preserved. |
 | Merge parent order | Preserved. |
-| Commit message | Only matching Claude/Anthropic co-author trailers are removed. |
+| Commit message | Only co-author trailers matching the active rule set are removed. |
 | Descendant IDs | Rewritten when a parent ID changed. |
 | Signed rewritten objects | Signature fields are removed because the original signature cannot remain valid. |
 | Annotated tags | Retargeted when needed; an embedded signature is removed if the tag object itself changes. |
