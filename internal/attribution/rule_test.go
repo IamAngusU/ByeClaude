@@ -48,7 +48,6 @@ func TestRuleSetReturnsMatchingRuleIDs(t *testing.T) {
 	}
 }
 
-
 func TestGitHubNoreplyID(t *testing.T) {
 	id, ok := GitHubNoreplyID("113889733+IamAngusU@users.noreply.github.com")
 	if !ok || id != "113889733" {
