@@ -337,3 +337,24 @@ func JSON(v any) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
 }
+
+
+// PrepareRepository resolves a Spec into a local repository path. Remote specs
+// are cloned into an isolated temporary mirror and returned with a cleanup
+// function. Callers should always defer cleanup.
+func PrepareRepository(ctx context.Context, spec Spec, token string, disableCredentials bool) (string, func(), error) {
+	if spec.Local {
+		return spec.Source, func() {}, nil
+	}
+	workspace, err := os.MkdirTemp("", "byeclaude-repo-")
+	if err != nil {
+		return "", func() {}, fmt.Errorf("create repository workspace: %w", err)
+	}
+	cleanup := func() { _ = os.RemoveAll(workspace) }
+	dest := filepath.Join(workspace, safeName(spec.Name)+".git")
+	if err := cloneMirror(ctx, spec.Source, dest, token, disableCredentials); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return dest, cleanup, nil
+}

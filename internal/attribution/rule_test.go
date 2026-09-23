@@ -47,3 +47,20 @@ func TestRuleSetReturnsMatchingRuleIDs(t *testing.T) {
 		t.Fatal("set should match")
 	}
 }
+
+
+func TestGitHubNoreplyID(t *testing.T) {
+	id, ok := GitHubNoreplyID("113889733+IamAngusU@users.noreply.github.com")
+	if !ok || id != "113889733" {
+		t.Fatalf("id=%q ok=%v", id, ok)
+	}
+	for _, email := range []string{
+		"IamAngusU@users.noreply.github.com",
+		"abc+IamAngusU@users.noreply.github.com",
+		"113889733+IamAngusU@example.com",
+	} {
+		if _, ok := GitHubNoreplyID(email); ok {
+			t.Fatalf("unexpected ID match for %q", email)
+		}
+	}
+}

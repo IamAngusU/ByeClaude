@@ -29,6 +29,8 @@ func main() {
 		err = runCheck(os.Args[2:])
 	case "plan":
 		err = runPlan(os.Args[2:])
+	case "identity":
+		err = runIdentity(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
 	case "batch":
@@ -66,6 +68,7 @@ Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--rules FILE] [--json]
   byeclaude plan [--repo PATH] [--rules FILE] [--json]
+  byeclaude identity [--repo PATH|OWNER/NAME] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...

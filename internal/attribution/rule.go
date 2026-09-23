@@ -105,3 +105,26 @@ func (s RuleSet) MatchIDs(name, email string) []string {
 	}
 	return ids
 }
+
+
+// GitHubNoreplyID extracts the durable numeric account ID from GitHub's modern
+// ID+USERNAME@users.noreply.github.com commit-address format.
+func GitHubNoreplyID(email string) (string, bool) {
+	email = strings.TrimSpace(email)
+	at := strings.LastIndex(email, "@")
+	if at <= 0 || !strings.EqualFold(email[at+1:], "users.noreply.github.com") {
+		return "", false
+	}
+	local := email[:at]
+	plus := strings.IndexByte(local, '+')
+	if plus <= 0 {
+		return "", false
+	}
+	id := local[:plus]
+	for _, r := range id {
+		if r < '0' || r > '9' {
+			return "", false
+		}
+	}
+	return id, true
+}

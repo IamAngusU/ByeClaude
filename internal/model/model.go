@@ -52,3 +52,31 @@ type PlanReport struct {
 	AffectedRefs            []string       `json:"affected_refs"`
 	DurationMS              int64          `json:"duration_ms"`
 }
+
+
+type AuthorIdentity struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	GitHubID string `json:"github_id,omitempty"`
+	Commits  int    `json:"commits"`
+}
+
+type IdentityEvidence struct {
+	Commit      string   `json:"commit"`
+	Name        string   `json:"name"`
+	Email       string   `json:"email"`
+	GitHubID    string   `json:"github_id,omitempty"`
+	ReachableBy []string `json:"reachable_by"`
+	Managed     bool     `json:"managed_ref"`
+	PullRefOnly bool     `json:"pull_ref_only"`
+}
+
+type IdentityReport struct {
+	Repository      string             `json:"repository"`
+	Commits         int                `json:"commits_scanned"`
+	Authors         []AuthorIdentity   `json:"authors"`
+	Matches         []IdentityEvidence `json:"matches"`
+	ManagedMatches  int                `json:"managed_matches"`
+	PullOnlyMatches int                `json:"pull_ref_only_matches"`
+	DurationMS      int64              `json:"duration_ms"`
+}
