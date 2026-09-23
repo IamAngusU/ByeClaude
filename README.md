@@ -5,9 +5,9 @@
   </picture>
 </p>
 
-<h1 align="center">Clean Claude co-author attribution from Git history. Safely.</h1>
+<h1 align="center">Audit declared AI attribution. Clean Git history safely.</h1>
 
-<p align="center">Scan the history you actually have. Rewrite only when you explicitly ask. Keep the trailer out with a local hook or a read-only CI guard.</p>
+<p align="center">Scan one repo or an account, measure declared co-author evidence, preview rewrite impact, and sanitize only when you explicitly ask.</p>
 
 <p align="center">
   <a href="#30-second-flow"><img src="docs/assets/readme/badge-default.svg" height="34" alt="Read-only by default"></a>
@@ -20,7 +20,7 @@
 
 Claude Code can add a `Co-Authored-By: Claude … <noreply@anthropic.com>` trailer to a commit. GitHub recognizes `Co-authored-by` trailers as additional authors, so that attribution can surface in repository history and contributor data.
 
-**ByeClaude** is a small Git-aware CLI for removing that specific attribution without pretending a history rewrite is harmless.
+**ByeClaude** is a Git-aware attribution auditor and history sanitizer. Claude/Anthropic is the built-in default; validated rule sets can classify several declared co-author identities without turning the rewrite engine into an arbitrary regex tool.
 
 ## Why use it?
 
@@ -30,7 +30,7 @@ ByeClaude does **not** decide whether removing attribution is appropriate for a 
 
 | You want to… | ByeClaude does… |
 | --- | --- |
-| Find old Claude co-author trailers | Scans every commit reachable from local heads, tags and `HEAD`; optionally fetched remotes too. |
+| Audit declared AI/tool co-authors | Scans every commit reachable from local heads, tags and `HEAD`, using the Claude default or a validated rule set. |
 | Audit several repositories or an account | Read-only batch scan by explicit repo, public/private/all scope, with bounded concurrency and timing metrics by default. |
 | Remove them | Rewrites matching commit messages and the descendants whose parent IDs must change. File trees stay untouched. |
 | Keep them from coming back | Installs a conservative `commit-msg` hook and ships a read-only GitHub Actions guard. |
