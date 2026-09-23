@@ -84,7 +84,7 @@ func runScan(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := clean.ScanIncludingRemotes(repo, *includeRemotes)
+	report, err := clean.ScanIncludingRemotes(repo, *includeRemotes, preset.Claude())
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func runCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := clean.ScanIncludingRemotes(repo, *includeRemotes)
+	report, err := clean.ScanIncludingRemotes(repo, *includeRemotes, preset.Claude())
 	if err != nil {
 		return err
 	}

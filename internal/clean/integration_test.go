@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/IamAngusU/ByeClaude/internal/attribution"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
 
 func git(t *testing.T, dir string, args ...string) string {
@@ -57,7 +59,7 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := Scan(repo)
+	before, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +67,7 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 		t.Fatalf("matches before rewrite = %d", len(before.Matches))
 	}
 
-	report, _, err := Rewrite(repo)
+	report, _, err := Rewrite(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +91,7 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 		t.Fatal("annotated tag object did not change")
 	}
 
-	after, err := Scan(repo)
+	after, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +138,7 @@ func TestRewriteRefusesDirtyWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "working tree is not clean") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "working tree is not clean") {
 		t.Fatalf("expected dirty-worktree error, got %v", err)
 	}
 }
@@ -169,7 +171,7 @@ func TestScanWalksAllLocalBranchesAndTags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := Scan(repo)
+	report, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +194,7 @@ func TestScanIgnoresClaudeLookingBodyText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := Scan(repo)
+	report, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +227,7 @@ func TestRewriteRefusesShallowRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "shallow repository") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "shallow repository") {
 		t.Fatalf("expected shallow-repository error, got %v", err)
 	}
 }
@@ -245,7 +247,7 @@ func TestRewriteRefusesDetachedHead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "detached HEAD") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "detached HEAD") {
 		t.Fatalf("expected detached-HEAD error, got %v", err)
 	}
 }
@@ -272,7 +274,7 @@ func TestRewriteRefusesReplaceRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "replace refs") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "replace refs") {
 		t.Fatalf("expected replace-ref error, got %v", err)
 	}
 }
@@ -293,7 +295,7 @@ func TestRewriteRefusesMultipleWorktrees(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "multiple linked worktrees") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "multiple linked worktrees") {
 		t.Fatalf("expected linked-worktree error, got %v", err)
 	}
 }
@@ -322,7 +324,7 @@ func TestPushUsesLeaseAndUpdatesRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err != nil {
+	if _, _, err := Rewrite(repo, preset.Claude()); err != nil {
 		t.Fatal(err)
 	}
 	if err := Push(repo, "origin", oldRefs); err != nil {
@@ -370,7 +372,7 @@ func TestPushLeaseRejectsRemoteMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err != nil {
+	if _, _, err := Rewrite(repo, preset.Claude()); err != nil {
 		t.Fatal(err)
 	}
 	if err := Push(repo, "origin", oldRefs); err == nil {
@@ -400,7 +402,7 @@ func TestScanIncludesDetachedHead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := Scan(repo)
+	report, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,14 +437,14 @@ func TestScanCanIncludeRemoteTrackingRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localOnly, err := Scan(repo)
+	localOnly, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(localOnly.Matches) != 0 {
 		t.Fatalf("local scan unexpectedly saw remote-only history: %#v", localOnly.Matches)
 	}
-	withRemotes, err := ScanIncludingRemotes(repo, true)
+	withRemotes, err := ScanIncludingRemotes(repo, true, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -483,7 +485,7 @@ func TestPushIsAtomicAcrossRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err != nil {
+	if _, _, err := Rewrite(repo, preset.Claude()); err != nil {
 		t.Fatal(err)
 	}
 	if err := Push(repo, "origin", oldRefs); err == nil {
@@ -525,7 +527,7 @@ func TestPushDoesNotPublishLocalOnlyRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err != nil {
+	if _, _, err := Rewrite(repo, preset.Claude()); err != nil {
 		t.Fatal(err)
 	}
 	if err := Push(repo, "origin", oldRefs); err != nil {
@@ -553,7 +555,7 @@ func TestRewriteRefusesGitNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "git notes") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "git notes") {
 		t.Fatalf("expected git-notes error, got %v", err)
 	}
 }
@@ -591,7 +593,7 @@ func TestRewritePreservesMergeTopologyAndTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, mapping, err := Rewrite(repo)
+	_, mapping, err := Rewrite(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,10 +630,10 @@ func TestRewriteSHA256Repository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err != nil {
+	if _, _, err := Rewrite(repo, preset.Claude()); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Scan(repo)
+	report, err := Scan(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -661,7 +663,7 @@ func TestRewriteRefusesOperationInProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := Rewrite(repo); err == nil || !strings.Contains(err.Error(), "git operation in progress") {
+	if _, _, err := Rewrite(repo, preset.Claude()); err == nil || !strings.Contains(err.Error(), "git operation in progress") {
 		t.Fatalf("expected in-progress operation error, got %v", err)
 	}
 }
@@ -686,7 +688,7 @@ func TestPushBackupAfterReviewUpdatesRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, _, err := Rewrite(repo)
+	report, _, err := Rewrite(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -723,7 +725,7 @@ func TestPushBackupRefusesLocalMovementAfterReview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, _, err := Rewrite(repo)
+	report, _, err := Rewrite(repo, preset.Claude())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -734,5 +736,54 @@ func TestPushBackupRefusesLocalMovementAfterReview(t *testing.T) {
 	git(t, local, "commit", "-q", "-m", "later local work")
 	if err := PushBackup(repo, "origin", report.Backup); err == nil || !strings.Contains(err.Error(), "moved since rewrite") {
 		t.Fatalf("expected local-movement refusal, got %v", err)
+	}
+}
+
+
+func TestRewriteWithCustomMatcher(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Angus Test")
+	git(t, dir, "config", "user.email", "angus@example.com")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "a.txt")
+	git(t, dir, "commit", "-q", "-m", "feat\n\nCo-Authored-By: Build Bot <bot@example.dev>")
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ByeClaude's product preset must not match an unrelated provider.
+	claudeReport, err := Scan(repo, preset.Claude())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(claudeReport.Matches) != 0 {
+		t.Fatalf("Claude preset matched custom bot: %#v", claudeReport.Matches)
+	}
+
+	rule := attribution.Rule{
+		RuleID:       "example-bot",
+		NameContains: []string{"build bot"},
+		EmailDomains: []string{"example.dev"},
+	}
+	before, err := Scan(repo, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before.Matches) != 1 {
+		t.Fatalf("custom matcher found %d matches, want 1", len(before.Matches))
+	}
+	if _, _, err := Rewrite(repo, rule); err != nil {
+		t.Fatal(err)
+	}
+	after, err := Scan(repo, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Matches) != 0 {
+		t.Fatalf("custom matcher still found matches after rewrite: %#v", after.Matches)
 	}
 }

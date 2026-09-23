@@ -26,12 +26,14 @@ Backup refs under `refs/byeclaude/backups/*` are deliberately excluded from a no
 
 ByeClaude does not perform a free-form text replacement.
 
-The default matcher only removes a `Co-authored-by` entry from the final Git trailer block when both conditions hold:
+The Git rewrite engine accepts a small identity-matcher interface and is vendor-neutral. ByeClaude's built-in preset is a separate rule that only removes a `Co-authored-by` entry from the final Git trailer block when both conditions hold:
 
 1. the co-author name contains `Claude`, case-insensitively;
-2. the email belongs to Anthropic, including the common `noreply@anthropic.com` form.
+2. the email belongs to the real `anthropic.com` domain, including the common `noreply@anthropic.com` form.
 
 A prose example in the commit body remains untouched. So does a human such as `Claude Shannon <shannon@example.org>`.
+
+The same rewrite engine is integration-tested with a non-Claude synthetic bot rule. ByeClaude does not expose arbitrary matching as a public CLI flag in this alpha. [Matching architecture](matching.md).
 
 ## Rewrite algorithm
 

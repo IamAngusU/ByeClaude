@@ -3,6 +3,8 @@ package clean
 import (
 	"regexp"
 	"strings"
+
+	"github.com/IamAngusU/ByeClaude/internal/attribution"
 )
 
 var (
@@ -10,19 +12,12 @@ var (
 	trailerRE  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*\s*:\s*.+$`)
 )
 
-func IsClaudeTrailer(line string) (name, email string, ok bool) {
+func parseCoAuthor(line string) (name, email string, ok bool) {
 	m := coAuthorRE.FindStringSubmatch(line)
 	if len(m) != 3 {
 		return "", "", false
 	}
-	name = strings.TrimSpace(m[1])
-	email = strings.TrimSpace(m[2])
-	nameLower := strings.ToLower(name)
-	emailLower := strings.ToLower(email)
-	if strings.Contains(nameLower, "claude") && (emailLower == "noreply@anthropic.com" || strings.HasSuffix(emailLower, "@anthropic.com")) {
-		return name, email, true
-	}
-	return "", "", false
+	return strings.TrimSpace(m[1]), strings.TrimSpace(m[2]), true
 }
 
 // trailerBlock returns the inclusive start and exclusive end of the final Git
@@ -55,7 +50,13 @@ func trailerBlock(lines []string) (int, int, bool) {
 	return start, end, true
 }
 
-func ClaudeTrailers(message string) []string {
+// MatchingTrailers returns only Co-Authored-By lines from the final Git trailer
+// block whose parsed identity is accepted by matcher. Prose elsewhere in the
+// commit message is never considered.
+func MatchingTrailers(message string, matcher attribution.Matcher) []string {
+	if matcher == nil {
+		return nil
+	}
 	normalized := strings.ReplaceAll(message, "\r\n", "\n")
 	lines := strings.Split(normalized, "\n")
 	start, end, ok := trailerBlock(lines)
@@ -64,14 +65,20 @@ func ClaudeTrailers(message string) []string {
 	}
 	var matches []string
 	for _, line := range lines[start:end] {
-		if _, _, match := IsClaudeTrailer(line); match {
+		name, email, parsed := parseCoAuthor(line)
+		if parsed && matcher.Match(name, email) {
 			matches = append(matches, line)
 		}
 	}
 	return matches
 }
 
-func StripClaudeTrailers(message string) (string, []string) {
+// StripMatchingTrailers removes only identities accepted by matcher from the
+// final Co-Authored-By trailer block. All unrelated trailers are preserved.
+func StripMatchingTrailers(message string, matcher attribution.Matcher) (string, []string) {
+	if matcher == nil {
+		return message, nil
+	}
 	newline := "\n"
 	if strings.Contains(message, "\r\n") {
 		newline = "\r\n"
@@ -86,7 +93,8 @@ func StripClaudeTrailers(message string) (string, []string) {
 	removed := make([]string, 0)
 	keptBlock := make([]string, 0, end-start)
 	for _, line := range lines[start:end] {
-		if _, _, match := IsClaudeTrailer(line); match {
+		name, email, parsed := parseCoAuthor(line)
+		if parsed && matcher.Match(name, email) {
 			removed = append(removed, line)
 			continue
 		}

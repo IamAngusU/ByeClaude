@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/IamAngusU/ByeClaude/internal/attribution"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
 	"github.com/IamAngusU/ByeClaude/internal/model"
 )
@@ -80,11 +81,14 @@ func commitsForRefs(repo *gitx.Repo, refs []Ref) ([]string, error) {
 	return commits, nil
 }
 
-func Scan(repo *gitx.Repo) (model.ScanReport, error) {
-	return ScanIncludingRemotes(repo, false)
+func Scan(repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error) {
+	return ScanIncludingRemotes(repo, false, matcher)
 }
 
-func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool) (model.ScanReport, error) {
+func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribution.Matcher) (model.ScanReport, error) {
+	if matcher == nil {
+		return model.ScanReport{}, fmt.Errorf("attribution matcher is required")
+	}
 	refs, err := LocalRefs(repo)
 	if err != nil {
 		return model.ScanReport{}, err
@@ -114,7 +118,7 @@ func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool) (model.ScanRepor
 			return report, err
 		}
 		author, email := obj.author()
-		for _, line := range ClaudeTrailers(obj.Message) {
+		for _, line := range MatchingTrailers(obj.Message, matcher) {
 			report.Matches = append(report.Matches, model.Match{Commit: sha, Author: author, Email: email, Line: strings.TrimSpace(line)})
 		}
 	}
@@ -220,7 +224,10 @@ func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 	return err
 }
 
-func Rewrite(repo *gitx.Repo) (model.RewriteReport, map[string]string, error) {
+func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport, map[string]string, error) {
+	if matcher == nil {
+		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
+	}
 	if err := Preflight(repo); err != nil {
 		return model.RewriteReport{}, nil, err
 	}
@@ -251,7 +258,7 @@ func Rewrite(repo *gitx.Repo) (model.RewriteReport, map[string]string, error) {
 		if err != nil {
 			return report, mapping, err
 		}
-		newMsg, removed := StripClaudeTrailers(obj.Message)
+		newMsg, removed := StripMatchingTrailers(obj.Message, matcher)
 		parentChanged := false
 		for _, p := range obj.parents() {
 			if n, ok := mapping[p]; ok && n != p {

@@ -264,6 +264,8 @@ Every command accepts `--repo PATH` where applicable. `clean --apply --push` is 
 
 ByeClaude cleans **Git commit attribution**. It does not edit pull-request text, issues, comments, external forks, GitHub caches, or repository objects you never fetched.
 
+Internally, the Git DAG rewriter is matcher-agnostic; the Claude/Anthropic identity lives in a separate built-in preset. The alpha CLI intentionally keeps that preset fixed rather than exposing an arbitrary history-rewrite regex. [Matching architecture](docs/matching.md).
+
 GitHub contributor statistics can lag behind a force-push or rewritten default branch. Old commit IDs may also remain referenced by forks, pull requests, caches or other clones even after your normal branches are clean.
 
 This is pre-1.0 software. The repository includes integration coverage for linear and merge histories, branches, tags, backups/restores, remote lease races, atomic push behavior, shallow clones, worktrees, replace refs, notes and SHA-256 repositories. Platform CI is configured to run the Go test suite on Linux, macOS and Windows, with the race detector additionally exercised on Linux.
@@ -271,6 +273,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 ## Documentation
 
 - [How the rewrite works](docs/how-it-works.md)
+- [Matching architecture](docs/matching.md)
 - [Safety, backups and recovery](docs/safety.md)
 - [Hooks and GitHub Actions](docs/automation.md)
 - [Troubleshooting](docs/troubleshooting.md)

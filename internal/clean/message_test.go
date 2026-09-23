@@ -1,10 +1,15 @@
 package clean
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/IamAngusU/ByeClaude/internal/attribution"
+	"github.com/IamAngusU/ByeClaude/internal/preset"
+)
 
 func TestStripClaudeTrailers(t *testing.T) {
 	in := "fix: thing\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>\nCo-authored-by: Human <human@example.com>\n"
-	got, removed := StripClaudeTrailers(in)
+	got, removed := StripMatchingTrailers(in, preset.Claude())
 	want := "fix: thing\n\nCo-authored-by: Human <human@example.com>\n"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
@@ -16,7 +21,7 @@ func TestStripClaudeTrailers(t *testing.T) {
 
 func TestDoesNotRemoveHumanClaude(t *testing.T) {
 	in := "feat\n\nCo-authored-by: Claude Shannon <shannon@example.org>\n"
-	got, removed := StripClaudeTrailers(in)
+	got, removed := StripMatchingTrailers(in, preset.Claude())
 	if got != in || len(removed) != 0 {
 		t.Fatalf("unexpected removal: %q %#v", got, removed)
 	}
@@ -24,7 +29,7 @@ func TestDoesNotRemoveHumanClaude(t *testing.T) {
 
 func TestDoesNotRemoveBodyExample(t *testing.T) {
 	in := "docs: explain format\n\nExample output:\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>\nThis line makes it body text.\n"
-	got, removed := StripClaudeTrailers(in)
+	got, removed := StripMatchingTrailers(in, preset.Claude())
 	if got != in || len(removed) != 0 {
 		t.Fatalf("body example was changed: %q %#v", got, removed)
 	}
@@ -32,7 +37,7 @@ func TestDoesNotRemoveBodyExample(t *testing.T) {
 
 func TestOnlyClaudeRemovedFromTrailerBlock(t *testing.T) {
 	in := "feat\n\nSigned-off-by: Angus <angus@example.com>\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-	got, removed := StripClaudeTrailers(in)
+	got, removed := StripMatchingTrailers(in, preset.Claude())
 	want := "feat\n\nSigned-off-by: Angus <angus@example.com>\n"
 	if got != want || len(removed) != 1 {
 		t.Fatalf("got %q removed=%#v", got, removed)
@@ -41,14 +46,14 @@ func TestOnlyClaudeRemovedFromTrailerBlock(t *testing.T) {
 
 func TestClaudeTrailersIgnoresBodyExample(t *testing.T) {
 	in := "docs: explain format\n\nExample output:\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>\nThis line makes it body text.\n"
-	if got := ClaudeTrailers(in); len(got) != 0 {
+	if got := MatchingTrailers(in, preset.Claude()); len(got) != 0 {
 		t.Fatalf("body example reported as trailer: %#v", got)
 	}
 }
 
 func TestClaudeTrailersFindsOnlyFinalTrailerBlock(t *testing.T) {
 	in := "feat\n\nClaude may appear in prose.\n\nSigned-off-by: Angus <angus@example.com>\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-	got := ClaudeTrailers(in)
+	got := MatchingTrailers(in, preset.Claude())
 	if len(got) != 1 || got[0] != "Co-Authored-By: Claude <noreply@anthropic.com>" {
 		t.Fatalf("got %#v", got)
 	}
@@ -69,5 +74,27 @@ func TestStripTagSignatureFormats(t *testing.T) {
 				t.Fatalf("got %q dropped=%v", got, dropped)
 			}
 		})
+	}
+}
+
+
+func TestCustomMatcherRemovesDifferentBot(t *testing.T) {
+	rule := attribution.Rule{
+		RuleID:       "example-bot",
+		NameContains: []string{"build bot"},
+		EmailDomains: []string{"example.dev"},
+	}
+	in := "feat\n\nCo-Authored-By: Build Bot v2 <bot@example.dev>\nCo-Authored-By: Human <human@example.com>\n"
+	got, removed := StripMatchingTrailers(in, rule)
+	want := "feat\n\nCo-Authored-By: Human <human@example.com>\n"
+	if got != want || len(removed) != 1 {
+		t.Fatalf("got %q removed=%#v", got, removed)
+	}
+}
+
+func TestCustomMatcherDoesNotAffectClaudePreset(t *testing.T) {
+	in := "feat\n\nCo-Authored-By: Build Bot <bot@example.dev>\n"
+	if got := MatchingTrailers(in, preset.Claude()); len(got) != 0 {
+		t.Fatalf("Claude preset matched unrelated bot: %#v", got)
 	}
 }

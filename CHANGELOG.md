@@ -12,6 +12,7 @@ All notable changes to ByeClaude are documented here.
 - Add guarded remote updates behind `--push` using atomic force-with-lease semantics.
 - Add `push --backup ID` for review-then-publish workflows, bound to the exact recorded rewrite result.
 - Use collision-resistant, ref-safe backup IDs instead of second-resolution identifiers.
+- Separate the vendor-neutral Git rewrite engine from the Claude/Anthropic identity preset, with custom-matcher unit and integration coverage.
 - Add a conservative local `commit-msg` hook, backup listing, and local ref restore.
 
 ### Safety and correctness
