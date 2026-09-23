@@ -6,14 +6,14 @@
       "email_domains": ["anthropic.com"]
     },
     {
-      "id": "github-copilot",
-      "name_contains": ["copilot"],
-      "exact_emails": ["223556219+Copilot@users.noreply.github.com"]
+      "id": "codex-openai",
+      "name_contains": ["codex"],
+      "exact_emails": ["noreply@openai.com"]
     },
     {
-      "id": "cursor-cloud-agent",
-      "name_contains": ["cursor"],
-      "email_domains": ["cursor.com"]
+      "id": "internal-ai-bot",
+      "name_contains": ["ai bot"],
+      "email_domains": ["example.invalid"]
     }
   ]
 }

@@ -54,7 +54,7 @@ No arbitrary regular expressions are executed.
 
 See [`examples/rules/multi-ai.example.json`](../examples/rules/multi-ai.example.json).
 
-That example contains currently observed attribution shapes for Claude, GitHub Copilot and Cursor. Treat it as an editable starting point, not a permanent registry: providers can change commit attribution formats, and some products expose settings that disable attribution entirely.
+The example includes conservative rules for Claude, Codex and a synthetic internal bot. Treat it as an editable starting point, not a permanent provider registry: attribution formats and opt-in settings can change over time.
 
 The default ByeClaude behavior remains the narrower built-in Claude rule.
 
