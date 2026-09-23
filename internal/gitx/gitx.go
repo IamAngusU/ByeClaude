@@ -49,6 +49,7 @@ func OpenContext(ctx context.Context, path string) (*Repo, error) {
 	}
 	return &Repo{Root: root, GitDir: strings.TrimSpace(string(gitDirOut)), Bare: bare}, nil
 }
+
 func (r *Repo) Run(args ...string) ([]byte, error) {
 	return r.RunContext(context.Background(), args...)
 }
@@ -199,6 +200,7 @@ func (r *Repo) CatFileBatch(ctx context.Context, objectNames []string, expectedT
 	}
 	return objects, nil
 }
+
 func run(dir string, args ...string) ([]byte, error) {
 	return runContext(context.Background(), dir, args...)
 }
