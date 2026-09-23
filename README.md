@@ -141,6 +141,8 @@ Those timings are from the small local fixture suite and are not a performance c
 
 Remote batch scans use temporary `--mirror --filter=blob:none` clones and delete the workspace afterwards. The current alpha deliberately has no persistent mirror cache.
 
+A dated local default-batch sanity run scanned **8 repositories / 4,000 synthetic commits in 1.44 s wall time** with about **12.6 MiB peak RSS** using 4 workers. It excludes network clone time and is not an SLA. [Methodology and caveats](docs/performance.md#default-batch-development-measurement).
+
 [Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
 
 ## Keep it clean
