@@ -15,6 +15,9 @@ All notable changes to ByeClaude are documented here.
 - Separate the vendor-neutral Git rewrite engine from the Claude/Anthropic identity preset, with custom-matcher unit and integration coverage.
 - Add a reproducible synthetic-history benchmark fixture and document a dated 5,000-commit development sanity measurement.
 - Add read-only multi-repository batch audit with explicit repo selection, public/private/all GitHub discovery, bounded concurrency, partial mirror clones, default timing metrics, and JSON output.
+- Add structured multi-rule attribution files for scanning, batch auditing, reviewed rewrites and local hook enforcement while keeping Claude/Anthropic as the default rule.
+- Add matched-commit percentages, repository-match percentages, declared co-author identity and per-rule counts to JSON reports.
+- Add evidence/API documentation that keeps declared Git metadata separate from heuristic AI-involvement signals.
 - Add a six-repository disposable fixture suite plus automated batch smoke verification and a synthetic batch benchmark.
 - Report scan and rewrite duration in normal single-repository output and JSON reports.
 - Add a conservative local `commit-msg` hook, backup listing, and local ref restore.

@@ -50,3 +50,28 @@ func TestHookInstallRefusesCustomHooksPath(t *testing.T) {
 		t.Fatalf("default hook unexpectedly created: %v", err)
 	}
 }
+
+
+func TestHookInstallEmbedsRulesFile(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	rules := filepath.Join(dir, "rules.json")
+	if err := os.WriteFile(rules, []byte(`{"rules":[{"id":"bot","name_contains":["bot"],"email_domains":["example.dev"]}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runHook([]string{"install", "--repo", dir, "--rules", rules}); err != nil {
+		t.Fatal(err)
+	}
+	hook := filepath.Join(dir, ".git", "hooks", "commit-msg")
+	got, err := os.ReadFile(hook)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs, err := filepath.Abs(rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "--rules") || !strings.Contains(string(got), filepath.ToSlash(abs)) {
+		t.Fatalf("hook does not embed validated rules path: %s", got)
+	}
+}

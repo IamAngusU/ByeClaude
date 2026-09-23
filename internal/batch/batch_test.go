@@ -59,6 +59,12 @@ func TestRunLocalBatchAggregatesMetrics(t *testing.T) {
 	if report.Commits != 2 {
 		t.Fatalf("commits=%d want 2", report.Commits)
 	}
+	if report.MatchedCommits != 1 || report.CommitMatchPct != 50 || report.RepositoryMatchPct != 50 {
+		t.Fatalf("unexpected percentages: %#v", report)
+	}
+	if report.RuleMatches["claude-anthropic"] != 1 {
+		t.Fatalf("rule matches=%#v", report.RuleMatches)
+	}
 	if len(report.Results) != 2 || report.Results[0].Repository != "clean" || report.Results[1].Repository != "dirty" {
 		t.Fatalf("results not stable/sorted: %#v", report.Results)
 	}

@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "id": "claude-anthropic",
+      "name_contains": ["claude"],
+      "email_domains": ["anthropic.com"]
+    },
+    {
+      "id": "github-copilot",
+      "name_contains": ["copilot"],
+      "exact_emails": ["223556219+Copilot@users.noreply.github.com"]
+    },
+    {
+      "id": "cursor-cloud-agent",
+      "name_contains": ["cursor"],
+      "email_domains": ["cursor.com"]
+    }
+  ]
+}

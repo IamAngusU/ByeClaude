@@ -22,6 +22,12 @@ Claude Code can add a `Co-Authored-By: Claude … <noreply@anthropic.com>` trail
 
 **ByeClaude** is a small Git-aware CLI for removing that specific attribution without pretending a history rewrite is harmless.
 
+## Why use it?
+
+The tool is for cases where the repository owner has deliberately decided that AI-tool co-author trailers should not remain part of the published Git history. Common reasons include repository hygiene, contributor-graph accuracy, a customer delivery requirement, an internal attribution policy, or simple personal preference.
+
+ByeClaude does **not** decide whether removing attribution is appropriate for a project, and it does not claim that a matching trailer proves how much code an AI produced. It gives the repository owner a narrow, reviewable mechanism for inspecting and changing Git metadata.
+
 | You want to… | ByeClaude does… |
 | --- | --- |
 | Find old Claude co-author trailers | Scans every commit reachable from local heads, tags and `HEAD`; optionally fetched remotes too. |
@@ -48,6 +54,9 @@ duration    184ms
 ```
 
 Nothing changed. When you are ready, rewrite locally:
+
+> [!WARNING]
+> **Signed commits/tags that must be rewritten cannot keep their old valid signatures.** A signature covers the original Git object bytes. ByeClaude reports dropped signature fields, but it cannot make the old signature valid on the new object. If preserving signed history matters more than removing attribution, stop here. [Details](docs/safety.md#signatures).
 
 ```sh
 byeclaude clean --apply
@@ -133,7 +142,7 @@ Normal batch output measures **prepare / mirror time, Git scan time and total ti
 
 ```text
 summary     6 scanned · 2 clean · 4 with matches · 0 failed
-history     16 commits · 4 matching trailers
+history     16 commits · 4 matched commits (25.00%) · 4 matching trailers
 timing      32ms wall · <1ms prepare sum · 97ms scan sum
 ```
 
@@ -144,6 +153,32 @@ Remote batch scans use temporary `--mirror --filter=blob:none` clones and delete
 A dated local default-batch sanity run scanned **8 repositories / 4,000 synthetic commits in 1.44 s wall time** with about **12.6 MiB peak RSS** using 4 workers. It excludes network clone time and is not an SLA. [Methodology and caveats](docs/performance.md#default-batch-development-measurement).
 
 [Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
+
+## Watch several AI/tool identities
+
+The default remains deliberately narrow: Claude + the `anthropic.com` email domain.
+
+For several declared co-author identities at once, use a structured rules file instead of an arbitrary regex:
+
+```sh
+byeclaude scan --rules ./rules.json
+byeclaude batch scan --owner IamAngusU --public --rules ./rules.json
+```
+
+The same rules can enforce future local commits:
+
+```sh
+byeclaude hook install --rules ./rules.json
+```
+
+and can be used for one reviewed rewrite:
+
+```sh
+byeclaude clean --rules ./rules.json --apply
+byeclaude push --rules ./rules.json --backup BACKUP_ID
+```
+
+An example multi-tool ruleset is in [`examples/rules/multi-ai.example.json`](examples/rules/multi-ai.example.json). The schema is intentionally structured and validated; no arbitrary regular expression is executed. Provider attribution formats can change, so review the rules against the actual trailers you want to classify. [Rule format and semantics](docs/rules.md).
 
 ## Keep it clean
 
@@ -322,6 +357,16 @@ Every command accepts `--repo PATH` where applicable. `clean --apply --push` is 
 
 ## Scope and limitations
 
+## JSON as a backend/API building block
+
+`scan --json` and `batch scan --json` now expose the pieces a later website/API needs: total commits, unique matched commits, matched-commit percentage, declared co-author identity, matching rule IDs, per-rule counts, repository-match percentage and timing metrics.
+
+That supports statements such as **"4.05% of reachable commits carry declared attribution matching these rules"**. It does **not** support **"4.05% of the code was written by AI"**. A trailer says nothing about how many lines were produced.
+
+A future AI/style/slop scanner should therefore be a separate heuristic evidence layer with its own detector name and confidence. [Evidence model](docs/evidence.md) · [Service/API boundary](docs/service.md).
+
+## Scope and limitations
+
 ByeClaude cleans **Git commit attribution**. It does not edit pull-request text, issues, comments, external forks, GitHub caches, or repository objects you never fetched.
 
 Internally, the Git DAG rewriter is matcher-agnostic; the Claude/Anthropic identity lives in a separate built-in preset. The alpha CLI intentionally keeps that preset fixed rather than exposing an arbitrary history-rewrite regex. [Matching architecture](docs/matching.md).
@@ -334,6 +379,9 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 
 - [How the rewrite works](docs/how-it-works.md)
 - [Matching architecture](docs/matching.md)
+- [Multiple attribution rules](docs/rules.md)
+- [Evidence model](docs/evidence.md)
+- [Service/API integration](docs/service.md)
 - [Batch repository audit](docs/batch.md)
 - [Fixture repository suite](docs/fixtures.md)
 - [Safety, backups and recovery](docs/safety.md)
@@ -345,6 +393,6 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). [Trademarks and third-party names](TRADEMARKS.md).
 
 <p align="center"><sub>ByeClaude is an independent open-source project and is not affiliated with Anthropic.</sub></p>

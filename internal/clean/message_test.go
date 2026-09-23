@@ -98,3 +98,22 @@ func TestCustomMatcherDoesNotAffectClaudePreset(t *testing.T) {
 		t.Fatalf("Claude preset matched unrelated bot: %#v", got)
 	}
 }
+
+
+func TestMatchingEvidenceIncludesRuleAndIdentity(t *testing.T) {
+	set := attribution.RuleSet{Rules: []attribution.Rule{
+		{RuleID: "claude", NameContains: []string{"claude"}, EmailDomains: []string{"anthropic.com"}},
+		{RuleID: "anthropic-domain", EmailDomains: []string{"anthropic.com"}},
+	}}
+	in := "feat\n\nCo-Authored-By: Claude Opus <noreply@anthropic.com>\n"
+	got := MatchingEvidence(in, set)
+	if len(got) != 1 {
+		t.Fatalf("evidence=%#v", got)
+	}
+	if got[0].Name != "Claude Opus" || got[0].Email != "noreply@anthropic.com" {
+		t.Fatalf("identity=%#v", got[0])
+	}
+	if len(got[0].RuleIDs) != 2 || got[0].RuleIDs[0] != "claude" || got[0].RuleIDs[1] != "anthropic-domain" {
+		t.Fatalf("rules=%v", got[0].RuleIDs)
+	}
+}

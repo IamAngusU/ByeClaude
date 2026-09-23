@@ -51,6 +51,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: IamAngusU/ByeClaude@main
+        with:
+          # Optional. Omit this for the built-in Claude/Anthropic rule.
+          rules-file: .byeclaude-rules.json
 ```
 
 Until the first tagged release exists, the example above follows `main`. After a release, pin the action to a release tag or, for the strongest supply-chain stability, an exact commit SHA.
@@ -78,3 +81,27 @@ byeclaude check --include-remotes --json
 ```
 
 The command writes a JSON report and exits non-zero when matches exist.
+
+
+### Several attribution rules
+
+Commit a reviewed structured rules file to the repository, for example `.byeclaude-rules.json`, then pass it to the reusable action:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: IamAngusU/ByeClaude@main
+  with:
+    rules-file: .byeclaude-rules.json
+```
+
+The action resolves a repository-relative rules path inside `GITHUB_WORKSPACE`. The default remains the built-in Claude/Anthropic rule when the input is empty.
+
+For local prevention using the same policy:
+
+```sh
+byeclaude hook install --rules ./.byeclaude-rules.json
+```
+
+The installed hook records the absolute path to that validated file. If the file later becomes missing or invalid, commits fail closed instead of silently dropping the policy.

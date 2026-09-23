@@ -58,6 +58,21 @@ GH_TOKEN=... byeclaude batch scan --all
 
 For organization repositories, the token must be able to see the organization repositories being requested. Discovery is filtered back to repositories actually owned by the selected owner.
 
+## Several attribution rules
+
+Batch can classify several declared co-author identities in one pass:
+
+```sh
+byeclaude batch scan \
+  --owner IamAngusU \
+  --public \
+  --rules ./rules.json
+```
+
+The JSON report includes per-rule counts plus unique matched-commit counts and percentages. The default, when `--rules` is omitted, remains the built-in Claude/Anthropic rule.
+
+See [Multiple attribution rules](rules.md).
+
 ## CI / guard mode
 
 `batch scan` reports matches but exits successfully when every repository could be audited.
@@ -84,7 +99,7 @@ match  IamAngusU/b       891 commits    2 matches  prep 2.0s  scan 640ms  total 
 clean  IamAngusU/c        44 commits    0 matches  prep 900ms  scan  40ms  total 940ms
 
 summary     3 scanned · 2 clean · 1 with matches · 0 failed
-history     1153 commits · 2 matching trailers
+history     1153 commits · 17 matched commits (1.47%) · 18 matching trailers
 timing      2.8s wall · 4.1s prepare sum · 860ms scan sum
 ```
 

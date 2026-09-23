@@ -27,11 +27,14 @@ type Spec struct {
 }
 
 type RepoMetrics struct {
-	Repository string `json:"repository"`
-	Visibility string `json:"visibility"`
-	Source     string `json:"source"`
-	Commits    int    `json:"commits"`
-	Matches    int    `json:"matches"`
+	Repository      string         `json:"repository"`
+	Visibility      string         `json:"visibility"`
+	Source          string         `json:"source"`
+	Commits         int            `json:"commits"`
+	MatchedCommits  int            `json:"matched_commits"`
+	CommitMatchPct  float64        `json:"commit_match_pct"`
+	Matches         int            `json:"matches"`
+	RuleMatches     map[string]int `json:"rule_matches"`
 	PrepareMS  int64  `json:"prepare_ms"`
 	ScanMS     int64  `json:"scan_ms"`
 	TotalMS    int64  `json:"total_ms"`
@@ -39,15 +42,19 @@ type RepoMetrics struct {
 }
 
 type Report struct {
-	Selection           string        `json:"selection"`
-	Jobs                int           `json:"jobs"`
-	Repositories        int           `json:"repositories"`
-	Scanned             int           `json:"scanned"`
-	CleanRepositories   int           `json:"clean_repositories"`
-	MatchedRepositories int           `json:"matched_repositories"`
-	FailedRepositories  int           `json:"failed_repositories"`
-	Commits             int           `json:"commits"`
-	Matches             int           `json:"matches"`
+	Selection           string         `json:"selection"`
+	Jobs                int            `json:"jobs"`
+	Repositories        int            `json:"repositories"`
+	Scanned             int            `json:"scanned"`
+	CleanRepositories   int            `json:"clean_repositories"`
+	MatchedRepositories int            `json:"matched_repositories"`
+	RepositoryMatchPct  float64        `json:"repository_match_pct"`
+	FailedRepositories  int            `json:"failed_repositories"`
+	Commits             int            `json:"commits"`
+	MatchedCommits      int            `json:"matched_commits"`
+	CommitMatchPct      float64        `json:"commit_match_pct"`
+	Matches             int            `json:"matches"`
+	RuleMatches         map[string]int `json:"rule_matches"`
 	PrepareMS           int64         `json:"prepare_ms_sum"`
 	ScanMS              int64         `json:"scan_ms_sum"`
 	WallMS              int64         `json:"wall_ms"`
@@ -89,6 +96,7 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 		Selection:    opts.Selection,
 		Jobs:         opts.Jobs,
 		Repositories: len(specs),
+		RuleMatches:  map[string]int{},
 	}
 	if len(specs) == 0 {
 		report.WallMS = time.Since(started).Milliseconds()
@@ -148,12 +156,22 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 		}
 		report.Scanned++
 		report.Commits += result.Commits
+		report.MatchedCommits += result.MatchedCommits
 		report.Matches += result.Matches
+		for ruleID, count := range result.RuleMatches {
+			report.RuleMatches[ruleID] += count
+		}
 		if result.Matches == 0 {
 			report.CleanRepositories++
 		} else {
 			report.MatchedRepositories++
 		}
+	}
+	if report.Scanned > 0 {
+		report.RepositoryMatchPct = (float64(report.MatchedRepositories) / float64(report.Scanned)) * 100
+	}
+	if report.Commits > 0 {
+		report.CommitMatchPct = (float64(report.MatchedCommits) / float64(report.Commits)) * 100
 	}
 	report.WallMS = time.Since(started).Milliseconds()
 	return report, nil
@@ -197,7 +215,10 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		return result
 	}
 	result.Commits = scan.Commits
+	result.MatchedCommits = scan.MatchedCommits
+	result.CommitMatchPct = scan.CommitMatchPct
 	result.Matches = len(scan.Matches)
+	result.RuleMatches = scan.RuleMatches
 	return result
 }
 

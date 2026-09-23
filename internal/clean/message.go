@@ -12,6 +12,18 @@ var (
 	trailerRE  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9-]*\s*:\s*.+$`)
 )
 
+type TrailerEvidence struct {
+	Line    string
+	Name    string
+	Email   string
+	RuleIDs []string
+}
+
+type explainingMatcher interface {
+	attribution.Matcher
+	MatchIDs(name, email string) []string
+}
+
 func parseCoAuthor(line string) (name, email string, ok bool) {
 	m := coAuthorRE.FindStringSubmatch(line)
 	if len(m) != 3 {
@@ -50,10 +62,10 @@ func trailerBlock(lines []string) (int, int, bool) {
 	return start, end, true
 }
 
-// MatchingTrailers returns only Co-Authored-By lines from the final Git trailer
-// block whose parsed identity is accepted by matcher. Prose elsewhere in the
+// MatchingEvidence returns parsed Co-Authored-By evidence from the final Git
+// trailer block whose identity is accepted by matcher. Prose elsewhere in the
 // commit message is never considered.
-func MatchingTrailers(message string, matcher attribution.Matcher) []string {
+func MatchingEvidence(message string, matcher attribution.Matcher) []TrailerEvidence {
 	if matcher == nil {
 		return nil
 	}
@@ -63,14 +75,35 @@ func MatchingTrailers(message string, matcher attribution.Matcher) []string {
 	if !ok {
 		return nil
 	}
-	var matches []string
+	var matches []TrailerEvidence
 	for _, line := range lines[start:end] {
 		name, email, parsed := parseCoAuthor(line)
-		if parsed && matcher.Match(name, email) {
-			matches = append(matches, line)
+		if !parsed || !matcher.Match(name, email) {
+			continue
 		}
+		ids := []string{matcher.ID()}
+		if explaining, ok := matcher.(explainingMatcher); ok {
+			ids = explaining.MatchIDs(name, email)
+		}
+		matches = append(matches, TrailerEvidence{
+			Line: strings.TrimSpace(line),
+			Name: name,
+			Email: email,
+			RuleIDs: ids,
+		})
 	}
 	return matches
+}
+
+// MatchingTrailers preserves the simple line-only helper used by rewrite tests
+// and callers that do not need provider/rule attribution details.
+func MatchingTrailers(message string, matcher attribution.Matcher) []string {
+	evidence := MatchingEvidence(message, matcher)
+	lines := make([]string, 0, len(evidence))
+	for _, item := range evidence {
+		lines = append(lines, item.Line)
+	}
+	return lines
 }
 
 // StripMatchingTrailers removes only identities accepted by matcher from the

@@ -3,6 +3,10 @@ description: Fail CI when reachable fetched history contains a Claude/Anthropic 
 author: Angus Uelsmann
 
 inputs:
+  rules-file:
+    description: Optional repository-relative structured attribution rules JSON. Empty uses the built-in Claude/Anthropic rule.
+    required: false
+    default: ''
   include-remotes:
     description: Also scan fetched remote-tracking refs.
     required: false
@@ -20,13 +24,21 @@ runs:
       shell: bash
       env:
         BYECLAUDE_INCLUDE_REMOTES: ${{ inputs.include-remotes }}
+        BYECLAUDE_RULES_FILE: ${{ inputs.rules-file }}
       run: |
-        args=""
+        args=()
         if [ "$BYECLAUDE_INCLUDE_REMOTES" = "true" ]; then
-          args="--include-remotes"
+          args+=(--include-remotes)
+        fi
+        if [ -n "$BYECLAUDE_RULES_FILE" ]; then
+          case "$BYECLAUDE_RULES_FILE" in
+            /*) rules="$BYECLAUDE_RULES_FILE" ;;
+            *) rules="$GITHUB_WORKSPACE/$BYECLAUDE_RULES_FILE" ;;
+          esac
+          args+=(--rules "$rules")
         fi
         cd "$GITHUB_ACTION_PATH"
-        go run ./cmd/byeclaude check $args --repo "$GITHUB_WORKSPACE"
+        go run ./cmd/byeclaude check "${args[@]}" --repo "$GITHUB_WORKSPACE"
 
 branding:
   icon: git-branch

@@ -70,3 +70,39 @@ func (r Rule) Match(name, email string) bool {
 
 	return nameOK && emailOK
 }
+
+
+func (r Rule) MatchIDs(name, email string) []string {
+	if !r.Match(name, email) {
+		return nil
+	}
+	return []string{r.ID()}
+}
+
+// RuleSet lets one scan classify the same declared co-author against several
+// structured attribution rules without widening the matcher into arbitrary
+// regular-expression execution.
+type RuleSet struct {
+	Rules []Rule `json:"rules"`
+}
+
+func (s RuleSet) ID() string { return "rule-set" }
+
+func (s RuleSet) Match(name, email string) bool {
+	for _, rule := range s.Rules {
+		if rule.Match(name, email) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s RuleSet) MatchIDs(name, email string) []string {
+	var ids []string
+	for _, rule := range s.Rules {
+		if rule.Match(name, email) {
+			ids = append(ids, rule.ID())
+		}
+	}
+	return ids
+}

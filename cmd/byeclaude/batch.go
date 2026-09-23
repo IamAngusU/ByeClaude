@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	batchpkg "github.com/IamAngusU/ByeClaude/internal/batch"
-	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
 
 type repeatedFlag []string
@@ -34,6 +34,7 @@ func runBatch(args []string) error {
 	jobs := fs.Int("jobs", batchpkg.DefaultJobs(), "parallel repository scans (1-32)")
 	includeRemotes := fs.Bool("include-remotes", true, "include fetched remote-tracking refs for local repository targets")
 	jsonOut := fs.Bool("json", false, "machine-readable JSON including per-repository metrics")
+	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -55,10 +56,13 @@ func runBatch(args []string) error {
 		return fmt.Errorf("--repo cannot be combined with --owner/--public/--private/--all")
 	}
 
+	matcher, err := resolveMatcher(*rulesFile)
+	if err != nil {
+		return err
+	}
 	token := batchpkg.TokenFromEnv()
 	var specs []batchpkg.Spec
 	var selection string
-	var err error
 	if len(repos) > 0 {
 		specs, err = batchpkg.ResolveExplicit(repos)
 		selection = fmt.Sprintf("explicit:%d", len(specs))
@@ -90,7 +94,7 @@ func runBatch(args []string) error {
 	report, err := batchpkg.Run(context.Background(), specs, batchpkg.Options{
 		Jobs:           *jobs,
 		Token:          token,
-		Matcher:        preset.Claude(),
+		Matcher:        matcher,
 		IncludeRemotes: *includeRemotes,
 		Selection:      selection,
 	})
@@ -135,7 +139,22 @@ func printBatchReport(report batchpkg.Report) {
 		}
 	}
 	fmt.Printf("\nsummary     %d scanned · %d clean · %d with matches · %d failed\n", report.Scanned, report.CleanRepositories, report.MatchedRepositories, report.FailedRepositories)
-	fmt.Printf("history     %d commits · %d matching trailers\n", report.Commits, report.Matches)
+	fmt.Printf("history     %d commits · %d matched commits (%.2f%%) · %d matching trailers\n", report.Commits, report.MatchedCommits, report.CommitMatchPct, report.Matches)
+	if len(report.RuleMatches) > 0 {
+		keys := make([]string, 0, len(report.RuleMatches))
+		for key := range report.RuleMatches {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		fmt.Print("rules       ")
+		for i, key := range keys {
+			if i > 0 {
+				fmt.Print(" · ")
+			}
+			fmt.Printf("%s=%d", key, report.RuleMatches[key])
+		}
+		fmt.Println()
+	}
 	fmt.Printf("timing      %s wall · %s prepare sum · %s scan sum\n", metricDuration(report.WallMS), metricDuration(report.PrepareMS), metricDuration(report.ScanMS))
 }
 

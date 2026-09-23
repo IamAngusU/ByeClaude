@@ -108,7 +108,12 @@ func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribut
 	if err != nil {
 		return model.ScanReport{}, err
 	}
-	report := model.ScanReport{Repository: repo.Root, Commits: len(commits)}
+	report := model.ScanReport{
+		Repository:  repo.Root,
+		Commits:     len(commits),
+		RuleMatches: map[string]int{},
+	}
+	matchedCommits := map[string]bool{}
 	for _, sha := range commits {
 		raw, err := repo.Run("cat-file", "commit", sha)
 		if err != nil {
@@ -119,9 +124,25 @@ func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribut
 			return report, err
 		}
 		author, email := obj.author()
-		for _, line := range MatchingTrailers(obj.Message, matcher) {
-			report.Matches = append(report.Matches, model.Match{Commit: sha, Author: author, Email: email, Line: strings.TrimSpace(line)})
+		for _, evidence := range MatchingEvidence(obj.Message, matcher) {
+			matchedCommits[sha] = true
+			for _, ruleID := range evidence.RuleIDs {
+				report.RuleMatches[ruleID]++
+			}
+			report.Matches = append(report.Matches, model.Match{
+				Commit:           sha,
+				Author:           author,
+				Email:            email,
+				AttributionName:  evidence.Name,
+				AttributionEmail: evidence.Email,
+				Rules:            append([]string(nil), evidence.RuleIDs...),
+				Line:             evidence.Line,
+			})
 		}
+	}
+	report.MatchedCommits = len(matchedCommits)
+	if report.Commits > 0 {
+		report.CommitMatchPct = (float64(report.MatchedCommits) / float64(report.Commits)) * 100
 	}
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, nil
