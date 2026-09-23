@@ -41,7 +41,9 @@ type RepoMetrics struct {
 	RefsToMove             int `json:"refs_to_move,omitempty"`
 	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
 	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
-	ObjectWritesEstimate   int `json:"object_writes_estimate,omitempty"`
+	ObjectWritesEstimate   int    `json:"object_writes_estimate,omitempty"`
+	RewriteReady           bool   `json:"rewrite_ready,omitempty"`
+	RewriteBlocker         string `json:"rewrite_blocker,omitempty"`
 	PrepareMS      int64          `json:"prepare_ms"`
 	ScanMS         int64          `json:"scan_ms"`
 	TotalMS        int64          `json:"total_ms"`
@@ -69,7 +71,9 @@ type Report struct {
 	RefsToMove             int `json:"refs_to_move,omitempty"`
 	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
 	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
-	ObjectWritesEstimate   int `json:"object_writes_estimate,omitempty"`
+	ObjectWritesEstimate   int    `json:"object_writes_estimate,omitempty"`
+	RewriteReadyRepositories int  `json:"rewrite_ready_repositories,omitempty"`
+	BlockedRepositories      int  `json:"blocked_repositories,omitempty"`
 	PrepareMS           int64          `json:"prepare_ms_sum"`
 	ScanMS              int64          `json:"scan_ms_sum"`
 	WallMS              int64          `json:"wall_ms"`
@@ -182,6 +186,13 @@ func Run(ctx context.Context, specs []Spec, opts Options) (Report, error) {
 		report.AnnotatedTagsToRewrite += result.AnnotatedTagsToRewrite
 		report.SignaturesAtRisk += result.SignaturesAtRisk
 		report.ObjectWritesEstimate += result.ObjectWritesEstimate
+		if opts.Plan {
+			if result.RewriteReady {
+				report.RewriteReadyRepositories++
+			} else {
+				report.BlockedRepositories++
+			}
+		}
 		for ruleID, count := range result.RuleMatches {
 			report.RuleMatches[ruleID] += count
 		}
@@ -251,6 +262,8 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		result.AnnotatedTagsToRewrite = plan.AnnotatedTagsToRewrite
 		result.SignaturesAtRisk = plan.SignaturesAtRisk
 		result.ObjectWritesEstimate = plan.ObjectWritesEstimate
+		result.RewriteReady = plan.RewriteReady
+		result.RewriteBlocker = plan.RewriteBlocker
 		return result
 	}
 

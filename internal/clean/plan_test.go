@@ -52,6 +52,9 @@ func TestPlanCountsDescendantsAndParentLinks(t *testing.T) {
 	if report.ObjectWritesEstimate != 3 {
 		t.Fatalf("object writes=%d want 3", report.ObjectWritesEstimate)
 	}
+	if !report.RewriteReady || report.RewriteBlocker != "" {
+		t.Fatalf("expected rewrite-ready plan: %#v", report)
+	}
 }
 
 func TestPlanCountsAnnotatedTagRewrite(t *testing.T) {
@@ -87,5 +90,40 @@ func TestPlanCountsAnnotatedTagRewrite(t *testing.T) {
 	}
 	if report.ObjectWritesEstimate != 2 {
 		t.Fatalf("object writes=%d want 2", report.ObjectWritesEstimate)
+	}
+}
+
+
+func TestPlanReportsPreflightBlockerWithoutFailingAudit(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Plan Test")
+	git(t, dir, "config", "user.email", "plan@example.invalid")
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("a\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "file.txt")
+	git(t, dir, "commit", "-q", "-m", "assistant\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	if err := os.WriteFile(filepath.Join(dir, "dirty.txt"), []byte("dirty\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := Plan(repo, preset.Claude())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.RewriteReady {
+		t.Fatalf("dirty repository unexpectedly rewrite-ready: %#v", report)
+	}
+	if report.RewriteBlocker == "" {
+		t.Fatalf("expected preflight blocker: %#v", report)
+	}
+	if report.CommitsToRewrite != 1 {
+		t.Fatalf("planning should still report graph impact: %#v", report)
 	}
 }

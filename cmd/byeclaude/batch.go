@@ -138,13 +138,17 @@ func printBatchReport(report batchpkg.Report) {
 		if result.Error != "" {
 			fmt.Printf("       %s\n", result.Error)
 		} else if report.Operation == "plan" {
-			fmt.Printf("       rewrite %d commits · %d descendants · %d parent links · %d refs · ~%d object writes\n",
+			fmt.Printf("       rewrite %d commits · %d descendants · %d parent links · %d refs · ~%d object writes · ready %v\n",
 				result.CommitsToRewrite,
 				result.DescendantCommits,
 				result.ParentLinksToRewrite,
 				result.RefsToMove,
 				result.ObjectWritesEstimate,
+				result.RewriteReady,
 			)
+			if result.RewriteBlocker != "" {
+				fmt.Printf("       blocker: %s\n", result.RewriteBlocker)
+			}
 		}
 	}
 	fmt.Printf("\nsummary     %d scanned · %d clean · %d with matches (%.2f%%) · %d failed\n", report.Scanned, report.CleanRepositories, report.MatchedRepositories, report.RepositoryMatchPct, report.FailedRepositories)
@@ -159,6 +163,7 @@ func printBatchReport(report batchpkg.Report) {
 			report.SignaturesAtRisk,
 			report.ObjectWritesEstimate,
 		)
+		fmt.Printf("readiness   %d ready · %d blocked\n", report.RewriteReadyRepositories, report.BlockedRepositories)
 	}
 	if len(report.RuleMatches) > 0 {
 		keys := make([]string, 0, len(report.RuleMatches))

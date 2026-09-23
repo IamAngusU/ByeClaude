@@ -48,6 +48,8 @@ type PlanReport struct {
 	AnnotatedTagsToRewrite  int            `json:"annotated_tags_to_rewrite"`
 	SignaturesAtRisk        int            `json:"signatures_at_risk"`
 	ObjectWritesEstimate    int            `json:"object_writes_estimate"`
+	RewriteReady            bool           `json:"rewrite_ready"`
+	RewriteBlocker          string         `json:"rewrite_blocker,omitempty"`
 	AffectedRefs            []string       `json:"affected_refs"`
 	DurationMS              int64          `json:"duration_ms"`
 }

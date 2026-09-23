@@ -114,6 +114,11 @@ func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error
 	}
 
 	report.ObjectWritesEstimate = report.CommitsToRewrite + report.AnnotatedTagsToRewrite
+	if err := Preflight(repo); err != nil {
+		report.RewriteBlocker = err.Error()
+	} else {
+		report.RewriteReady = true
+	}
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, nil
 }

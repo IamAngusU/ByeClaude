@@ -203,6 +203,11 @@ func printPlanReport(report model.PlanReport) {
 	fmt.Printf("tag objects  %d annotated tag(s)\n", report.AnnotatedTagsToRewrite)
 	fmt.Printf("signatures   %d at risk\n", report.SignaturesAtRisk)
 	fmt.Printf("objects      ~%d write(s)\n", report.ObjectWritesEstimate)
+	if report.RewriteReady {
+		fmt.Printf("ready        yes\n")
+	} else {
+		fmt.Printf("ready        no · %s\n", report.RewriteBlocker)
+	}
 	fmt.Printf("duration     %s\n", metricDuration(report.DurationMS))
 	if len(report.AffectedRefs) > 0 {
 		fmt.Println("affected")

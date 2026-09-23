@@ -30,6 +30,7 @@ A plan walks the same local heads/tags that a rewrite would use and reports:
 | annotated tags to rewrite | Tag objects that must be recreated because their target object changes. |
 | signatures at risk | Commit signature/mergetag fields and affected signed tag objects that cannot retain their old signature. |
 | object writes estimate | Approximate number of new commit + annotated-tag objects ByeClaude would write. |
+| rewrite ready / blocker | Runs the normal rewrite preflight read-only and reports whether the current repository state would allow `--apply`. |
 
 Example:
 
@@ -45,6 +46,7 @@ refs         3 (2 branch(es), 1 tag ref(s))
 tag objects  1 annotated tag(s)
 signatures   0 at risk
 objects      ~88 write(s)
+ready        yes
 ```
 
 ## Why matches are not enough
