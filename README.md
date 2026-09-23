@@ -277,6 +277,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 - [Safety, backups and recovery](docs/safety.md)
 - [Hooks and GitHub Actions](docs/automation.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Synthetic history benchmark](docs/performance.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

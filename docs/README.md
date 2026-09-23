@@ -9,6 +9,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Safety and recovery](safety.md) | You are preparing to rewrite a shared repository or need to restore a local backup. |
 | [Hooks and GitHub Actions](automation.md) | You want Claude attribution blocked before merge or future commit creation. |
 | [Troubleshooting](troubleshooting.md) | GitHub still shows a contributor, a push is rejected, or ByeClaude refuses to rewrite. |
+| [Synthetic history benchmark](performance.md) | You want to reproduce scan/rewrite scaling on your own hardware. |
 
 The shortest safe workflow is still:
 
