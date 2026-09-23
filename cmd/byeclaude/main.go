@@ -9,6 +9,7 @@ import (
 
 	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
 
 var version = "dev"
@@ -147,7 +148,7 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	before, err := clean.Scan(repo)
+	before, err := clean.Scan(repo, preset.Claude())
 	if err != nil {
 		return err
 	}
@@ -164,7 +165,7 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, _, err := clean.Rewrite(repo)
+	report, _, err := clean.Rewrite(repo, preset.Claude())
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func runClean(args []string) error {
 			return fmt.Errorf("local rewrite succeeded, push failed: %w", err)
 		}
 	}
-	after, err := clean.Scan(repo)
+	after, err := clean.Scan(repo, preset.Claude())
 	if err != nil {
 		return err
 	}
@@ -212,7 +213,7 @@ func runPush(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := clean.Scan(repo)
+	report, err := clean.Scan(repo, preset.Claude())
 	if err != nil {
 		return err
 	}
@@ -361,7 +362,7 @@ func init() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		out, _ := clean.StripClaudeTrailers(string(b))
+		out, _ := clean.StripMatchingTrailers(string(b), preset.Claude())
 		if err := os.WriteFile(path, []byte(out), 0644); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
