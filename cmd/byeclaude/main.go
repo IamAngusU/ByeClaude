@@ -60,7 +60,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Print(`ByeClaude removes Claude Code co-author trailers from Git history.
+	fmt.Print(`ByeClaude audits and removes matching Co-Authored-By attribution from Git history.
 
 Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
