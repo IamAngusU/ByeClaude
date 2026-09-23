@@ -236,7 +236,7 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 	}
 
 	scanStarted := time.Now()
-	repo, err := gitx.Open(path)
+	repo, err := gitx.OpenContext(ctx, path)
 	if err != nil {
 		result.ScanMS = time.Since(scanStarted).Milliseconds()
 		result.TotalMS = time.Since(started).Milliseconds()
@@ -244,7 +244,7 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		return result
 	}
 	if opts.Plan {
-		plan, err := clean.Plan(repo, opts.Matcher)
+		plan, err := clean.PlanContext(ctx, repo, opts.Matcher)
 		result.ScanMS = time.Since(scanStarted).Milliseconds()
 		result.TotalMS = time.Since(started).Milliseconds()
 		if err != nil {
@@ -268,7 +268,7 @@ func scanOne(ctx context.Context, workspace string, index int, spec Spec, opts O
 		return result
 	}
 
-	scan, err := clean.ScanIncludingRemotes(repo, opts.IncludeRemotes, opts.Matcher)
+	scan, err := clean.ScanIncludingRemotesContext(ctx, repo, opts.IncludeRemotes, opts.Matcher)
 	result.ScanMS = time.Since(scanStarted).Milliseconds()
 	result.TotalMS = time.Since(started).Milliseconds()
 	if err != nil {

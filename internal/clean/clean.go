@@ -3,6 +3,7 @@ package clean
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -25,13 +26,21 @@ type Ref struct {
 }
 
 func LocalRefs(repo *gitx.Repo) ([]Ref, error) {
-	return refsFromNamespaces(repo, "refs/heads", "refs/tags")
+	return LocalRefsContext(context.Background(), repo)
+}
+
+func LocalRefsContext(ctx context.Context, repo *gitx.Repo) ([]Ref, error) {
+	return refsFromNamespacesContext(ctx, repo, "refs/heads", "refs/tags")
 }
 
 func refsFromNamespaces(repo *gitx.Repo, namespaces ...string) ([]Ref, error) {
+	return refsFromNamespacesContext(context.Background(), repo, namespaces...)
+}
+
+func refsFromNamespacesContext(ctx context.Context, repo *gitx.Repo, namespaces ...string) ([]Ref, error) {
 	args := []string{"for-each-ref", "--format=%(refname)%00%(objectname)%00%(objecttype)"}
 	args = append(args, namespaces...)
-	out, err := repo.Run(args...)
+	out, err := repo.RunContext(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,17 +57,19 @@ func refsFromNamespaces(repo *gitx.Repo, namespaces ...string) ([]Ref, error) {
 	}
 	return refs, nil
 }
-
 func commitsForRefs(repo *gitx.Repo, refs []Ref) ([]string, error) {
+	return commitsForRefsContext(context.Background(), repo, refs)
+}
+
+func commitsForRefsContext(ctx context.Context, repo *gitx.Repo, refs []Ref) ([]string, error) {
 	if len(refs) == 0 {
 		return nil, nil
 	}
 	args := []string{"rev-list", "--topo-order", "--reverse"}
 	for _, r := range refs {
-		peeled, err := repo.Run("rev-parse", "--verify", r.Name+"^{commit}")
+		peeled, err := repo.RunContext(ctx, "rev-parse", "--verify", r.Name+"^{commit}")
 		if err != nil {
-			// Git also permits tags that ultimately point to blobs or trees. They
-			// have no commit history to rewrite and are intentionally skipped.
+			// Tags that resolve to blobs/trees have no commit history to scan.
 			continue
 		}
 		args = append(args, strings.TrimSpace(string(peeled)))
@@ -66,60 +77,68 @@ func commitsForRefs(repo *gitx.Repo, refs []Ref) ([]string, error) {
 	if len(args) == 3 {
 		return nil, nil
 	}
-	out, err := repo.Run(args...)
+	out, err := repo.RunContext(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
 	seen := map[string]bool{}
 	var commits []string
-	for _, s := range strings.Fields(string(out)) {
-		if !seen[s] {
-			seen[s] = true
-			commits = append(commits, s)
+	for _, sha := range strings.Fields(string(out)) {
+		if !seen[sha] {
+			seen[sha] = true
+			commits = append(commits, sha)
 		}
 	}
 	return commits, nil
 }
-
 func Scan(repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error) {
-	return ScanIncludingRemotes(repo, false, matcher)
+	return ScanContext(context.Background(), repo, matcher)
+}
+
+func ScanContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error) {
+	return ScanIncludingRemotesContext(ctx, repo, false, matcher)
 }
 
 func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribution.Matcher) (model.ScanReport, error) {
+	return ScanIncludingRemotesContext(context.Background(), repo, includeRemotes, matcher)
+}
+
+func ScanIncludingRemotesContext(ctx context.Context, repo *gitx.Repo, includeRemotes bool, matcher attribution.Matcher) (model.ScanReport, error) {
 	started := time.Now()
 	if matcher == nil {
 		return model.ScanReport{}, fmt.Errorf("attribution matcher is required")
 	}
-	refs, err := LocalRefs(repo)
+	refs, err := LocalRefsContext(ctx, repo)
 	if err != nil {
 		return model.ScanReport{}, err
 	}
 	if includeRemotes {
-		remoteRefs, err := refsFromNamespaces(repo, "refs/remotes")
+		remoteRefs, err := refsFromNamespacesContext(ctx, repo, "refs/remotes")
 		if err != nil {
 			return model.ScanReport{}, err
 		}
 		refs = append(refs, remoteRefs...)
 	}
-	if headOut, err := repo.Run("rev-parse", "--verify", "HEAD"); err == nil {
+	if headOut, err := repo.RunContext(ctx, "rev-parse", "--verify", "HEAD"); err == nil {
 		refs = append(refs, Ref{Name: "HEAD", SHA: strings.TrimSpace(string(headOut)), Type: "commit"})
 	}
-	commits, err := commitsForRefs(repo, refs)
+	commits, err := commitsForRefsContext(ctx, repo, refs)
 	if err != nil {
 		return model.ScanReport{}, err
 	}
+	rawCommits, err := repo.CatFileBatch(ctx, commits, "commit")
+	if err != nil {
+		return model.ScanReport{}, err
+	}
+
 	report := model.ScanReport{
 		Repository:  repo.Root,
 		Commits:     len(commits),
 		RuleMatches: map[string]int{},
 	}
 	matchedCommits := map[string]bool{}
-	for _, sha := range commits {
-		raw, err := repo.Run("cat-file", "commit", sha)
-		if err != nil {
-			return report, err
-		}
-		obj, err := parseCommit(raw)
+	for i, sha := range commits {
+		obj, err := parseCommit(rawCommits[i])
 		if err != nil {
 			return report, err
 		}
@@ -147,9 +166,12 @@ func ScanIncludingRemotes(repo *gitx.Repo, includeRemotes bool, matcher attribut
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, nil
 }
-
 func Preflight(repo *gitx.Repo) error {
-	shallow, err := repo.Run("rev-parse", "--is-shallow-repository")
+	return PreflightContext(context.Background(), repo)
+}
+
+func PreflightContext(ctx context.Context, repo *gitx.Repo) error {
+	shallow, err := repo.RunContext(ctx, "rev-parse", "--is-shallow-repository")
 	if err != nil {
 		return err
 	}
@@ -157,7 +179,7 @@ func Preflight(repo *gitx.Repo) error {
 		return fmt.Errorf("shallow repository: fetch full history before rewriting")
 	}
 
-	replaceRefs, err := repo.Run("for-each-ref", "--format=%(refname)", "refs/replace")
+	replaceRefs, err := repo.RunContext(ctx, "for-each-ref", "--format=%(refname)", "refs/replace")
 	if err != nil {
 		return err
 	}
@@ -165,7 +187,7 @@ func Preflight(repo *gitx.Repo) error {
 		return fmt.Errorf("replace refs are active; remove refs/replace entries before rewriting")
 	}
 
-	noteRefs, err := repo.Run("for-each-ref", "--format=%(refname)", "refs/notes")
+	noteRefs, err := repo.RunContext(ctx, "for-each-ref", "--format=%(refname)", "refs/notes")
 	if err != nil {
 		return err
 	}
@@ -173,7 +195,7 @@ func Preflight(repo *gitx.Repo) error {
 		return fmt.Errorf("git notes are present; migrate or remove refs/notes before rewriting commit IDs")
 	}
 
-	worktrees, err := repo.Run("worktree", "list", "--porcelain")
+	worktrees, err := repo.RunContext(ctx, "worktree", "list", "--porcelain")
 	if err != nil {
 		return err
 	}
@@ -188,14 +210,14 @@ func Preflight(repo *gitx.Repo) error {
 	}
 
 	if !repo.Bare {
-		if _, err := repo.Run("symbolic-ref", "-q", "HEAD"); err != nil {
+		if _, err := repo.RunContext(ctx, "symbolic-ref", "-q", "HEAD"); err != nil {
 			return fmt.Errorf("detached HEAD: switch to a branch before rewriting")
 		}
 		if state := inProgressOperation(repo.GitDir); state != "" {
 			return fmt.Errorf("git operation in progress (%s); finish or abort it before rewriting", state)
 		}
 
-		status, err := repo.Run("status", "--porcelain=v1", "--untracked-files=all")
+		status, err := repo.RunContext(ctx, "status", "--porcelain=v1", "--untracked-files=all")
 		if err != nil {
 			return err
 		}
@@ -273,12 +295,12 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 
 	report := model.RewriteReport{Repository: repo.Root, Backup: id, CommitsVisited: len(commits)}
 	mapping := make(map[string]string, len(commits))
-	for _, sha := range commits {
-		raw, err := repo.Run("cat-file", "commit", sha)
-		if err != nil {
-			return report, mapping, err
-		}
-		obj, err := parseCommit(raw)
+	rawCommits, err := repo.CatFileBatch(context.Background(), commits, "commit")
+	if err != nil {
+		return report, mapping, err
+	}
+	for i, sha := range commits {
+		obj, err := parseCommit(rawCommits[i])
 		if err != nil {
 			return report, mapping, err
 		}

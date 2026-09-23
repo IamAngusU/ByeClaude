@@ -1,6 +1,7 @@
 package clean
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -15,16 +16,20 @@ type tagPlanResult struct {
 }
 
 func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error) {
+	return PlanContext(context.Background(), repo, matcher)
+}
+
+func PlanContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error) {
 	started := time.Now()
 	if matcher == nil {
 		return model.PlanReport{}, fmt.Errorf("attribution matcher is required")
 	}
 
-	refs, err := LocalRefs(repo)
+	refs, err := LocalRefsContext(ctx, repo)
 	if err != nil {
 		return model.PlanReport{}, err
 	}
-	commits, err := commitsForRefs(repo, refs)
+	commits, err := commitsForRefsContext(ctx, repo, refs)
 	if err != nil {
 		return model.PlanReport{}, err
 	}
@@ -36,13 +41,13 @@ func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error
 	}
 	impacted := make(map[string]bool, len(commits))
 	matched := make(map[string]bool)
+	rawCommits, err := repo.CatFileBatch(ctx, commits, "commit")
+	if err != nil {
+		return report, err
+	}
 
-	for _, sha := range commits {
-		raw, err := repo.Run("cat-file", "commit", sha)
-		if err != nil {
-			return report, err
-		}
-		obj, err := parseCommit(raw)
+	for i, sha := range commits {
+		obj, err := parseCommit(rawCommits[i])
 		if err != nil {
 			return report, err
 		}
@@ -95,7 +100,7 @@ func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error
 		case "commit":
 			affected = impacted[ref.SHA]
 		case "tag":
-			tagResult, err := planTag(repo, ref.SHA, impacted, tagMemo, tagCounted, tagSignedCounted, &report)
+			tagResult, err := planTagContext(ctx, repo, ref.SHA, impacted, tagMemo, tagCounted, tagSignedCounted, &report)
 			if err != nil {
 				return report, err
 			}
@@ -114,7 +119,7 @@ func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error
 	}
 
 	report.ObjectWritesEstimate = report.CommitsToRewrite + report.AnnotatedTagsToRewrite
-	if err := Preflight(repo); err != nil {
+	if err := PreflightContext(ctx, repo); err != nil {
 		report.RewriteBlocker = err.Error()
 	} else {
 		report.RewriteReady = true
@@ -134,7 +139,8 @@ func commitSignatureFields(obj commitObject) int {
 	return count
 }
 
-func planTag(
+func planTagContext(
+	ctx context.Context,
 	repo *gitx.Repo,
 	sha string,
 	impacted map[string]bool,
@@ -147,7 +153,7 @@ func planTag(
 		return result, nil
 	}
 
-	raw, err := repo.Run("cat-file", "tag", sha)
+	raw, err := repo.RunContext(ctx, "cat-file", "tag", sha)
 	if err != nil {
 		return tagPlanResult{}, err
 	}
@@ -172,7 +178,7 @@ func planTag(
 	case "commit":
 		affected = impacted[target]
 	case "tag":
-		child, err := planTag(repo, target, impacted, memo, counted, signedCounted, report)
+		child, err := planTagContext(ctx, repo, target, impacted, memo, counted, signedCounted, report)
 		if err != nil {
 			return tagPlanResult{}, err
 		}
