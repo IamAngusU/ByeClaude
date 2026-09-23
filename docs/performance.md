@@ -108,3 +108,20 @@ Measured around the **batch process only**, after the fixture repositories and b
 The summed scan time is intentionally larger than wall time because four repositories are scanned concurrently. Prepare time was below 1 ms for these local paths.
 
 This measurement does **not** represent GitHub network performance. Remote batch runs also include temporary mirror preparation, authentication, GitHub/API latency and repository transfer. Remote audits use `--filter=blob:none`, but the current alpha does not persist a mirror cache between runs.
+
+
+## Why this is not an SLA
+
+The development measurements above are not excluded from an SLA because ByeClaude is considered too slow. They are not an SLA because ByeClaude is currently a local alpha tool with no contractual service boundary.
+
+An SLA for a future hosted service would need to define things such as:
+
+- service availability;
+- queue and audit latency percentiles;
+- repository-size limits;
+- worker capacity and concurrency;
+- cache policy;
+- network/provider dependencies;
+- support and incident expectations.
+
+For the CLI, reproducible benchmarks and explicit correctness guarantees are more meaningful than an uptime promise.
