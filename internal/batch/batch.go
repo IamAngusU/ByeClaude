@@ -27,65 +27,65 @@ type Spec struct {
 }
 
 type RepoMetrics struct {
-	Repository     string         `json:"repository"`
-	Visibility     string         `json:"visibility"`
-	Source         string         `json:"source"`
-	Commits        int            `json:"commits"`
-	MatchedCommits int            `json:"matched_commits"`
-	CommitMatchPct float64        `json:"commit_match_pct"`
-	Matches        int            `json:"matches"`
-	RuleMatches    map[string]int `json:"rule_matches"`
-	CommitsToRewrite       int `json:"commits_to_rewrite,omitempty"`
-	DescendantCommits      int `json:"descendant_commits_to_rewrite,omitempty"`
-	ParentLinksToRewrite   int `json:"parent_links_to_rewrite,omitempty"`
-	RefsToMove             int `json:"refs_to_move,omitempty"`
-	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
-	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
-	ObjectWritesEstimate   int    `json:"object_writes_estimate,omitempty"`
-	RewriteReady           bool   `json:"rewrite_ready"`
-	RewriteBlocker         string `json:"rewrite_blocker,omitempty"`
-	PrepareMS      int64          `json:"prepare_ms"`
-	ScanMS         int64          `json:"scan_ms"`
-	TotalMS        int64          `json:"total_ms"`
-	Error          string         `json:"error,omitempty"`
+	Repository             string         `json:"repository"`
+	Visibility             string         `json:"visibility"`
+	Source                 string         `json:"source"`
+	Commits                int            `json:"commits"`
+	MatchedCommits         int            `json:"matched_commits"`
+	CommitMatchPct         float64        `json:"commit_match_pct"`
+	Matches                int            `json:"matches"`
+	RuleMatches            map[string]int `json:"rule_matches"`
+	CommitsToRewrite       int            `json:"commits_to_rewrite,omitempty"`
+	DescendantCommits      int            `json:"descendant_commits_to_rewrite,omitempty"`
+	ParentLinksToRewrite   int            `json:"parent_links_to_rewrite,omitempty"`
+	RefsToMove             int            `json:"refs_to_move,omitempty"`
+	AnnotatedTagsToRewrite int            `json:"annotated_tags_to_rewrite,omitempty"`
+	SignaturesAtRisk       int            `json:"signatures_at_risk,omitempty"`
+	ObjectWritesEstimate   int            `json:"object_writes_estimate,omitempty"`
+	RewriteReady           bool           `json:"rewrite_ready"`
+	RewriteBlocker         string         `json:"rewrite_blocker,omitempty"`
+	PrepareMS              int64          `json:"prepare_ms"`
+	ScanMS                 int64          `json:"scan_ms"`
+	TotalMS                int64          `json:"total_ms"`
+	Error                  string         `json:"error,omitempty"`
 }
 
 type Report struct {
-	Selection           string         `json:"selection"`
-	Operation           string         `json:"operation"`
-	Jobs                int            `json:"jobs"`
-	Repositories        int            `json:"repositories"`
-	Scanned             int            `json:"scanned"`
-	CleanRepositories   int            `json:"clean_repositories"`
-	MatchedRepositories int            `json:"matched_repositories"`
-	RepositoryMatchPct  float64        `json:"repository_match_pct"`
-	FailedRepositories  int            `json:"failed_repositories"`
-	Commits             int            `json:"commits"`
-	MatchedCommits      int            `json:"matched_commits"`
-	CommitMatchPct      float64        `json:"commit_match_pct"`
-	Matches             int            `json:"matches"`
-	RuleMatches         map[string]int `json:"rule_matches"`
-	CommitsToRewrite       int `json:"commits_to_rewrite,omitempty"`
-	DescendantCommits      int `json:"descendant_commits_to_rewrite,omitempty"`
-	ParentLinksToRewrite   int `json:"parent_links_to_rewrite,omitempty"`
-	RefsToMove             int `json:"refs_to_move,omitempty"`
-	AnnotatedTagsToRewrite int `json:"annotated_tags_to_rewrite,omitempty"`
-	SignaturesAtRisk       int `json:"signatures_at_risk,omitempty"`
-	ObjectWritesEstimate   int    `json:"object_writes_estimate,omitempty"`
-	RewriteReadyRepositories int  `json:"rewrite_ready_repositories,omitempty"`
-	BlockedRepositories      int  `json:"blocked_repositories,omitempty"`
-	PrepareMS           int64          `json:"prepare_ms_sum"`
-	ScanMS              int64          `json:"scan_ms_sum"`
-	WallMS              int64          `json:"wall_ms"`
-	Results             []RepoMetrics  `json:"results"`
+	Selection                string         `json:"selection"`
+	Operation                string         `json:"operation"`
+	Jobs                     int            `json:"jobs"`
+	Repositories             int            `json:"repositories"`
+	Scanned                  int            `json:"scanned"`
+	CleanRepositories        int            `json:"clean_repositories"`
+	MatchedRepositories      int            `json:"matched_repositories"`
+	RepositoryMatchPct       float64        `json:"repository_match_pct"`
+	FailedRepositories       int            `json:"failed_repositories"`
+	Commits                  int            `json:"commits"`
+	MatchedCommits           int            `json:"matched_commits"`
+	CommitMatchPct           float64        `json:"commit_match_pct"`
+	Matches                  int            `json:"matches"`
+	RuleMatches              map[string]int `json:"rule_matches"`
+	CommitsToRewrite         int            `json:"commits_to_rewrite,omitempty"`
+	DescendantCommits        int            `json:"descendant_commits_to_rewrite,omitempty"`
+	ParentLinksToRewrite     int            `json:"parent_links_to_rewrite,omitempty"`
+	RefsToMove               int            `json:"refs_to_move,omitempty"`
+	AnnotatedTagsToRewrite   int            `json:"annotated_tags_to_rewrite,omitempty"`
+	SignaturesAtRisk         int            `json:"signatures_at_risk,omitempty"`
+	ObjectWritesEstimate     int            `json:"object_writes_estimate,omitempty"`
+	RewriteReadyRepositories int            `json:"rewrite_ready_repositories,omitempty"`
+	BlockedRepositories      int            `json:"blocked_repositories,omitempty"`
+	PrepareMS                int64          `json:"prepare_ms_sum"`
+	ScanMS                   int64          `json:"scan_ms_sum"`
+	WallMS                   int64          `json:"wall_ms"`
+	Results                  []RepoMetrics  `json:"results"`
 }
 
 type Options struct {
-	Jobs           int
-	Token          string
-	Matcher        attribution.Matcher
-	IncludeRemotes bool
-	Selection      string
+	Jobs               int
+	Token              string
+	Matcher            attribution.Matcher
+	IncludeRemotes     bool
+	Selection          string
 	Plan               bool
 	DisableCredentials bool
 }

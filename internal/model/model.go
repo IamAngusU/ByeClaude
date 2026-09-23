@@ -31,7 +31,6 @@ type RewriteReport struct {
 	DurationMS        int64  `json:"duration_ms"`
 }
 
-
 type PlanReport struct {
 	Repository              string         `json:"repository"`
 	Commits                 int            `json:"commits_scanned"`
