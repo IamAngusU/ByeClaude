@@ -133,14 +133,21 @@ func (s *Server) runAudit(ctx context.Context, repository string, plan bool) (ba
 		Source:     "https://github.com/" + repository + ".git",
 		Visibility: "public",
 	}
-	return batch.Run(ctx, []batch.Spec{spec}, batch.Options{
-		Jobs:              1,
-		Matcher:           s.matcher,
-		IncludeRemotes:    true,
-		Selection:         "public-demo:" + repository,
-		Plan:              plan,
+	report, err := batch.Run(ctx, []batch.Spec{spec}, batch.Options{
+		Jobs:               1,
+		Matcher:            s.matcher,
+		IncludeRemotes:     true,
+		Selection:          "public-demo:" + repository,
+		Plan:               plan,
 		DisableCredentials: true,
 	})
+	if err != nil {
+		return report, err
+	}
+	if report.FailedRepositories != 0 {
+		return report, fmt.Errorf("repository audit incomplete: %d repository scan(s) failed", report.FailedRepositories)
+	}
+	return report, nil
 }
 
 func normalizeGitHubRepository(value string) (string, error) {

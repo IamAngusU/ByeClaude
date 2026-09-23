@@ -3,6 +3,7 @@ package demo
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -114,4 +115,17 @@ func TestAuditCapacityReturns429(t *testing.T) {
 	}
 	close(release)
 	<-firstDone
+}
+
+
+func TestAuditRepositoryFailureReturns502(t *testing.T) {
+	server := newTestServer(t, func(context.Context, string, bool) (batch.Report, error) {
+		return batch.Report{}, fmt.Errorf("clone failed")
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/audits", strings.NewReader(`{"repository":"owner/repo"}`))
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+	if res.Code != http.StatusBadGateway {
+		t.Fatalf("status=%d body=%s", res.Code, res.Body.String())
+	}
 }
