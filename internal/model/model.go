@@ -53,7 +53,6 @@ type PlanReport struct {
 	DurationMS              int64          `json:"duration_ms"`
 }
 
-
 type AuthorIdentity struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
