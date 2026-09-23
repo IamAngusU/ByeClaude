@@ -24,6 +24,8 @@ All notable changes to ByeClaude are documented here.
 - Add evidence/API documentation that keeps declared Git metadata separate from heuristic AI-involvement signals.
 - Add a six-repository disposable fixture suite plus automated batch smoke verification and a synthetic batch benchmark.
 - Report scan and rewrite duration in normal single-repository output and JSON reports.
+- Replace per-commit Git object process spawning with a persistent `git cat-file --batch` reader for scan/plan paths and commit reads during rewrites.
+- Propagate request cancellation through remote clone, repository opening, ref traversal, object streaming and read-only planning so demo timeouts stop worker work rather than only ending HTTP responses.
 - Add a conservative local `commit-msg` hook, backup listing, and local ref restore.
 
 ### Safety and correctness

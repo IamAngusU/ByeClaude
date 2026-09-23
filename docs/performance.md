@@ -39,13 +39,26 @@ A development run on **23 September 2026** used:
 - 5,000 linear commits;
 - one match at commit 1,000, causing 4,001 commits to be rewritten.
 
-Observed wall time was approximately:
+The first correctness-oriented implementation measured approximately:
 
 | Operation | Wall time | Peak RSS |
 | --- | ---: | ---: |
 | Scan 5,000 commits | 5.14 s | ~9 MiB |
 | Rewrite 4,001 commits | 20.19 s | ~9 MiB |
 | Verify 5,000 commits | 5.45 s | ~9 MiB |
+
+### Persistent object reader measurement
+
+The scanner now streams commit objects through one `git cat-file --batch` process instead of spawning one Git process per commit. A follow-up run on the same class of 5,000-commit synthetic linear history, with one match at commit 1,000, measured:
+
+| Operation | Wall time | Peak RSS |
+| --- | ---: | ---: |
+| Scan 5,000 commits | ~0.26 s | ~11.9 MiB |
+| Plan rewrite impact | ~0.29 s | ~11.3 MiB |
+
+That is roughly a **20× reduction in scan wall time** for this synthetic case. Plan includes descendant propagation, parent-link counting, ref/tag impact and rewrite preflight.
+
+The write phase is a different workload: creating thousands of new commit objects remains intentionally correctness-first and is not represented by the scan/plan speedup.
 
 These numbers are a development sanity check, not an SLA or cross-platform comparison. Commit creation time was excluded. The fixture has one linear branch, identical trees, no network, no remote push, no large tag set, and no real-world storage contention.
 

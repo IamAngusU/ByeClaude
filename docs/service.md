@@ -99,7 +99,7 @@ Recommended worker boundaries:
 - resource/time limits;
 - delete temporary mirrors after the job unless a deliberately designed cache is used.
 
-ByeClaude's remote batch scanner already uses temporary mirror clones and does not check out a worktree.
+ByeClaude's remote batch scanner already uses temporary mirror clones and does not check out a worktree. Read-only clone, ref traversal and object streaming are context-cancellable, so the built-in demo's audit timeout also stops the underlying Git work.
 
 ## Future evidence layers
 

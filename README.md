@@ -159,7 +159,9 @@ Those timings are from the small local fixture suite and are not a performance c
 
 Remote batch scans use temporary `--mirror --filter=blob:none` clones and delete the workspace afterwards. The current alpha deliberately has no persistent mirror cache.
 
-A dated local default-batch sanity run scanned **8 repositories / 4,000 synthetic commits in 1.44 s wall time** with about **12.6 MiB peak RSS** using 4 workers. It excludes network clone time and is not an SLA. [Methodology and caveats](docs/performance.md#default-batch-development-measurement).
+A dated local default-batch sanity run scanned **8 repositories / 4,000 synthetic commits in 1.44 s wall time** with about **12.6 MiB peak RSS** using 4 workers. It excludes network clone time and is not an SLA.
+
+The newer persistent Git object reader also scanned a **5,000-commit synthetic repository in ~0.26 s** and produced the full rewrite plan in **~0.29 s** on the same development host class. These are local Git-metadata measurements, not network latency promises. [Methodology and caveats](docs/performance.md#default-batch-development-measurement).
 
 
 ### Why these benchmarks are not an SLA
