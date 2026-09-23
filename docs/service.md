@@ -25,12 +25,19 @@ with a request such as:
 The worker can translate that into:
 
 ```sh
-byeclaude batch scan   --repo owner/repo-a   --repo owner/repo-b   --rules ./declared-ai-v1.json   --json
+byeclaude batch scan \
+  --repo owner/repo-a \
+  --repo owner/repo-b \
+  --rules ./declared-ai-v1.json \
+  --json
 ```
 
 Account-wide public audits can use `--owner OWNER --public`; authenticated private audits should use short-lived server-side credentials rather than exposing a GitHub token to browser JavaScript.
 
 ## Useful product metrics
+
+GitHub username is not the same thing as a Git author identity. One person can commit with several names/emails, and a GitHub account association may be unavailable offline. If the website wants a statistic for "user X", treat account-to-author mapping as an explicit enrichment step and show how identities were grouped.
+
 
 From declared Git attribution, a service can calculate and display:
 
@@ -46,6 +53,15 @@ From declared Git attribution, a service can calculate and display:
 Do not label these as "percentage of code written by AI." They measure commits carrying evidence that matched the configured attribution rules.
 
 ## Isolation
+
+### Do not expose arbitrary clone URLs
+
+The CLI accepts clone URLs because that is useful on a trusted developer machine. A public web service should **not** pass an arbitrary user-supplied URL directly to Git.
+
+For a GitHub-focused service, accept a canonical `owner/name` or a validated `https://github.com/owner/name` URL, normalize it server-side, and allow-list the destination host. Reject local paths, `file://`, arbitrary SSH hosts, loopback/link-local/private-network targets, redirects to unapproved hosts, and credentials embedded in URLs.
+
+This keeps the CLI flexible while preventing the hosted wrapper from becoming an SSRF or internal-network reachability primitive.
+
 
 A public website that scans arbitrary repositories should treat repository contents and Git metadata as untrusted input.
 
