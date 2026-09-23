@@ -117,7 +117,6 @@ func TestAuditCapacityReturns429(t *testing.T) {
 	<-firstDone
 }
 
-
 func TestAuditRepositoryFailureReturns502(t *testing.T) {
 	server := newTestServer(t, func(context.Context, string, bool) (batch.Report, error) {
 		return batch.Report{}, fmt.Errorf("clone failed")
@@ -129,7 +128,6 @@ func TestAuditRepositoryFailureReturns502(t *testing.T) {
 		t.Fatalf("status=%d body=%s", res.Code, res.Body.String())
 	}
 }
-
 
 func TestAuditTimeoutReturns504(t *testing.T) {
 	server, err := New(preset.Claude(), 1, 20*time.Millisecond)
