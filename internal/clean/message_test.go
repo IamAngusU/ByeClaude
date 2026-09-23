@@ -77,7 +77,6 @@ func TestStripTagSignatureFormats(t *testing.T) {
 	}
 }
 
-
 func TestCustomMatcherRemovesDifferentBot(t *testing.T) {
 	rule := attribution.Rule{
 		RuleID:       "example-bot",
@@ -98,7 +97,6 @@ func TestCustomMatcherDoesNotAffectClaudePreset(t *testing.T) {
 		t.Fatalf("Claude preset matched unrelated bot: %#v", got)
 	}
 }
-
 
 func TestMatchingEvidenceIncludesRuleAndIdentity(t *testing.T) {
 	set := attribution.RuleSet{Rules: []attribution.Rule{
