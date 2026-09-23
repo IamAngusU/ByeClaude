@@ -19,10 +19,10 @@ type Matcher interface {
 // Empty name constraints mean "any name"; empty email constraints mean "any
 // email". A completely empty rule matches nothing.
 type Rule struct {
-	RuleID        string
-	NameContains  []string
-	EmailDomains  []string
-	ExactEmails   []string
+	RuleID       string   `json:"id"`
+	NameContains []string `json:"name_contains,omitempty"`
+	EmailDomains []string `json:"email_domains,omitempty"`
+	ExactEmails  []string `json:"exact_emails,omitempty"`
 }
 
 func (r Rule) ID() string {
