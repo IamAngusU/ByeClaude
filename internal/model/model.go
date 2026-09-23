@@ -11,13 +11,13 @@ type Match struct {
 }
 
 type ScanReport struct {
-	Repository        string         `json:"repository"`
-	Commits           int            `json:"commits_scanned"`
-	MatchedCommits    int            `json:"matched_commits"`
-	CommitMatchPct    float64        `json:"commit_match_pct"`
-	Matches           []Match        `json:"matches"`
-	RuleMatches       map[string]int `json:"rule_matches"`
-	DurationMS        int64          `json:"duration_ms"`
+	Repository     string         `json:"repository"`
+	Commits        int            `json:"commits_scanned"`
+	MatchedCommits int            `json:"matched_commits"`
+	CommitMatchPct float64        `json:"commit_match_pct"`
+	Matches        []Match        `json:"matches"`
+	RuleMatches    map[string]int `json:"rule_matches"`
+	DurationMS     int64          `json:"duration_ms"`
 }
 
 type RewriteReport struct {
