@@ -8,7 +8,12 @@ case "$os" in linux|darwin) ;; *) echo "Unsupported OS: $os" >&2; exit 1 ;; esac
 case "$arch" in x86_64|amd64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
 
 asset="byeclaude_${os}_${arch}"
-base="https://github.com/${repo}/releases/latest/download"
+version=${BYECLAUDE_VERSION:-latest}
+case "$version" in
+  latest) base="https://github.com/${repo}/releases/latest/download" ;;
+  v*) base="https://github.com/${repo}/releases/download/${version}" ;;
+  *) echo "BYECLAUDE_VERSION must be 'latest' or a v-prefixed tag" >&2; exit 1 ;;
+esac
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
