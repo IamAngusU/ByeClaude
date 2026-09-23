@@ -72,3 +72,23 @@ func TestPrivateDiscoveryRequiresToken(t *testing.T) {
 		t.Fatalf("expected token error, got %v", err)
 	}
 }
+
+func TestUserIDResolvesPublicLogin(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/users/malay-jeavio" {
+			t.Fatalf("path=%q", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"login":"malay-jeavio","id":113889733}`))
+	}))
+	defer server.Close()
+
+	client := GitHubClient{BaseURL: server.URL, HTTPClient: server.Client()}
+	id, err := client.UserID(context.Background(), "malay-jeavio")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != "113889733" {
+		t.Fatalf("id=%q", id)
+	}
+}

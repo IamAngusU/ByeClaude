@@ -23,6 +23,17 @@ func runIdentity(args []string) error {
 		return err
 	}
 
+	if len(githubUsers) > 0 {
+		client := batchpkg.GitHubClient{Token: batchpkg.TokenFromEnv()}
+		for _, login := range githubUsers {
+			id, err := client.UserID(context.Background(), login)
+			if err != nil {
+				return fmt.Errorf("resolve GitHub user %q: %w", login, err)
+			}
+			githubIDs = append(githubIDs, id)
+		}
+	}
+
 	specs, err := batchpkg.ResolveExplicit([]string{*repoArg})
 	if err != nil {
 		return err

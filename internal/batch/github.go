@@ -66,6 +66,21 @@ func (c GitHubClient) CurrentLogin(ctx context.Context) (string, error) {
 	return user.Login, nil
 }
 
+func (c GitHubClient) UserID(ctx context.Context, login string) (string, error) {
+	login = strings.TrimSpace(login)
+	if login == "" {
+		return "", fmt.Errorf("GitHub login is required")
+	}
+	var user githubUser
+	if err := c.getJSON(ctx, c.baseURL()+"/users/"+url.PathEscape(login), &user); err != nil {
+		return "", err
+	}
+	if user.ID <= 0 {
+		return "", fmt.Errorf("GitHub API returned an invalid account ID for %q", login)
+	}
+	return fmt.Sprintf("%d", user.ID), nil
+}
+
 func (c GitHubClient) ListOwned(ctx context.Context, owner, visibility string) ([]Spec, error) {
 	owner = strings.TrimSpace(owner)
 	visibility = strings.ToLower(strings.TrimSpace(visibility))

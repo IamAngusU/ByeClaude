@@ -68,7 +68,7 @@ Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--rules FILE] [--json]
   byeclaude plan [--repo PATH] [--rules FILE] [--json]
-  byeclaude identity [--repo PATH|OWNER/NAME] [--github-id ID ...] [--json]
+  byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
