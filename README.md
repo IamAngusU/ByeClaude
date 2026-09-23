@@ -179,6 +179,16 @@ That uses the temporary mirror to calculate rewrite impact, including descendant
 
 [Batch selection, authentication and metrics](docs/batch.md) · [Disposable fixture repositories](docs/fixtures.md).
 
+## Diagnose stale GitHub contributor identity
+
+History can be clean on normal branches/tags while GitHub still retains an older commit through internal pull-request refs. ByeClaude can inspect modern GitHub noreply IDs and show exactly which refs keep a suspicious identity reachable:
+
+```sh
+byeclaude identity --repo owner/repository --github-user suspicious-login
+```
+
+The command is read-only. It distinguishes normal managed refs from `refs/pull/*`-only evidence and can also accept repeated numeric `--github-id` values. [GitHub identity enrichment and residual refs](docs/identity.md).
+
 ## Watch several AI/tool identities
 
 The default remains deliberately narrow: Claude + the `anthropic.com` email domain.
@@ -397,6 +407,7 @@ byeclaude push --backup ID
 | --- | --- |
 | `scan` | Read-only audit of reachable local history. |
 | `plan` | Read-only rewrite-impact graph: descendants, parent links, refs, tags, signatures and object-write estimate. |
+| `identity` | Inspect Git author identities, numeric GitHub noreply IDs and residual pull-ref-only reachability. |
 | `check --include-remotes` | CI-friendly audit including fetched remote-tracking refs. |
 | `batch scan` | Read-only audit of explicit repos or public/private/all GitHub owner scopes, with metrics by default. |
 | `batch plan` | Run the same read-only rewrite-impact calculation across remote/local repository targets. |
@@ -438,6 +449,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 - [Service/API integration](docs/service.md)
 - [Public VPS demo](docs/demo-server.md)
 - [Rewrite planning](docs/planning.md)
+- [GitHub identity enrichment](docs/identity.md)
 - [Batch repository audit](docs/batch.md)
 - [Fixture repository suite](docs/fixtures.md)
 - [Safety, backups and recovery](docs/safety.md)

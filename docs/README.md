@@ -11,7 +11,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Service / API integration](service.md) | You want to use ByeClaude JSON as a backend engine for a website or service. |
 | [Public VPS demo](demo-server.md) | You want a one-binary public-repository demo with an embedded UI, bounded work and no mutation endpoints. |
 | [Rewrite planning](planning.md) | You want to know how much of the DAG, refs and signatures a cleanup would affect before changing anything. |
-| [GitHub identity enrichment](identity.md) | You want account-level metrics without conflating Git author strings with GitHub user IDs. |
+| [GitHub identity enrichment](identity.md) | You want account-level metrics or need to trace a stale GitHub user through numeric noreply IDs and pull refs. |
 | [Batch repository audit](batch.md) | You want to audit named repositories, all public repos, private repos, or both with built-in metrics. |
 | [Safety and recovery](safety.md) | You are preparing to rewrite a shared repository or need to restore a local backup. |
 | [Hooks and GitHub Actions](automation.md) | You want Claude attribution blocked before merge or future commit creation. |

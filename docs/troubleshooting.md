@@ -12,6 +12,20 @@ If that passes, inspect whether the rewritten default branch and relevant tags w
 
 ByeClaude does not remove those external references.
 
+## GitHub shows an unexpected user even though branches and tags are clean
+
+First inspect Git author identities and GitHub-managed pull refs:
+
+```sh
+byeclaude identity --repo owner/repository --github-user unexpected-login
+```
+
+A common residual case is an old commit that uses GitHub's numeric noreply form, for example `123456789+name@users.noreply.github.com`, and is now reachable only through `refs/pull/*`.
+
+ByeClaude reports that as `pull-only` rather than trying to force-rewrite a GitHub-managed ref. If normal heads/tags are already clean, rewriting them again will not remove that residual object.
+
+Contributor/statistics views can also lag after a history rewrite. If the normal history is verified clean and GitHub's contributor data remains wrong after its refresh window, use GitHub Support rather than repeatedly rewriting the repository.
+
 ## `push --backup ID` says the remote moved
 
 That is the intended force-with-lease protection.
