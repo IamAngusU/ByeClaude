@@ -338,7 +338,6 @@ func JSON(v any) string {
 	return string(b)
 }
 
-
 // PrepareRepository resolves a Spec into a local repository path. Remote specs
 // are cloned into an isolated temporary mirror and returned with a cleanup
 // function. Callers should always defer cleanup.
