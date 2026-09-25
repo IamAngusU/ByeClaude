@@ -254,10 +254,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: IamAngusU/ByeClaude@main
+      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.1
 ```
 
-Until the first tagged release exists, the example follows `main`. After a release, pin to a release tag or exact commit SHA. The action checks reachable history and fails CI when the trailer appears. It **does not** rewrite or force-push from CI.
+The example pins the first alpha release; an exact commit SHA provides the strongest supply-chain stability. The action checks reachable history and fails CI when the trailer appears. It **does not** rewrite or force-push from CI.
 
 For old quiet branches as well as active PRs, add a scheduled run. [CI and hook guide](docs/automation.md).
 
@@ -325,13 +325,13 @@ The server deliberately accepts no arbitrary clone URL, no browser-supplied GitH
 
 Most users do **not** need to fork ByeClaude.
 
-During the alpha before the first tagged release, the shortest path is:
+For the first alpha release, use the checksum-verifying installer below or install the tagged Go command directly:
 
 ```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@main
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
 ```
 
-After the first alpha release, the preferred path will be the published release binary / checksum-verifying installer. A fork only makes sense when you want to change the engine itself or maintain your own product variant. Multi-provider attribution does not require a fork; use `--rules FILE`.
+The published release binary / checksum-verifying installer is the preferred path. A fork only makes sense when you want to change the engine itself or maintain your own product variant. Multi-provider attribution does not require a fork; use `--rules FILE`.
 
 For continuous repository enforcement, use the GitHub Action in addition to the local CLI. The local hook protects one developer's commits; a required CI check can protect the shared branch from commits that bypass local hooks.
 
@@ -339,10 +339,10 @@ For continuous repository enforcement, use the GitHub Action in addition to the 
 
 ### Go / source
 
-Requires Git and Go 1.23+:
+Requires Git and Go 1.27+:
 
 ```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@main
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
 ```
 
 Or build the checked-out source:
@@ -356,7 +356,7 @@ go build -o byeclaude ./cmd/byeclaude
 
 ### Release installers
 
-Tagged releases are configured to publish checksum-verified binaries for Linux, macOS and Windows on amd64 and arm64. Alpha tags are published as GitHub prereleases rather than being presented as stable releases.
+The `v0.1.0-alpha.1` prerelease publishes checksum-verified binaries for Linux, macOS and Windows on amd64 and arm64. Future alpha tags remain prereleases rather than being presented as stable releases.
 
 <details>
 <summary><strong>Installer commands</strong></summary>

@@ -4,8 +4,11 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+## v0.1.0-alpha.1 - 2026-09-25
+
 ### Product
 
+- Update the demo runtime to Alpine 3.24.
 - Repair and harden the Windows installer, add atomic replacement and executable verification, and test successful installs plus checksum/version failure paths on Windows and Unix.
 - Move builds, CI and the demo container to supported Go 1.27.
 - Add deterministic six-platform release verification, CycloneDX SBOM generation, checksums and commit-bound unsigned build provenance.
