@@ -2,63 +2,135 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  quality:
-    name: Quality / Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Toolchain
-        run: |
-          git --version
-          go version
-      - name: Formatting
-        run: test -z "$(gofmt -l ./cmd ./internal)"
-      - name: Module integrity
-        run: go mod verify
-      - name: Vet
-        run: go vet ./...
-      - name: Race tests
-        run: go test -race ./...
-      - name: Fixture suite
-        run: scripts/verify-fixture-suite.sh
-      - name: Attribution guard
-        run: go run ./cmd/byeclaude check --include-remotes
-      - name: Build
-        run: go build -trimpath ./cmd/byeclaude
-      - name: Demo image
-        run: docker build -f deploy/demo/Dockerfile .
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   platform:
-    name: Tests / ${{ matrix.os }}
+    name: Go ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - name: Toolchain
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go build -trimpath ./cmd/byeclaude
+
+  quality:
+    name: Race, coverage and fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Formatting
+        run: test -z "$(gofmt -l ./cmd ./internal ./scripts/release-sbom)"
+      - name: Module integrity
+        run: go mod verify
+      - name: Workflow syntax and semantics
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - name: Race detector
+        run: go test -race ./...
+      - name: Coverage floor
+        shell: bash
         run: |
-          git --version
-          go version
-      - name: Tests
-        run: go test ./...
-      - name: Build
-        run: go build -trimpath ./cmd/byeclaude
+          go test -coverprofile=coverage.out ./...
+          coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
+          echo "Total statement coverage: ${coverage}%"
+          awk -v coverage="$coverage" 'BEGIN { if (coverage + 0 < 70) exit 1 }'
+      - name: Disposable fixture suite
+        run: bash scripts/verify-fixture-suite.sh
+      - name: Self attribution guard
+        run: go run ./cmd/byeclaude check --include-remotes
+
+  security:
+    name: Dependency and static security gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -exclude-generated ./...
+
+  installer-shell:
+    name: Shell installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: bash scripts/test-install-shell.sh
+
+  installer-powershell:
+    name: PowerShell installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: pwsh -NoProfile -File scripts/test-install-powershell.ps1
+
+  release-reproducibility:
+    name: Reproducible release set and SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: pwsh -NoProfile -File scripts/test-release-reproducibility.ps1
+
+  demo:
+    name: Demo container health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build and probe non-root demo image
+        shell: bash
+        run: |
+          docker build -t byeclaude-ci -f deploy/demo/Dockerfile .
+          cid=$(docker run -d -p 127.0.0.1:18080:8080 byeclaude-ci)
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs "$cid"
+          exit 1
+
+  action-self-test:
+    name: Composite action self-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./

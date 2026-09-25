@@ -86,9 +86,9 @@ func MatchingEvidence(message string, matcher attribution.Matcher) []TrailerEvid
 			ids = explaining.MatchIDs(name, email)
 		}
 		matches = append(matches, TrailerEvidence{
-			Line: strings.TrimSpace(line),
-			Name: name,
-			Email: email,
+			Line:    strings.TrimSpace(line),
+			Name:    name,
+			Email:   email,
 			RuleIDs: ids,
 		})
 	}

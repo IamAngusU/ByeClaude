@@ -410,10 +410,19 @@ func runHook(args []string) error {
 		} else if ok && strings.TrimSpace(string(configured)) != "" {
 			return fmt.Errorf("core.hooksPath is configured as %q; refusing to install into a hook directory that may be shared or externally managed", strings.TrimSpace(string(configured)))
 		}
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		// The directory is Git's resolved per-repository hooks directory. Hooks
+		// must be executable by the repository owner and readable by Git.
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil { // #nosec G301,G703 -- resolved per-repository Git hooks directory and standard mode
 			return err
 		}
-		if b, err := os.ReadFile(path); err == nil {
+		if info, err := os.Lstat(path); err == nil { // #nosec G703 -- resolved Git directory plus hooks/commit-msg
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("refusing to replace non-regular commit-msg hook at %s", path)
+			}
+			b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
+			if err != nil {
+				return err
+			}
 			if strings.Contains(string(b), "Installed by ByeClaude") {
 				fmt.Println("Already installed", path)
 				return nil
@@ -435,13 +444,23 @@ func runHook(args []string) error {
 			hookArgs = " --rules " + shellQuote(matcherPath)
 		}
 		script := fmt.Sprintf("#!/bin/sh\n# Installed by ByeClaude.\nexec %s hook-filter%s \"$1\"\n", shellQuote(exe), hookArgs)
-		if err := os.WriteFile(path, []byte(script), 0755); err != nil {
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0755) // #nosec G302,G304,G703 -- executable Git hook created exclusively at the resolved hook path
+		if err != nil {
+			return err
+		}
+		if _, err := f.WriteString(script); err != nil {
+			_ = f.Close()
+			_ = os.Remove(path) // #nosec G703 -- same exclusive hook path created immediately above
+			return err
+		}
+		if err := f.Close(); err != nil {
+			_ = os.Remove(path) // #nosec G703 -- same exclusive hook path created immediately above
 			return err
 		}
 		fmt.Println("Installed", path)
 		return nil
 	case "remove":
-		b, err := os.ReadFile(path)
+		info, err := os.Lstat(path) // #nosec G703 -- resolved Git directory plus hooks/commit-msg
 		if os.IsNotExist(err) {
 			fmt.Println("No commit-msg hook installed.")
 			return nil
@@ -449,10 +468,17 @@ func runHook(args []string) error {
 		if err != nil {
 			return err
 		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("refusing to remove non-regular commit-msg hook at %s", path)
+		}
+		b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
+		if err != nil {
+			return err
+		}
 		if !strings.Contains(string(b), "Installed by ByeClaude") {
 			return fmt.Errorf("refusing to remove a commit-msg hook not owned by ByeClaude")
 		}
-		if err := os.Remove(path); err != nil {
+		if err := os.Remove(path); err != nil { // #nosec G703 -- ownership and regular-file checks completed above
 			return err
 		}
 		fmt.Println("Removed", path)
@@ -466,6 +492,58 @@ func runHook(args []string) error {
 }
 
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
+
+func filterCommitMessage(path string, matcher attribution.Matcher) error {
+	repo, err := gitx.Open(".")
+	if err != nil {
+		return err
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	rel, err := filepath.Rel(repo.GitDir, abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("commit message path must be inside the repository Git directory")
+	}
+	info, err := os.Lstat(abs)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("refusing non-regular commit message path %s", abs)
+	}
+	b, err := os.ReadFile(abs) // #nosec G304,G703 -- absolute path is constrained to the resolved Git directory and is not a symlink
+	if err != nil {
+		return err
+	}
+	out, matches := clean.StripMatchingTrailers(string(b), matcher)
+	if len(matches) == 0 {
+		return nil
+	}
+	f, err := os.OpenFile(abs, os.O_WRONLY, 0) // #nosec G304,G703 -- same validated Git-owned regular file
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	openedInfo, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(info, openedInfo) {
+		return fmt.Errorf("commit message file changed during validation")
+	}
+	if err := f.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := f.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := f.WriteString(out); err != nil {
+		return err
+	}
+	return f.Sync()
+}
 
 func init() {
 	// Internal hook entrypoint is intentionally hidden from normal help.
@@ -485,14 +563,7 @@ func init() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		path := fs.Arg(0)
-		b, err := os.ReadFile(path)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		out, _ := clean.StripMatchingTrailers(string(b), matcher)
-		if err := os.WriteFile(path, []byte(out), 0644); err != nil {
+		if err := filterCommitMessage(fs.Arg(0), matcher); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

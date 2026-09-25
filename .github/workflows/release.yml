@@ -9,73 +9,88 @@ permissions:
 
 jobs:
   verify:
+    name: Full release gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - name: Formatting
-        run: test -z "$(gofmt -l ./cmd ./internal)"
-      - name: Vet
-        run: go vet ./...
-      - name: Test
-        run: go test -race ./...
-      - name: Attribution guard
-        run: go run ./cmd/byeclaude check --include-remotes
+      - name: Verify tag and formatting
+        shell: bash
+        run: |
+          git describe --exact-match --match "$GITHUB_REF_NAME" HEAD
+          test -z "$(gofmt -l ./cmd ./internal ./scripts/release-sbom)"
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -exclude-generated ./...
+      - run: bash scripts/verify-fixture-suite.sh
+      - run: bash scripts/test-install-shell.sh
+      - run: pwsh -NoProfile -File scripts/test-release-reproducibility.ps1 -Version "$GITHUB_REF_NAME"
+      - run: go run ./cmd/byeclaude check --include-remotes
 
   build:
     needs: verify
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target:
-          - { goos: linux, goarch: amd64 }
-          - { goos: linux, goarch: arm64 }
-          - { goos: darwin, goarch: amd64 }
-          - { goos: darwin, goarch: arm64 }
-          - { goos: windows, goarch: amd64 }
-          - { goos: windows, goarch: arm64 }
+          - { goos: linux, goarch: amd64, extension: '' }
+          - { goos: linux, goarch: arm64, extension: '' }
+          - { goos: darwin, goarch: amd64, extension: '' }
+          - { goos: darwin, goarch: arm64, extension: '' }
+          - { goos: windows, goarch: amd64, extension: '.exe' }
+          - { goos: windows, goarch: arm64, extension: '.exe' }
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build
+      - name: Build deterministic binary
         env:
           GOOS: ${{ matrix.target.goos }}
           GOARCH: ${{ matrix.target.goarch }}
           CGO_ENABLED: 0
         run: |
           mkdir -p dist
-          ext=""
-          if [ "$GOOS" = windows ]; then ext=".exe"; fi
-          go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/byeclaude_${GOOS}_${GOARCH}${ext}" ./cmd/byeclaude
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+          go build -trimpath -buildvcs=false -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "dist/byeclaude_${GOOS}_${GOARCH}${{ matrix.target.extension }}" ./cmd/byeclaude
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: byeclaude-${{ matrix.target.goos }}-${{ matrix.target.goarch }}
           path: dist/*
+          if-no-files-found: error
 
   publish:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
           merge-multiple: true
-      - name: Checksums
-        run: cd dist && sha256sum * > SHA256SUMS.txt
+      - name: Generate SBOM, provenance and checksums
+        shell: pwsh
+        run: |
+          $epoch = [long]((git show -s --format=%ct HEAD).Trim())
+          ./scripts/build-release-metadata.ps1 -Version $env:GITHUB_REF_NAME -ArtifactsDirectory ./dist -Commit $env:GITHUB_SHA -SourceDateEpoch $epoch
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           args=(--repo "$GITHUB_REPOSITORY" --generate-notes --verify-tag)
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            args+=(--prerelease)
-          fi
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then args+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" dist/* "${args[@]}"

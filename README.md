@@ -384,8 +384,6 @@ The installers verify the selected binary against the release's published SHA-25
 
 </details>
 
-</details>
-
 ## Command desk
 
 <p align="center">
@@ -461,6 +459,7 @@ This is pre-1.0 software. The repository includes integration coverage for linea
 - [GitHub identity enrichment](docs/identity.md)
 - [Batch repository audit](docs/batch.md)
 - [Fixture repository suite](docs/fixtures.md)
+- [Release integrity and reproducibility](docs/supply-chain.md)
 - [Safety, backups and recovery](docs/safety.md)
 - [Hooks and GitHub Actions](docs/automation.md)
 - [Troubleshooting](docs/troubleshooting.md)

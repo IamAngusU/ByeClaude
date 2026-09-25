@@ -1,4 +1,6 @@
 /byeclaude
 /dist/
+/coverage.out
+/release-artifacts/
 *.exe
 .DS_Store

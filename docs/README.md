@@ -18,6 +18,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Troubleshooting](troubleshooting.md) | GitHub still shows a contributor, a push is rejected, or ByeClaude refuses to rewrite. |
 | [Synthetic history benchmark](performance.md) | You want to reproduce scan/rewrite scaling on your own hardware. |
 | [Fixture repository suite](fixtures.md) | You want disposable real Git repositories that exercise the product safely. |
+| [Release integrity](supply-chain.md) | You want to verify checksums, SBOM contents, build provenance or reproducibility claims. |
 
 The shortest safe workflow is still:
 

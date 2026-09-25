@@ -63,7 +63,7 @@ func (r *Repo) RunOptional(args ...string) ([]byte, bool, error) {
 }
 
 func (r *Repo) RunOptionalContext(ctx context.Context, args ...string) ([]byte, bool, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- arguments are passed directly to Git without a shell
 	cmd.Dir = r.Root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -85,7 +85,7 @@ func (r *Repo) RunInput(input []byte, args ...string) ([]byte, error) {
 }
 
 func (r *Repo) RunInputContext(ctx context.Context, input []byte, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- arguments are passed directly to Git without a shell
 	cmd.Dir = r.Root
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout, stderr bytes.Buffer
@@ -107,7 +107,7 @@ func (r *Repo) CatFileBatch(ctx context.Context, objectNames []string, expectedT
 	if len(objectNames) == 0 {
 		return nil, nil
 	}
-	cmd := exec.CommandContext(ctx, "git", "cat-file", "--batch")
+	cmd := exec.CommandContext(ctx, "git", "cat-file", "--batch") // #nosec G204 -- constant executable and arguments
 	cmd.Dir = r.Root
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -206,7 +206,7 @@ func run(dir string, args ...string) ([]byte, error) {
 }
 
 func runContext(ctx context.Context, dir string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- arguments are passed directly to Git without a shell
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

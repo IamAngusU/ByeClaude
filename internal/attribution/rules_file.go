@@ -12,7 +12,7 @@ type ruleFile struct {
 }
 
 func LoadRuleSet(path string) (RuleSet, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- the rules file is an explicit operator-selected input
 	if err != nil {
 		return RuleSet{}, fmt.Errorf("read rules file: %w", err)
 	}

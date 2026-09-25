@@ -289,7 +289,7 @@ func cloneMirror(ctx context.Context, source, dest, token string, disableCredent
 	if disableCredentials {
 		args = append([]string{"-c", "credential.helper="}, args...)
 	}
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- arguments are passed directly to Git without a shell
 	cmd.Env = cloneGitEnvironment(os.Environ(), source, token, disableCredentials)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -322,16 +322,16 @@ func cloneGitEnvironment(env []string, source, token string, disableCredentials 
 
 func isolatedPublicGitEnvironment(env []string) []string {
 	blockedExact := map[string]bool{
-		"GIT_CONFIG_COUNT":                  true,
-		"GIT_CONFIG_GLOBAL":                 true,
-		"GIT_CONFIG_SYSTEM":                 true,
-		"GIT_CONFIG_NOSYSTEM":               true,
-		"GIT_DIR":                           true,
-		"GIT_WORK_TREE":                     true,
-		"GIT_INDEX_FILE":                    true,
-		"GIT_OBJECT_DIRECTORY":              true,
+		"GIT_CONFIG_COUNT":                 true,
+		"GIT_CONFIG_GLOBAL":                true,
+		"GIT_CONFIG_SYSTEM":                true,
+		"GIT_CONFIG_NOSYSTEM":              true,
+		"GIT_DIR":                          true,
+		"GIT_WORK_TREE":                    true,
+		"GIT_INDEX_FILE":                   true,
+		"GIT_OBJECT_DIRECTORY":             true,
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
-		"GIT_COMMON_DIR":                    true,
+		"GIT_COMMON_DIR":                   true,
 	}
 	out := make([]string, 0, len(env)+3)
 	for _, entry := range env {

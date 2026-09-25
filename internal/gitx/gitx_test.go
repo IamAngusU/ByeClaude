@@ -73,3 +73,80 @@ func TestCatFileBatchHonorsCanceledContext(t *testing.T) {
 		t.Fatal("expected canceled context error")
 	}
 }
+
+func TestOpenAndCommandWrappers(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	runGit(t, dir, "config", "user.name", "Wrapper Test")
+	runGit(t, dir, "config", "user.email", "wrapper@example.invalid")
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", "a.txt")
+	runGit(t, dir, "commit", "-q", "-m", "initial")
+
+	repo, err := OpenContext(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repo.Bare || repo.Root == "" || repo.GitDir == "" {
+		t.Fatalf("unexpected repo: %+v", repo)
+	}
+	out, err := repo.Run("rev-parse", "HEAD")
+	if err != nil || strings.TrimSpace(string(out)) == "" {
+		t.Fatalf("Run: output=%q err=%v", out, err)
+	}
+	out, err = repo.RunContext(context.Background(), "show", "-s", "--format=%s", "HEAD")
+	if err != nil || strings.TrimSpace(string(out)) != "initial" {
+		t.Fatalf("RunContext: output=%q err=%v", out, err)
+	}
+	if _, ok, err := repo.RunOptional("rev-parse", "--verify", "--quiet", "refs/heads/missing"); err != nil || ok {
+		t.Fatalf("RunOptional missing: ok=%v err=%v", ok, err)
+	}
+	if _, ok, err := repo.RunOptionalContext(context.Background(), "rev-parse", "--verify", "--quiet", "refs/heads/missing"); err != nil || ok {
+		t.Fatalf("RunOptionalContext missing: ok=%v err=%v", ok, err)
+	}
+	if out, err = repo.RunInput([]byte("payload\n"), "hash-object", "--stdin"); err != nil || strings.TrimSpace(string(out)) == "" {
+		t.Fatalf("RunInput: output=%q err=%v", out, err)
+	}
+	if out, err = repo.RunInputContext(context.Background(), []byte("payload-2\n"), "hash-object", "--stdin"); err != nil || strings.TrimSpace(string(out)) == "" {
+		t.Fatalf("RunInputContext: output=%q err=%v", out, err)
+	}
+	if out, err = run(dir, "rev-parse", "--is-inside-work-tree"); err != nil || strings.TrimSpace(string(out)) != "true" {
+		t.Fatalf("run: output=%q err=%v", out, err)
+	}
+	if _, err := repo.Run("not-a-real-subcommand"); err == nil {
+		t.Fatal("expected Git command error")
+	}
+}
+
+func TestOpenBareAndInvalidRepositories(t *testing.T) {
+	bareDir := filepath.Join(t.TempDir(), "repo.git")
+	runGit(t, filepath.Dir(bareDir), "init", "--bare", "-q", bareDir)
+	repo, err := Open(bareDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repo.Bare || repo.Root != bareDir {
+		t.Fatalf("unexpected bare repo: %+v", repo)
+	}
+	if _, err := Open(t.TempDir()); err == nil || !strings.Contains(err.Error(), "not a git repository") {
+		t.Fatalf("expected non-repository error, got %v", err)
+	}
+}
+
+func TestCatFileBatchInputValidation(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	repo, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects, err := repo.CatFileBatch(context.Background(), nil, "")
+	if err != nil || objects != nil {
+		t.Fatalf("empty batch: objects=%v err=%v", objects, err)
+	}
+	if _, err := repo.CatFileBatch(context.Background(), []string{"missing"}, "commit"); err == nil || !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("expected missing object error, got %v", err)
+	}
+}

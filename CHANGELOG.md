@@ -6,6 +6,10 @@ All notable changes to ByeClaude are documented here.
 
 ### Product
 
+- Repair and harden the Windows installer, add atomic replacement and executable verification, and test successful installs plus checksum/version failure paths on Windows and Unix.
+- Move builds, CI and the demo container to supported Go 1.27.
+- Add deterministic six-platform release verification, CycloneDX SBOM generation, checksums and commit-bound unsigned build provenance.
+- Expand CI with native Linux/macOS/Windows tests, full race coverage, a 70% coverage floor, workflow linting, security scanners, installer tests, demo-container health checks and composite-action self-tests.
 - Add dry-run scanning for Claude/Anthropic `Co-Authored-By` trailers across reachable local history.
 - Add `byeclaude check` for CI-safe attribution enforcement, including optional fetched remote-tracking refs.
 - Add transactional local history rewriting with backup refs, annotated-tag retargeting, and explicit signature handling.
@@ -31,6 +35,7 @@ All notable changes to ByeClaude are documented here.
 
 ### Safety and correctness
 
+- Confine commit-message hook filtering to regular files inside the resolved Git directory and refuse hook symlinks/non-regular files.
 - Restrict matches to the real final trailer block so body-text examples are not rewritten.
 - Preserve non-Claude co-authors, commit trees, author/committer identity and timestamps, and merge parent order.
 - Refuse unsafe rewrite states including shallow clones, dirty worktrees, detached `HEAD`, replace refs, Git notes, multiple linked worktrees, and active Git sequencer operations.

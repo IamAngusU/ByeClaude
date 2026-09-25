@@ -32,25 +32,25 @@ type RewriteReport struct {
 }
 
 type PlanReport struct {
-	Repository              string         `json:"repository"`
-	Commits                 int            `json:"commits_scanned"`
-	MatchedCommits          int            `json:"matched_commits"`
-	CommitMatchPct          float64        `json:"commit_match_pct"`
-	Matches                 []Match        `json:"matches"`
-	RuleMatches             map[string]int `json:"rule_matches"`
-	CommitsToRewrite        int            `json:"commits_to_rewrite"`
-	DescendantCommits       int            `json:"descendant_commits_to_rewrite"`
-	ParentLinksToRewrite    int            `json:"parent_links_to_rewrite"`
-	BranchesToMove          int            `json:"branches_to_move"`
-	TagRefsToMove           int            `json:"tag_refs_to_move"`
-	RefsToMove              int            `json:"refs_to_move"`
-	AnnotatedTagsToRewrite  int            `json:"annotated_tags_to_rewrite"`
-	SignaturesAtRisk        int            `json:"signatures_at_risk"`
-	ObjectWritesEstimate    int            `json:"object_writes_estimate"`
-	RewriteReady            bool           `json:"rewrite_ready"`
-	RewriteBlocker          string         `json:"rewrite_blocker,omitempty"`
-	AffectedRefs            []string       `json:"affected_refs"`
-	DurationMS              int64          `json:"duration_ms"`
+	Repository             string         `json:"repository"`
+	Commits                int            `json:"commits_scanned"`
+	MatchedCommits         int            `json:"matched_commits"`
+	CommitMatchPct         float64        `json:"commit_match_pct"`
+	Matches                []Match        `json:"matches"`
+	RuleMatches            map[string]int `json:"rule_matches"`
+	CommitsToRewrite       int            `json:"commits_to_rewrite"`
+	DescendantCommits      int            `json:"descendant_commits_to_rewrite"`
+	ParentLinksToRewrite   int            `json:"parent_links_to_rewrite"`
+	BranchesToMove         int            `json:"branches_to_move"`
+	TagRefsToMove          int            `json:"tag_refs_to_move"`
+	RefsToMove             int            `json:"refs_to_move"`
+	AnnotatedTagsToRewrite int            `json:"annotated_tags_to_rewrite"`
+	SignaturesAtRisk       int            `json:"signatures_at_risk"`
+	ObjectWritesEstimate   int            `json:"object_writes_estimate"`
+	RewriteReady           bool           `json:"rewrite_ready"`
+	RewriteBlocker         string         `json:"rewrite_blocker,omitempty"`
+	AffectedRefs           []string       `json:"affected_refs"`
+	DurationMS             int64          `json:"duration_ms"`
 }
 
 type AuthorIdentity struct {

@@ -182,7 +182,6 @@ func TestIsolatedPublicGitEnvironment(t *testing.T) {
 	}
 }
 
-
 func TestCloneGitEnvironmentNeverForwardsTokenWhenCredentialsDisabled(t *testing.T) {
 	env := []string{"HOME=/tmp/example", "PATH=/usr/bin"}
 	got := cloneGitEnvironment(env, "https://github.com/owner/repo.git", "super-secret-token", true)
