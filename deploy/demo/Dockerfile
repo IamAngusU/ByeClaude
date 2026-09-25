@@ -3,7 +3,7 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/byeclaude ./cmd/byeclaude
 
-FROM alpine:3.22
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates git \
     && adduser -D -H -s /sbin/nologin byeclaude
 COPY --from=build /out/byeclaude /usr/local/bin/byeclaude
