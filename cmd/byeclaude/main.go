@@ -502,16 +502,19 @@ func filterCommitMessage(path string, matcher attribution.Matcher) error {
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(repo.GitDir, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("commit message path must be inside the repository Git directory")
-	}
 	info, err := os.Lstat(abs)
 	if err != nil {
 		return err
 	}
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("refusing non-regular commit message path %s", abs)
+	}
+	inside, err := pathIsInsideDirectory(abs, repo.GitDir)
+	if err != nil {
+		return err
+	}
+	if !inside {
+		return fmt.Errorf("commit message path must be inside the repository Git directory")
 	}
 	b, err := os.ReadFile(abs) // #nosec G304,G703 -- absolute path is constrained to the resolved Git directory and is not a symlink
 	if err != nil {
@@ -543,6 +546,34 @@ func filterCommitMessage(path string, matcher attribution.Matcher) error {
 		return err
 	}
 	return f.Sync()
+}
+
+// pathIsInsideDirectory compares filesystem identities instead of path strings.
+// This handles macOS /private aliases, Windows short paths, worktrees, and
+// symlinked parent directories without weakening the Git-directory boundary.
+func pathIsInsideDirectory(path, directory string) (bool, error) {
+	directoryInfo, err := os.Stat(directory)
+	if err != nil {
+		return false, err
+	}
+	current, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return false, err
+	}
+	for {
+		currentInfo, err := os.Stat(current)
+		if err != nil {
+			return false, err
+		}
+		if os.SameFile(directoryInfo, currentInfo) {
+			return true, nil
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return false, nil
+		}
+		current = parent
+	}
 }
 
 func init() {
