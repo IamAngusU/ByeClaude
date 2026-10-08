@@ -76,6 +76,20 @@ The push uses an atomic force-with-lease expectation and refuses to overwrite a 
 
 ## Prevent unwanted attribution before a push
 
+One command prepares both Git hooks. By default, this is a read-only preview:
+
+```sh
+byeclaude setup
+byeclaude setup --apply
+byeclaude doctor
+```
+
+`setup --apply` installs the local `commit-msg` sanitizer and `pre-push` guard
+without overwriting unrelated hooks. It requires a persistent ByeClaude binary,
+not an ephemeral `go run` executable. Each clone needs setup once.
+
+Or install either hook individually:
+
 ```sh
 byeclaude hook install            # sanitize commit messages before creation
 byeclaude hook pre-push-install   # block matching metadata before a push

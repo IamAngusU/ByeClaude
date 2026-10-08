@@ -8,6 +8,27 @@ ByeClaude separates prevention from remediation.
 
 CI never force-pushes by default.
 
+## Zero-friction local setup
+
+```sh
+byeclaude setup
+byeclaude setup --apply
+byeclaude doctor
+```
+
+The first command only previews changes. `--apply` installs both Git hooks
+without replacing externally managed hooks or an unrelated pre-existing hook.
+Setup attempts to roll back newly installed hooks if later installation fails.
+On linked Git worktrees, the shared hooks directory requires the explicit
+`--shared-worktrees` acknowledgement before installation. Git for Windows,
+macOS and Linux each invoke the same native Git hooks on ordinary pushes.
+GitHub Desktop and other IDEs will use the hooks when they invoke Git for the
+same local clone without disabling hooks. Web/API commits never invoke local hooks.
+
+The hook stores an absolute path to the installed ByeClaude executable.
+`go run` is not suitable for installation because Go removes its temporary
+binary after execution. Use a persistent release binary or `go install`.
+
 ## Pre-push attribution guard
 
 ```sh

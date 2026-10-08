@@ -51,7 +51,7 @@ func runSetup(args []string) error {
 		if err != nil {
 			return err
 		}
-		if status.Status == "conflict" || status.Status == "not_executable" {
+		if status.Status == "conflict" || status.Status == "not_executable" || status.Status == "stale_binary" {
 			return fmt.Errorf("%s hook requires manual attention (%s): %s; setup will not overwrite it", name, status.Status, status.Path)
 		}
 		states = append(states, status)

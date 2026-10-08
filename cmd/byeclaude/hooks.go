@@ -47,6 +47,28 @@ func ownedByeClaudeHook(name string, content []byte) bool {
 	return strings.Contains(s, needle) && strings.HasSuffix(s, end)
 }
 
+func hookBinaryPath(name, script string) (string, bool) {
+	lines := strings.Split(strings.TrimSpace(script), "\n")
+	if len(lines) != 3 || !strings.HasPrefix(lines[2], "exec '") {
+		return "", false
+	}
+	filter := " hook-filter"
+	if name == "pre-push" {
+		filter = " pre-push-filter"
+	}
+	before, _, found := strings.Cut(strings.TrimPrefix(lines[2], "exec "), filter)
+	if !found || !strings.HasPrefix(before, "'") || !strings.HasSuffix(before, "'") {
+		return "", false
+	}
+	// shellQuote encodes an apostrophe as '\\''.
+	path := strings.TrimSuffix(strings.TrimPrefix(before, "'"), "'")
+	path = strings.ReplaceAll(path, "'\\''", "'")
+	if path == "" {
+		return "", false
+	}
+	return filepath.FromSlash(path), true
+}
+
 func ephemeralGoExecutable(path string) bool {
 	normalized := filepath.ToSlash(path)
 	base := strings.ToLower(filepath.Base(path))
@@ -87,6 +109,17 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 		return result, err
 	}
 	if !ownedByeClaudeHook(name, data) {
+		result.Status = "conflict"
+		return result, nil
+	}
+	if binary, ok := hookBinaryPath(name, string(data)); ok {
+		if _, err := os.Stat(binary); os.IsNotExist(err) {
+			result.Status = "stale_binary"
+			return result, nil
+		} else if err != nil {
+			return result, err
+		}
+	} else {
 		result.Status = "conflict"
 		return result, nil
 	}
