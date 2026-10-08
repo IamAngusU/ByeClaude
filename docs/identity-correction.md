@@ -59,3 +59,20 @@ missing or invalid, they refuse to rewrite and explain how to fix it.
 The flag is mutually exclusive with the manual replacement flags. Git configuration
 is not proof of GitHub account ownership or authorship, so double-check the
 attribution before applying.
+
+### Choose only the author, only the committer, or both
+
+```sh
+byeclaude plan --author-from-git
+byeclaude clean --author-from-git --apply
+
+byeclaude plan --committer-from-git
+byeclaude clean --committer-from-git --apply
+
+byeclaude plan --identity-from-git  # both matching fields
+```
+
+No flags means **trailer-only cleanup**. Every identity option is opt-in and
+only affects identities matched by the active rules. `--author-from-git`
+never silently replaces a human author's identity. Manual replacements can
+be combined with Git-config selection for the other, nonconflicting role.

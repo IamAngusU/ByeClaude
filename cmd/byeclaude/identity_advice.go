@@ -19,6 +19,8 @@ func identityAdvice(repo *gitx.Repo, matcher attribution.Matcher) {
 	}
 	if report.Authors+report.Committers == 0 { return }
 	fmt.Printf("identity     %d matching author(s), %d committer(s) remain\n", report.Authors, report.Committers)
-	fmt.Println("next         If they are misattributed, preview: byeclaude plan --identity-from-git")
+	if report.Authors > 0 { fmt.Println("next         For a wrongly attributed author: byeclaude plan --author-from-git") }
+	if report.Committers > 0 { fmt.Println("next         For a wrongly attributed committer: byeclaude plan --committer-from-git") }
+	if report.Authors > 0 && report.Committers > 0 { fmt.Println("option       Both roles: byeclaude plan --identity-from-git") }
 	fmt.Println("note         Do not reassign another contributor's genuine authorship.")
 }

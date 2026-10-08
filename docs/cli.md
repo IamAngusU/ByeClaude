@@ -48,6 +48,9 @@ collaborators before any rewrite.
 | Include fetched remote-tracking refs | `byeclaude scan --include-remotes` |
 | Include matching Git author/committer identities | `byeclaude scan --include-identities` |
 | Preview rewrite impact | `byeclaude plan` |
+| Preview author-only correction from configured Git identity | `byeclaude plan --author-from-git` |
+| Apply author-only correction with opt-in | `byeclaude clean --author-from-git --apply` |
+| Preview committer-only correction | `byeclaude plan --committer-from-git` |
 | Preview correcting both matching Git identities using your configured Git user | `byeclaude plan --identity-from-git` |
 | Rewrite matching Git author/committer fields using your configured Git user | `byeclaude clean --identity-from-git --apply` |
 | Preview correcting one misattributed Git author | `byeclaude plan --replace-author "Correct Name <correct@example.com>"` |

@@ -78,7 +78,7 @@ Usage:
   byeclaude doctor [--repo PATH]
   byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
-  byeclaude plan [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--json]
+  byeclaude plan [--repo PATH] [--rules FILE] [--identity-from-git | --author-from-git | --committer-from-git | --replace-author "Name <email>" | --replace-committer "Name <email>"] [--json]
   byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
@@ -207,7 +207,7 @@ func runPlan(args []string) error {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	rulesFile := rulesFlag(fs)
-	author,committer,identityFromGit:=identityRewriteFlags(fs)
+	identityFlags := identityRewriteFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func runPlan(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts, err := resolveIdentityRewriteOptions(repo, *author, *committer, *identityFromGit)
+	opts, err := resolveIdentityFlags(repo, identityFlags)
 	if err != nil { return err }
 	report, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
@@ -270,7 +270,7 @@ func runClean(args []string) error {
 	apply := fs.Bool("apply", false, "rewrite local history")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
-	replaceAuthor,replaceCommitter,identityFromGit:=identityRewriteFlags(fs)
+	identityFlags := identityRewriteFlags(fs)
 	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect current GitHub history, PR refs and contributor API")
 	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
@@ -285,7 +285,7 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts,err:=resolveIdentityRewriteOptions(repo,*replaceAuthor,*replaceCommitter,*identityFromGit)
+	opts,err:=resolveIdentityFlags(repo,identityFlags)
 	if err!=nil{return err}
 	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
 	if *githubUser!="" && !*verifyGithub{return fmt.Errorf("--github-user requires --verify-github")}
