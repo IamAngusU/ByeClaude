@@ -109,11 +109,14 @@ func (ui *terminalUI) metricsLoop(ctx context.Context, store metrics.Store, stat
 				state = next
 			}
 			w, h := terminalSize(ui.out)
-			if previous == state && oldNotice == notice && w == lastWidth && h == lastHeight {
+			resized := w != lastWidth || h != lastHeight
+			if previous == state && oldNotice == notice && !resized {
 				continue
 			}
 			lastWidth, lastHeight = w, h
-			if err := draw(false); err != nil {
+			// Re-anchor the input hint after resizing; otherwise a taller frame
+			// would erase its old position. Any completed line simply returns.
+			if err := draw(resized); err != nil {
 				return fmt.Errorf("%w: %w", errTerminalIO, err)
 			}
 		}
