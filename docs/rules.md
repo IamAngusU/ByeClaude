@@ -2,6 +2,54 @@
 
 ByeClaude defaults to one built-in rule: Claude + the `anthropic.com` email domain.
 
+## Saved blacklist
+
+Use the terminal menu (`byeclaude` or `byeclaude tui`) or these commands inside
+the repository you want to protect:
+
+```sh
+byeclaude blacklist list
+byeclaude blacklist add --id helper --email helper@example.org
+byeclaude blacklist add --id internal-bot --name "Build Helper" --domain example.org
+byeclaude blacklist test --name Helper --email helper@example.org
+byeclaude scan --include-identities
+byeclaude blacklist remove --id helper
+byeclaude blacklist reset
+```
+
+Each `add` keeps existing entries, including Claude. Repeat `--email`, `--name`
+or `--domain` for alternatives within one rule. Prefer exact emails observed
+in your history. A name-only or domain-only rule has a broader scope: inspect
+`plan` before rewriting. `remove` requires the exact rule ID and refuses to
+remove the final rule; add a replacement first. `reset` restores only Claude.
+
+The policy is stored under `byeclaude.blacklist` in **local Git config**, outside
+tracked files. Git locks and replaces the configuration when saving. Cloning a
+repository does not import another person's cleanup policy. Linked worktrees
+share it and policy edits require `--shared-worktrees` there.
+
+`scan`, `check`, `plan`, `clean`, `setup`, `push`, default Git hooks, and
+`verify` with autodetected origin use the saved blacklist. `--rules FILE`
+explicitly replaces that selection. Hooks installed with an explicit rules
+file keep that file; remove those managed hooks and rerun default setup before
+switching to a saved blacklist. Invalid saved rules stop the operation; they
+never silently fall back to Claude.
+
+Batch scans, the demo server, server-side ruleset commands and `verify --repo
+OWNER/REPO` use their explicit rule file or the Claude default. To share the
+same policy with those commands or CI, export it:
+
+```sh
+byeclaude blacklist export > rules.json
+byeclaude batch scan --owner YOUR_NAME --public --rules rules.json
+```
+
+In Windows PowerShell 5.1, use `byeclaude blacklist export | Set-Content
+-Encoding UTF8 rules.json`; the loader accepts a UTF-8 BOM. PowerShell 7 and
+cmd redirection produce compatible UTF-8 output directly.
+
+## Explicit rules files
+
 For audits that need several declared AI co-authors or internal bots, pass a structured JSON rule file:
 
 ```sh
@@ -45,8 +93,8 @@ Within one rule:
 - `email_domains` and `exact_emails` are alternative allowed email conditions;
 - if both a name constraint and an email constraint are present, both sides must match;
 - email-domain matching requires a real `@domain` boundary;
-- rule IDs must be unique;
-- an empty rule is rejected.
+- rule IDs must be unique, 1-64 letters/digits/dots/underscores/hyphens, starting with a letter or digit;
+- empty constraints, invalid emails/domains, unknown JSON fields and files larger than 1 MiB are rejected.
 
 No arbitrary regular expressions are executed.
 
@@ -56,8 +104,8 @@ See [`examples/rules/multi-ai.example.json`](../examples/rules/multi-ai.example.
 
 The example includes conservative rules for Claude, Codex and a synthetic internal bot. Treat it as an editable starting point, not a permanent provider registry: attribution formats and opt-in settings can change over time.
 
-The default ByeClaude behavior remains the narrower built-in Claude rule.
+Without a saved blacklist or explicit rule file, ByeClaude uses the narrower built-in Claude rule.
 
 ## Scope
 
-These rules currently classify and remove **`Co-Authored-By`** trailers. Other metadata such as `Made-with:`, `Assisted-by:`, PR footers, editor telemetry or source-code style is a different evidence surface and is not silently treated as a co-author.
+These rules classify **`Co-Authored-By`** trailers and Git author/committer identities. `scan` and `check` include actual identities when `--include-identities` is selected; the menu audit and pre-push guard include them. Cleanup removes matching trailers by default. Actual author/committer replacement always requires [explicit role selection](identity-correction.md). Other metadata such as `Made-with:`, `Assisted-by:`, PR footers, editor telemetry or source-code style is a different evidence surface and is not silently treated as a co-author.

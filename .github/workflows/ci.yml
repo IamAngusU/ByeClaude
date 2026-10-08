@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches-ignore: [ci-proof]
   pull_request:
   workflow_dispatch:
 
@@ -29,6 +30,9 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: go build -trimpath ./cmd/byeclaude
+      - name: Native Windows hooks and recovery
+        if: runner.os == 'Windows'
+        run: pwsh -NoProfile -File scripts/test-windows-workflow.ps1
 
   quality:
     name: Race, coverage and fixtures
@@ -47,6 +51,8 @@ jobs:
         run: go mod verify
       - name: Workflow syntax and semantics
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - name: CI proof evidence tests
+        run: python3 -m unittest discover -s scripts -p 'test_public_proof.py'
       - name: Race detector
         run: go test -race ./...
       - name: Coverage floor
@@ -55,7 +61,7 @@ jobs:
           go test -coverprofile=coverage.out ./...
           coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
           echo "Total statement coverage: ${coverage}%"
-          awk -v coverage="$coverage" 'BEGIN { if (coverage + 0 < 70) exit 1 }'
+          awk -v coverage="$coverage" 'BEGIN { if (coverage + 0 < 71) exit 1 }'
       - name: Disposable fixture suite
         run: bash scripts/verify-fixture-suite.sh
       - name: Self attribution guard

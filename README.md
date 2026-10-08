@@ -18,9 +18,15 @@
 
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#what-changes">Before / after</a> · <a href="#safety-first">Safety</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
+<p align="center">
+  <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md"><img src="https://raw.githubusercontent.com/angusu-de/ByeClaude/ci-proof/proof/public-proof.svg" height="54" alt="Live CI evidence: ten jobs, with the exact commit and individual steps linked"></a>
+</p>
+
+<p align="center"><sub>Public CI on a separate account, same maintainer. Click for the tested commit and every CI step. Badge design: IamAngusU/Badges.</sub></p>
+
 Claude Code can append `Co-Authored-By: Claude <noreply@anthropic.com>` to Git commits. GitHub recognizes these trailers as additional contributor attribution. **ByeClaude** audits that *declared metadata* and lets repository owners remove matching trailers without changing the committed file trees.
 
-Claude/Anthropic is the built-in rule. [Validated rule sets](docs/rules.md) can match other declared tool identities too.
+Claude/Anthropic is the built-in rule. A [saved blacklist](docs/rules.md) can check several declared tool identities in the same repository.
 
 ## What changes?
 
@@ -32,13 +38,58 @@ Claude/Anthropic is the built-in rule. [Validated rule sets](docs/rules.md) can 
 
 ## Quick start
 
-**Install:** Get a [checksum-verified release for Windows, macOS or Linux](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.1), or install the current alpha using Go 1.27+:
+**Windows:** Install [Git](https://git-scm.com/downloads), then run in PowerShell:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.ps1 -OutFile install-byeclaude.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install-byeclaude.ps1 -AddToPath
+```
+
+Open a new cmd or PowerShell window and run `byeclaude` in your repository.
+You can also start it anywhere and choose a repository folder. No admin rights,
+Go installation or GitHub login is needed for local work.
+
+**macOS / Linux:** With Git installed:
 
 ```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.sh -o install-byeclaude.sh
+sh install-byeclaude.sh
+byeclaude
+```
+
+The installers check the release binary's SHA-256 before replacing an existing
+installation. Inspect the downloaded script first if desired. If the Unix
+installer reports a PATH change, add the printed directory to your shell PATH.
+
+The terminal menu handles audits, a blacklist of several identities, cleanup
+previews and hook setup. Choose a number and press Enter. Cleanup requires
+typing `CLEAN`; publication stays a separate guarded command.
+
+![Recorded terminal flow: add an identity, preview cleanup, then protect future commits](docs/assets/readme/terminal-flow.gif)
+
+<sub>Actual Windows terminal session in a disposable demo repository, rendered from its transcript. [Full transcript](docs/assets/readme/terminal-session.txt).</sub>
+
+**Other options:** Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.2), or build using Go 1.27+:
+
+```sh
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.2
 ```
 
 Git is required. See [installation options and integrity notes](docs/supply-chain.md).
+
+### Manage several identities
+
+```sh
+byeclaude blacklist list
+byeclaude blacklist add --id helper --email helper@example.org
+byeclaude blacklist test --name Helper --email helper@example.org
+byeclaude scan --include-identities
+```
+
+Claude remains selected when you add another identity. The blacklist is saved
+in this clone's local Git configuration. Local scans, cleanup and default hooks
+use it automatically. Use the exact identity from your commits; provider names
+alone are not evidence. [Matching, export and removal](docs/rules.md).
 
 In a **local Git repository**, start with two read-only commands:
 
@@ -62,14 +113,54 @@ byeclaude plan  # preview every commit/ref/tag that would change
 byeclaude clean --apply  # rewrite locally and create backup refs
 ```
 
-Review the result and **save the printed backup ID**. Publishing is a separate, guarded action:
+Review the result and **save the printed backup ID**. Publishing is separate and guarded. If you have exactly one backup, ByeClaude can select it automatically:
 
 ```sh
 git log --oneline --decorate --graph --all --max-count=40
-byeclaude push --backup BACKUP_ID
+byeclaude push  # or: byeclaude push --backup BACKUP_ID
 ```
 
 The push uses an atomic force-with-lease expectation and refuses to overwrite a remote ref that moved after your review. [Backups and recovery](docs/safety.md).
+
+> [!NOTE]
+> The verification, pre-push and identity-correction commands introduced here are not in the existing `v0.1.0-alpha.1` release. Build from updated source or wait for a new tested release tag.
+
+## Prevent unwanted attribution before a push
+
+One command prepares both Git hooks. By default, this is a read-only preview:
+
+```sh
+byeclaude setup
+byeclaude setup --apply
+byeclaude doctor
+```
+
+`setup --apply` installs the local `commit-msg` sanitizer and `pre-push` guard
+without overwriting unrelated hooks. It requires a persistent ByeClaude binary,
+not an ephemeral `go run` executable. Each clone needs setup once.
+
+Or install either hook individually:
+
+```sh
+byeclaude hook install            # sanitize commit messages before creation
+byeclaude hook pre-push-install   # block matching metadata before a push
+```
+
+For shared branches, [export a GitHub Ruleset](docs/github-rulesets.md)
+to reject matching messages server-side on the default branch when metadata rules are available on
+your GitHub plan. A rejected branch update is not proof that the underlying
+object was never uploaded.
+
+## Verify what GitHub still shows
+
+```sh
+byeclaude verify
+byeclaude verify --repo OWNER/REPO --github-user LOGIN
+```
+
+This independently checks remote history, advertised PR refs and optional
+contributor API results. It distinguishes remaining evidence from partial
+audits and cached data. [Verification semantics](docs/github-verification.md).
 
 ## Other useful commands
 
@@ -80,6 +171,10 @@ The push uses an atomic force-with-lease expectation and refuses to overwrite a 
 | Audit all public repositories for an account | `byeclaude batch scan --owner YOUR_NAME --public` |
 | Audit additional declared tool identities | `byeclaude scan --rules ./rules.json` |
 | Try the local, read-only public-repo web demo | `byeclaude serve` |
+| Preview author-only correction | `byeclaude plan --author-from-git` |
+| Preview correction with configured Git identity | `byeclaude plan --identity-from-git` |
+| Preview an explicit author/committer correction | `byeclaude plan --replace-author "Name <email@example.com>"` |
+| Check author/committer matches as well | `byeclaude check --include-identities` |
 
 Batch operations are **read-only** in this alpha. ByeClaude also includes a [read-only GitHub Action](docs/automation.md) for shared branches.
 
@@ -94,7 +189,7 @@ A trailer is evidence of *declared attribution*, **not** a measurement of how mu
 
 ## Documentation
 
-[Full documentation](docs/README.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
+[Command reference](docs/cli.md) · [Full documentation](docs/README.md) · [GitHub verification](docs/github-verification.md) · [GitHub Rulesets](docs/github-rulesets.md) · [Identity correction](docs/identity-correction.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
 

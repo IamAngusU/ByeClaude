@@ -4,13 +4,17 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 
 | Guide | Use it when… |
 | --- | --- |
+| [Command reference](cli.md) | You want one place with all commands, first-run setup and safe cleanup flow. |
 | [How the rewrite works](how-it-works.md) | You want to understand exactly which Git objects change and why descendant commit IDs move. |
 | [Matching architecture](matching.md) | You want to see how the Claude preset is separated from the vendor-neutral rewrite engine. |
-| [Multiple attribution rules](rules.md) | You want Claude plus other declared co-author identities in one validated rule set. |
+| [Blacklist and attribution rules](rules.md) | Save, test and edit several identities from the terminal, or export rules for CI. |
 | [Evidence model](evidence.md) | You want to distinguish factual Git attribution from heuristic AI-involvement signals. |
 | [Service / API integration](service.md) | You want to use ByeClaude JSON as a backend engine for a website or service. |
 | [Public VPS demo](demo-server.md) | You want a one-binary public-repository demo with an embedded UI, bounded work and no mutation endpoints. |
 | [Rewrite planning](planning.md) | You want to know how much of the DAG, refs and signatures a cleanup would affect before changing anything. |
+| [GitHub verification](github-verification.md) | Recheck remote history, pull refs and contributor API results. |
+| [GitHub Rulesets](github-rulesets.md) | Reject matching commit metadata on protected branches. |
+| [Author/committer correction](identity-correction.md) | Review and correct actual Git object identity headers. |
 | [GitHub identity enrichment](identity.md) | You want account-level metrics or need to trace a stale GitHub user through numeric noreply IDs and pull refs. |
 | [Batch repository audit](batch.md) | You want to audit named repositories, all public repos, private repos, or both with built-in metrics. |
 | [Safety and recovery](safety.md) | You are preparing to rewrite a shared repository or need to restore a local backup. |

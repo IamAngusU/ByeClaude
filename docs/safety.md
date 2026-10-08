@@ -2,6 +2,14 @@
 
 ByeClaude changes commit IDs. Treat that as a repository coordination event, not as a formatting operation.
 
+## Author and committer correction
+
+Normal cleanup leaves actual Git author and committer identities unchanged.
+You can explicitly replace matching identities while preserving their original
+timestamps and timezones using --replace-author and --replace-committer.
+These operations are still complete Git-history rewrites, with new commit IDs
+and signature consequences. [Details](identity-correction.md).
+
 ## Before you rewrite
 
 A good sequence for an important repository is:
@@ -33,6 +41,12 @@ ByeClaude refuses a rewrite when it cannot make a narrow, predictable change.
 Read-only `scan` and `check` remain useful in several of these states, including detached `HEAD` in CI.
 
 ## Local backup refs
+
+Restore accepts refs still at their recorded rewrite result, refs already
+restored, and deleted refs. If any ref moved to later work, the entire restore
+stops before changing refs. Older backups without a recorded result cannot
+replace a different current ref automatically. Preserve newer work on another
+branch and inspect the backup before manual Git recovery.
 
 Before normal branch or tag refs move, ByeClaude copies their tips under:
 

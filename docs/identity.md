@@ -1,5 +1,7 @@
 # GitHub identity enrichment
 
+See [Git author/committer correction](identity-correction.md) and [GitHub verification](github-verification.md) for the new explicit workflows.
+
 ByeClaude's Git engine works from Git objects. Git stores author/committer names and email addresses, not a durable GitHub account ID.
 
 That means a hosted service should treat "GitHub user X" as an enrichment problem rather than silently equating one email string with one account.

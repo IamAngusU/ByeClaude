@@ -219,7 +219,7 @@ func TestRewriteRefusesShallowRepository(t *testing.T) {
 		git(t, source, "commit", "-q", "-m", "commit")
 	}
 	clone := filepath.Join(t.TempDir(), "clone")
-	cmd := exec.Command("git", "clone", "-q", "--depth=1", "file://"+source, clone)
+	cmd := exec.Command("git", "clone", "-q", "--no-local", "--depth=1", source, clone)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("shallow clone: %v\n%s", err, out)
 	}

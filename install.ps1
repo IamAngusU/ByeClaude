@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$AddToPath)
 
 $ErrorActionPreference = 'Stop'
 $repo = 'IamAngusU/ByeClaude'
@@ -10,7 +10,7 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitect
     default { throw "Unsupported architecture: $_" }
 }
 $asset = "byeclaude_windows_${arch}.exe"
-$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'latest' }
+$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.2' }
 
 if ($version -ne 'latest' -and $version -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
     throw "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag"
@@ -76,8 +76,19 @@ try {
     }
 
     Write-Host "Installed byeclaude to $target"
-    if (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $dest) {
-        Write-Host 'Add that directory to PATH if it is not already present.'
+    if ($AddToPath) {
+        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+        if (($userPath -split [IO.Path]::PathSeparator) -notcontains $dest) {
+            $updatedPath = if ([string]::IsNullOrEmpty($userPath)) { $dest } else { $userPath.TrimEnd(';') + ';' + $dest }
+            [Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
+        }
+        if (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $dest) {
+            $env:PATH = $env:PATH.TrimEnd(';') + ';' + $dest
+        }
+        Write-Host 'Ready: run byeclaude. Reopen other terminals to use the updated PATH.'
+    }
+    elseif (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $dest) {
+        Write-Host 'Rerun install.ps1 -AddToPath to enable byeclaude in cmd and PowerShell.'
     }
 }
 finally {

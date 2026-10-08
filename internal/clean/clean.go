@@ -273,7 +273,14 @@ func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 }
 
 func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport, map[string]string, error) {
+	return RewriteWithIdentity(repo, matcher, IdentityRewriteOptions{})
+}
+
+func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
 	started := time.Now()
+	if err := opts.Validate(matcher); err != nil {
+		return model.RewriteReport{}, nil, err
+	}
 	if matcher == nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
 	}
@@ -308,6 +315,10 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 			return report, mapping, err
 		}
 		newMsg, removed := StripMatchingTrailers(obj.Message, matcher)
+		rewrittenObj, authors, committers, err := ReplaceMatchingCommitIdentities(obj, matcher, opts)
+		if err != nil {
+			return report, mapping, err
+		}
 		parentChanged := false
 		for _, p := range obj.parents() {
 			if n, ok := mapping[p]; ok && n != p {
@@ -315,11 +326,11 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 				break
 			}
 		}
-		if len(removed) == 0 && !parentChanged {
+		if len(removed) == 0 && authors == 0 && committers == 0 && !parentChanged {
 			mapping[sha] = sha
 			continue
 		}
-		newRaw, dropped := rebuildCommit(obj, mapping, newMsg)
+		newRaw, dropped := rebuildCommit(rewrittenObj, mapping, newMsg)
 		newSHAOut, err := repo.RunInput(newRaw, "hash-object", "-t", "commit", "-w", "--stdin")
 		if err != nil {
 			return report, mapping, err
@@ -328,6 +339,8 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 		mapping[sha] = newSHA
 		report.CommitsRewritten++
 		report.SignaturesDropped += dropped
+		report.AuthorsReplaced += authors
+		report.CommittersReplaced += committers
 	}
 
 	newRefs := make(map[string]string, len(refs))
@@ -617,16 +630,34 @@ func Restore(repo *gitx.Repo, id string) (int, error) {
 	if len(items) == 0 {
 		return 0, fmt.Errorf("backup %q not found", id)
 	}
+	results, err := ResultLocalRefs(repo, id)
+	if err != nil {
+		return 0, err
+	}
+	expected := make(map[string]string, len(results))
+	for _, ref := range results {
+		expected[ref.Name] = ref.SHA
+	}
+	refs, err := LocalRefs(repo)
+	if err != nil {
+		return 0, err
+	}
+	currentByName := make(map[string]string, len(refs))
+	for _, ref := range refs {
+		currentByName[ref.Name] = ref.SHA
+	}
 
 	var tx strings.Builder
 	tx.WriteString("start\n")
 	for _, item := range items {
-		currentOut, err := repo.Run("show-ref", "--verify", "--hash", item.Name)
-		if err != nil {
+		current, exists := currentByName[item.Name]
+		if !exists {
 			fmt.Fprintf(&tx, "create %s %s\n", item.Name, item.SHA)
 			continue
 		}
-		current := strings.TrimSpace(string(currentOut))
+		if current != item.SHA && current != expected[item.Name] {
+			return 0, fmt.Errorf("local ref %s moved since rewrite %s; refusing to discard later work (preserve it on another branch before manual recovery)", item.Name, id)
+		}
 		fmt.Fprintf(&tx, "update %s %s %s\n", item.Name, item.SHA, current)
 	}
 	tx.WriteString("prepare\ncommit\n")

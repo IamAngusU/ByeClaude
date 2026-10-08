@@ -1,0 +1,170 @@
+Actual Windows PTY session, disposable demo repository.
+ANSI control sequences removed; no output values invented.
+Binary built from the alpha.2 development source on 2026-10-08.
+
+  BYECLAUDE  /  Your history. Your attribution.
+  ------------------------------------------------------------
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Blacklist   claude-anthropic (default)
+  commit-msg   missing
+  pre-push     missing
+
+  1  Audit history          Trailers + authors + committers
+  2  Manage blacklist       Add or remove identities
+  3  Preview cleanup        Review first, apply locally
+  4  Protect future work    Set up both Git hooks
+  5  Diagnose setup         Explain hook problems
+  6  Show backups           Recovery IDs
+  7  Switch repository      Choose another local folder
+  q  Exit  Nothing runs until selected. Publishing is a separate command.
+Choose > 2
+Blacklist: built-in Claude/Anthropic default
+  claude-anthropic
+    name contains: ["claude"]
+    email domains: ["anthropic.com"]
+
+  a  Add exact email    r  Remove rule    Enter  Back
+Blacklist > a
+Rule ID (blank to cancel) > helper
+Exact email to block (blank to cancel) > helper@example.org
+Saved. Local scan, check, plan, clean and default hooks use this blacklist.
+  claude-anthropic
+    name contains: ["claude"]
+    email domains: ["anthropic.com"]
+  helper
+    exact emails:  ["helper@example.org"]
+
+  BYECLAUDE  /  Your history. Your attribution.
+  ------------------------------------------------------------
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Blacklist   claude-anthropic, helper (saved)
+  commit-msg   missing
+  pre-push     missing
+
+  1  Audit history          Trailers + authors + committers
+  2  Manage blacklist       Add or remove identities
+  3  Preview cleanup        Review first, apply locally
+  4  Protect future work    Set up both Git hooks
+  5  Diagnose setup         Explain hook problems
+  6  Show backups           Recovery IDs
+  7  Switch repository      Choose another local folder
+  q  Exit
+
+  Nothing runs until selected. Publishing is a separate command.
+Choose >1
+repository  C:/Dev/ByeClaude/.git/terminal-demo
+commits     1
+matched     1 (100.00%)
+trailers    2
+duration    162ms
+identities  0 author(s), 0 committer(s)
+  bea00c400f23  [claude-anthropic] Claude <noreply@anthropic.com>
+  bea00c400f23  [helper] Helper <helper@example.org>
+
+  BYECLAUDE  /  Your history. Your attribution.
+  ------------------------------------------------------------
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Blacklist   claude-anthropic, helper (saved)
+  commit-msg   missing
+  pre-push     missing
+
+  1  Audit history          Trailers + authors + committers
+  2  Manage blacklist       Add or remove identities
+  3  Preview cleanup        Review first, apply locally
+  4  Protect future work    Set up both Git hooks
+  5  Diagnose setup         Explain hook problems
+  6  Show backups           Recovery IDs
+  7  Switch repository      Choose another local folder
+  q  Exit
+
+  Nothing runs until selected. Publishing is a separate command.
+Choose > 3
+
+  1  Matching co-author trailers only (default)
+  2  Also correct matching authors using your Git identity
+  3  Also correct matching committers using your Git identity
+  4  Also correct both roles using your Git identity
+Preview mode [1] (q to cancel) > 1
+repository   C:/Dev/ByeClaude/.git/terminal-demo
+commits      1
+matched      1 (100.00%)
+trailers     2
+rewrite      1 commit(s)
+descendants  0
+connections  0 parent link(s)
+refs         1 (1 branch(es), 0 tag ref(s))
+tag objects  0 annotated tag(s)
+signatures   0 at risk
+objects      ~1 write(s)
+ready        yes
+duration     254ms
+affected
+  refs/heads/main
+
+  Cleanup changes commit IDs and affected signatures. Backup refs are created.
+  Confirm any replacement identity belongs to the actual contributor.
+Type CLEAN to apply locally, or Enter to keep preview only >CLEAN
+backup      20261008T085848Z-4c23600c4beb
+rewritten   1 commit(s)
+refs        1 updated
+tags        0 rewritten
+duration    341ms
+push        not requested; GitHub is unchanged
+verify      selected metadata absent from local heads/tags; external references
+ not checked
+
+  Local cleanup complete. Keep the backup ID for recovery.
+  Review the result; publish separately with byeclaude push in this repository.
+
+  BYECLAUDE  /  Your history. Your attribution.
+  ------------------------------------------------------------
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Blacklist   claude-anthropic, helper (saved)
+  commit-msg   missing
+  pre-push     missing
+
+  1  Audit history          Trailers + authors + committers
+  2  Manage blacklist       Add or remove identities
+  3  Preview cleanup        Review first, apply locally
+  4  Protect future work    Set up both Git hooks
+  5  Diagnose setup         Explain hook problems
+  6  Show backups           Recovery IDs
+  7  Switch repository      Choose another local folder
+  q  Exit
+
+  Nothing runs until selected. Publishing is a separate command.
+Choose > 4
+repository   C:/Dev/ByeClaude/.git/terminal-demo
+existing     0 matching trailer(s), 0 author(s), 0 committer(s) in local history
+commit-msg   missing
+pre-push     missing
+dry run      no hooks changed
+next         byeclaude setup --apply
+Install both hooks for this repository? [y/N] > y
+repository   C:/Dev/ByeClaude/.git/terminal-demo
+existing     0 matching trailer(s), 0 author(s), 0 committer(s) in local history
+commit-msg   missing
+pre-push     missing
+Installed C:\Dev\ByeClaude\.git\terminal-demo\.git\hooks\commit-msg
+Installed C:\Dev\ByeClaude\.git\terminal-demo\.git\hooks\pre-push
+ready        commit-msg and pre-push hooks installed
+check        byeclaude doctor
+
+  BYECLAUDE  /  Your history. Your attribution.
+  ------------------------------------------------------------
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Blacklist   claude-anthropic, helper (saved)
+  commit-msg   installed
+  pre-push     installed
+
+  1  Audit history          Trailers + authors + committers
+  2  Manage blacklist       Add or remove identities
+  3  Preview cleanup        Review first, apply locally
+  4  Protect future work    Set up both Git hooks
+  5  Diagnose setup         Explain hook problems
+  6  Show backups           Recovery IDs
+  7  Switch repository      Choose another local folder
+  q  Exit
+
+  Nothing runs until selected. Publishing is a separate command.
+Choose >q

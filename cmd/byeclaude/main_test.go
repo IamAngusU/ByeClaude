@@ -24,6 +24,20 @@ func runGit(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
+// Git canonicalizes symlinked temp roots (macOS) and path casing (Windows).
+func sameFile(t *testing.T, first, second string) bool {
+	t.Helper()
+	a, err := os.Stat(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.Stat(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return os.SameFile(a, b)
+}
+
 func inWorkingDirectory(t *testing.T, dir string) {
 	t.Helper()
 	old, err := os.Getwd()
@@ -246,7 +260,7 @@ func TestCleanRepositoryAndCommandValidation(t *testing.T) {
 	if err := runBackups([]string{"--repo", dir}); err != nil {
 		t.Fatal(err)
 	}
-	if err := runPush([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "--backup is required") {
+	if err := runPush([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "no ByeClaude backup") {
 		t.Fatalf("expected missing backup error, got %v", err)
 	}
 	if err := runRestore([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "--backup is required") {

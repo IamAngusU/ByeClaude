@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -18,19 +19,35 @@ var version = "dev"
 
 func main() {
 	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+		if terminalInput() {
+			os.Args = append(os.Args, "tui")
+		} else {
+			usage()
+			os.Exit(2)
+		}
 	}
 	var err error
 	switch os.Args[1] {
+	case "tui":
+		err = runTUI(os.Args[2:])
+	case "blacklist":
+		err = runBlacklist(os.Args[2:])
 	case "scan":
 		err = runScan(os.Args[2:])
+	case "setup":
+		err = runSetup(os.Args[2:])
+	case "doctor":
+		err = runDoctor(os.Args[2:])
 	case "check":
 		err = runCheck(os.Args[2:])
 	case "plan":
 		err = runPlan(os.Args[2:])
 	case "identity":
 		err = runIdentity(os.Args[2:])
+	case "ruleset":
+		err = runRuleset(os.Args[2:])
+	case "verify":
+		err = runVerify(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
 	case "batch":
@@ -65,18 +82,24 @@ func usage() {
 	fmt.Print(`ByeClaude audits and removes matching Co-Authored-By attribution from Git history.
 
 Usage:
-  byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
-  byeclaude check [--repo PATH] [--include-remotes] [--rules FILE] [--json]
-  byeclaude plan [--repo PATH] [--rules FILE] [--json]
+  byeclaude tui [--repo PATH] [--no-color]
+  byeclaude blacklist list|add|remove|reset|export|test [--repo PATH] [--id ID] [--email ADDRESS] [--name TEXT] [--domain DOMAIN]
+  byeclaude setup [--repo PATH] [--rules FILE] [--apply]
+  byeclaude doctor [--repo PATH]
+  byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
+  byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
+  byeclaude plan [--repo PATH] [--rules FILE] [--identity-from-git | --author-from-git | --committer-from-git | --replace-author "Name <email>" | --replace-committer "Name <email>"] [--json]
   byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
   byeclaude batch plan ...
+  byeclaude verify [--repo OWNER/REPO] [--github-user LOGIN] [--strict] [--max-pull-refs 200] [--rules FILE] [--json]
+  byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
-  byeclaude clean --apply [--repo PATH] [--rules FILE] [--push] [--remote origin] [--json]
-  byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
-  byeclaude hook install|remove [--repo PATH] [--rules FILE]
+  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
+  byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
+  byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE] [--shared-worktrees]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
@@ -86,7 +109,7 @@ Nothing is rewritten unless --apply is present. Remote writes require either --p
 }
 
 func rulesFlag(fs *flag.FlagSet) *string {
-	return fs.String("rules", "", "structured attribution rules JSON; defaults to the built-in Claude/Anthropic rule")
+	return fs.String("rules", "", "explicit rules JSON; local commands otherwise use the saved blacklist or Claude default")
 }
 
 func resolveMatcher(path string) (attribution.Matcher, error) {
@@ -103,11 +126,12 @@ func runScan(args []string) error {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	includeRemotes := fs.Bool("include-remotes", false, "also scan fetched remote-tracking refs")
+	includeIdentities := fs.Bool("include-identities", false, "also report matching author and committer identities")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -119,16 +143,31 @@ func runScan(args []string) error {
 	if err != nil {
 		return err
 	}
+	if *includeIdentities {
+		ns := []string{"refs/heads", "refs/tags"}
+		if *includeRemotes {
+			ns = append(ns, "refs/remotes")
+		}
+		headers, err := clean.ScanMatchingHeadersContext(context.Background(), repo, matcher, ns, true)
+		if err != nil {
+			return err
+		}
+		report.MatchingAuthors = headers.Authors
+		report.MatchingCommitters = headers.Committers
+	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
 	fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
+	if *includeIdentities && !*jsonOut {
+		fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
+	}
 	for _, m := range report.Matches {
 		fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 	}
-	if len(report.Matches) == 0 {
-		fmt.Println("clean       no matching attribution trailers found")
+	if len(report.Matches) == 0 && report.MatchingAuthors+report.MatchingCommitters == 0 {
+		fmt.Println("clean       no matching selected metadata found")
 	}
 	return nil
 }
@@ -137,11 +176,12 @@ func runCheck(args []string) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	includeRemotes := fs.Bool("include-remotes", false, "also scan fetched remote-tracking refs")
+	includeIdentities := fs.Bool("include-identities", false, "also reject matching author and committer identities")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -153,16 +193,31 @@ func runCheck(args []string) error {
 	if err != nil {
 		return err
 	}
+	if *includeIdentities {
+		ns := []string{"refs/heads", "refs/tags"}
+		if *includeRemotes {
+			ns = append(ns, "refs/remotes")
+		}
+		headers, err := clean.ScanMatchingHeadersContext(context.Background(), repo, matcher, ns, true)
+		if err != nil {
+			return err
+		}
+		report.MatchingAuthors = headers.Authors
+		report.MatchingCommitters = headers.Committers
+	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 	} else {
 		fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
+		if *includeIdentities && !*jsonOut {
+			fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
+		}
 		for _, m := range report.Matches {
 			fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 		}
 	}
-	if len(report.Matches) != 0 {
-		return fmt.Errorf("attribution guard failed: %d matching attribution trailer(s) found", len(report.Matches))
+	if len(report.Matches) != 0 || report.MatchingAuthors+report.MatchingCommitters > 0 {
+		return fmt.Errorf("attribution guard failed: %d trailer(s), %d matching author(s), %d matching committer(s)", len(report.Matches), report.MatchingAuthors, report.MatchingCommitters)
 	}
 	if !*jsonOut {
 		fmt.Println("clean       attribution guard passed")
@@ -174,10 +229,11 @@ func runPlan(args []string) error {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	rulesFile := rulesFlag(fs)
+	identityFlags := identityRewriteFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -185,7 +241,11 @@ func runPlan(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := clean.Plan(repo, matcher)
+	opts, err := resolveIdentityFlags(repo, identityFlags)
+	if err != nil {
+		return err
+	}
+	report, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
 	}
@@ -193,7 +253,11 @@ func runPlan(args []string) error {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
+	printIdentityTargets(opts)
 	printPlanReport(report)
+	if opts.Author == nil && opts.Committer == nil {
+		identityAdvice(repo, matcher)
+	}
 	return nil
 }
 
@@ -202,6 +266,9 @@ func printPlanReport(report model.PlanReport) {
 	fmt.Printf("commits      %d\n", report.Commits)
 	fmt.Printf("matched      %d (%.2f%%)\n", report.MatchedCommits, report.CommitMatchPct)
 	fmt.Printf("trailers     %d\n", len(report.Matches))
+	if report.AuthorsToReplace+report.CommittersToReplace > 0 {
+		fmt.Printf("identities   %d author(s), %d committer(s)\n", report.AuthorsToReplace, report.CommittersToReplace)
+	}
 	fmt.Printf("rewrite      %d commit(s)\n", report.CommitsToRewrite)
 	fmt.Printf("descendants  %d\n", report.DescendantCommits)
 	fmt.Printf("connections  %d parent link(s)\n", report.ParentLinksToRewrite)
@@ -229,11 +296,14 @@ func runClean(args []string) error {
 	apply := fs.Bool("apply", false, "rewrite local history")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
+	identityFlags := identityRewriteFlags(fs)
+	verifyGithub := fs.Bool("verify-github", false, "after push, inspect current GitHub history, PR refs and contributor API")
+	githubUser := fs.String("github-user", "", "optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -241,44 +311,86 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	plan, err := clean.Plan(repo, matcher)
+	opts, err := resolveIdentityFlags(repo, identityFlags)
 	if err != nil {
 		return err
 	}
-	if len(plan.Matches) == 0 {
-		fmt.Println("No matching attribution trailers found. Nothing to do.")
-		return nil
+	if *push && !*apply {
+		return fmt.Errorf("--push requires --apply; first preview with byeclaude plan, then clean --apply and push separately")
 	}
-	if !*apply {
-		printPlanReport(plan)
-		fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
-		return nil
+	if *verifyGithub && !*push {
+		return fmt.Errorf("--verify-github requires --push")
 	}
-	oldRefs, err := clean.LocalRefs(repo)
-	if err != nil {
-		return err
+	if *githubUser != "" && !*verifyGithub {
+		return fmt.Errorf("--github-user requires --verify-github")
 	}
-	report, _, err := clean.Rewrite(repo, matcher)
-	if err != nil {
-		return err
+	if *verifyGithub && *jsonOut {
+		return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")
 	}
-	if *push {
-		if err := clean.Push(repo, *remote, oldRefs); err != nil {
-			return fmt.Errorf("local rewrite succeeded, push failed: %w", err)
+	if *verifyGithub {
+		if _, err := verificationTarget(repo, *remote, *githubUser); err != nil {
+			return err
 		}
 	}
-	after, err := clean.Scan(repo, matcher)
+	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
 	}
-	if len(after.Matches) != 0 {
-		return fmt.Errorf("verification failed: %d matching trailers remain", len(after.Matches))
+	if plan.MatchedCommits == 0 {
+		if *jsonOut {
+			fmt.Println(clean.JSON(plan))
+		} else {
+			fmt.Println("No matching selected attribution metadata found. Nothing to do.")
+			identityAdvice(repo, matcher)
+		}
+		return nil
+	}
+	if plan.AuthorsToReplace+plan.CommittersToReplace > 0 && !*jsonOut {
+		printIdentityTargets(opts)
+	}
+	if !*apply {
+		if *jsonOut {
+			fmt.Println(clean.JSON(plan))
+		} else {
+			printPlanReport(plan)
+			fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
+		}
+		return nil
+	}
+	if !plan.RewriteReady {
+		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
+	}
+	report, _, err := clean.RewriteWithIdentity(repo, matcher, opts)
+	if err != nil {
+		return err
+	}
+	after, err := clean.PlanWithIdentity(repo, matcher, opts)
+	if err != nil {
+		return err
+	}
+	if after.MatchedCommits != 0 {
+		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
+	}
+	scan, err := clean.Scan(repo, matcher)
+	if err != nil {
+		return err
+	}
+	if len(scan.Matches) != 0 {
+		return fmt.Errorf("verification failed: %d matching trailers remain", len(scan.Matches))
+	}
+	if *push {
+		if err := clean.PushBackup(repo, *remote, report.Backup); err != nil {
+			return fmt.Errorf("local rewrite succeeded (backup %s), but remote push failed: %w", report.Backup, err)
+		}
 	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
 	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\nduration    %s\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten, metricDuration(report.DurationMS))
+	if report.AuthorsReplaced+report.CommittersReplaced > 0 {
+		fmt.Printf("identity    %d author(s), %d committer(s) replaced\n", report.AuthorsReplaced, report.CommittersReplaced)
+	}
 	if report.SignaturesDropped > 0 {
 		fmt.Printf("signatures  %d signature/mergetag field(s) dropped because rewritten objects cannot retain valid signatures\n", report.SignaturesDropped)
 	}
@@ -287,7 +399,16 @@ func runClean(args []string) error {
 	} else {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
-	fmt.Println("verify      no matching attribution trailers remain in local heads/tags")
+	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
+	if opts.Author == nil && opts.Committer == nil {
+		identityAdvice(repo, matcher)
+	}
+	if *verifyGithub {
+		return verifyGitHubRemoteAfterPush(repo, *remote, matcher, *githubUser)
+	}
+	if *push {
+		fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")
+	}
 	return nil
 }
 
@@ -296,20 +417,43 @@ func runPush(args []string) error {
 	repoPath, _ := common(fs)
 	backup := fs.String("backup", "", "backup ID printed by clean --apply")
 	remote := fs.String("remote", "origin", "remote to update")
+	verifyGithub := fs.Bool("verify-github", false, "after push, inspect GitHub refs and contributor API")
+	githubUser := fs.String("github-user", "", "optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *backup == "" {
-		return fmt.Errorf("--backup is required; use the ID printed by clean --apply")
+	if *githubUser != "" && !*verifyGithub {
+		return fmt.Errorf("--github-user requires --verify-github")
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
 	repo, err := gitx.Open(*repoPath)
 	if err != nil {
 		return err
+	}
+	if *backup == "" {
+		// Validation below still runs before any publication.
+		ids, err := clean.BackupRefs(repo)
+		if err != nil {
+			return err
+		}
+		switch len(ids) {
+		case 0:
+			return fmt.Errorf("no ByeClaude backup found; use clean --apply to create a reviewed rewrite first")
+		case 1:
+			*backup = ids[0]
+			fmt.Printf("backup      using sole available backup %s\n", *backup)
+		default:
+			return fmt.Errorf("%d backups exist; choose an exact ID with --backup (run byeclaude backups)", len(ids))
+		}
+	}
+	if *verifyGithub {
+		if _, err := verificationTarget(repo, *remote, *githubUser); err != nil {
+			return err
+		}
 	}
 	report, err := clean.Scan(repo, matcher)
 	if err != nil {
@@ -318,10 +462,15 @@ func runPush(args []string) error {
 	if len(report.Matches) != 0 {
 		return fmt.Errorf("local history still contains %d matching trailer(s); refusing to publish", len(report.Matches))
 	}
+	identityAdvice(repo, matcher)
 	if err := clean.PushBackup(repo, *remote, *backup); err != nil {
 		return err
 	}
 	fmt.Printf("push        %s updated from rewrite backup %s using atomic force-with-lease\n", *remote, *backup)
+	if *verifyGithub {
+		return verifyGitHubRemoteAfterPush(repo, *remote, matcher, *githubUser)
+	}
+	fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")
 	return nil
 }
 
@@ -384,6 +533,7 @@ func runHook(args []string) error {
 	fs := flag.NewFlagSet("hook "+action, flag.ContinueOnError)
 	repoPath, _ := common(fs)
 	rulesFile := rulesFlag(fs)
+	shared := fs.Bool("shared-worktrees", false, "allow installing/removing a hook shared across linked Git worktrees")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -391,20 +541,35 @@ func runHook(args []string) error {
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(repo.GitDir, "hooks", "commit-msg")
+	out, err := repo.Run("worktree", "list", "--porcelain")
+	if err != nil {
+		return err
+	}
+	if strings.Count("\n"+string(out), "\nworktree ") > 1 && !*shared {
+		return fmt.Errorf("this hook directory is shared by linked worktrees; pass --shared-worktrees to acknowledge")
+	}
+	prePush := strings.HasPrefix(action, "pre-push-")
+	if action == "pre-push-install" {
+		action = "install"
+	}
+	if action == "pre-push-remove" {
+		action = "remove"
+	}
+	hookName := "commit-msg"
+	if prePush {
+		hookName = "pre-push"
+	}
+	path, err := resolvedGitHookPath(repo, hookName)
+	if err != nil {
+		return err
+	}
 	switch action {
 	case "install":
-		matcherPath := strings.TrimSpace(*rulesFile)
-		if matcherPath != "" {
-			absRules, err := filepath.Abs(matcherPath)
-			if err != nil {
-				return err
-			}
-			if _, err := resolveMatcher(absRules); err != nil {
-				return err
-			}
-			matcherPath = filepath.ToSlash(absRules)
+		matcherPath, err := resolveRulesFile(repo, *rulesFile)
+		if err != nil {
+			return err
 		}
+		matcherPath = filepath.ToSlash(matcherPath)
 		if configured, ok, err := repo.RunOptional("config", "--path", "--get", "core.hooksPath"); err != nil {
 			return err
 		} else if ok && strings.TrimSpace(string(configured)) != "" {
@@ -417,17 +582,28 @@ func runHook(args []string) error {
 		}
 		if info, err := os.Lstat(path); err == nil { // #nosec G703 -- resolved Git directory plus hooks/commit-msg
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("refusing to replace non-regular commit-msg hook at %s", path)
+				return fmt.Errorf("refusing to replace non-regular %s hook at %s", hookName, path)
 			}
 			b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
 			if err != nil {
 				return err
 			}
-			if strings.Contains(string(b), "Installed by ByeClaude") {
+			if current, ok := parseManagedHook(hookName, b); ok {
+				desired := filepath.FromSlash(matcherPath)
+				if current.RulesFile != desired {
+					return fmt.Errorf("%s hook already uses a different rules file (%q vs %q); remove or reconfigure it explicitly instead of silently reusing stale rules", hookName, current.RulesFile, desired)
+				}
+				status, err := inspectHook(repo, hookName)
+				if err != nil {
+					return err
+				}
+				if status.Status != "installed" {
+					return fmt.Errorf("%s hook is %s (%s); repair it before continuing", hookName, status.Status, path)
+				}
 				fmt.Println("Already installed", path)
 				return nil
 			}
-			return fmt.Errorf("refusing to overwrite existing commit-msg hook at %s", path)
+			return fmt.Errorf("refusing to overwrite an unrelated or modified %s hook at %s", hookName, path)
 		} else if !os.IsNotExist(err) {
 			return err
 		}
@@ -435,7 +611,13 @@ func runHook(args []string) error {
 		if err != nil {
 			return err
 		}
-		exe, _ = filepath.Abs(exe)
+		exe, err = filepath.Abs(exe)
+		if err != nil {
+			return err
+		}
+		if ephemeralGoExecutable(exe) {
+			return fmt.Errorf("cannot install a hook pointing at temporary Go build %q; first install a persistent binary (go install or release binary), then rerun setup", exe)
+		}
 		// Git for Windows executes hooks through its POSIX shell. Forward slashes
 		// keep the executable path valid there and are harmless on Unix hosts.
 		exe = filepath.ToSlash(exe)
@@ -444,6 +626,9 @@ func runHook(args []string) error {
 			hookArgs = " --rules " + shellQuote(matcherPath)
 		}
 		script := fmt.Sprintf("#!/bin/sh\n# Installed by ByeClaude.\nexec %s hook-filter%s \"$1\"\n", shellQuote(exe), hookArgs)
+		if prePush {
+			script = fmt.Sprintf("#!/bin/sh\n# Installed by ByeClaude.\nexec %s pre-push-filter%s \"$@\"\n", shellQuote(exe), hookArgs)
+		}
 		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0755) // #nosec G302,G304,G703 -- executable Git hook created exclusively at the resolved hook path
 		if err != nil {
 			return err
@@ -462,21 +647,21 @@ func runHook(args []string) error {
 	case "remove":
 		info, err := os.Lstat(path) // #nosec G703 -- resolved Git directory plus hooks/commit-msg
 		if os.IsNotExist(err) {
-			fmt.Println("No commit-msg hook installed.")
+			fmt.Printf("No %s hook installed.\n", hookName)
 			return nil
 		}
 		if err != nil {
 			return err
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("refusing to remove non-regular commit-msg hook at %s", path)
+			return fmt.Errorf("refusing to remove non-regular %s hook at %s", hookName, path)
 		}
 		b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(string(b), "Installed by ByeClaude") {
-			return fmt.Errorf("refusing to remove a commit-msg hook not owned by ByeClaude")
+		if !ownedByeClaudeHook(hookName, b) {
+			return fmt.Errorf("refusing to remove an unrelated or modified %s hook", hookName)
 		}
 		if err := os.Remove(path); err != nil { // #nosec G703 -- ownership and regular-file checks completed above
 			return err
@@ -578,6 +763,13 @@ func pathIsInsideDirectory(path, directory string) (bool, error) {
 
 func init() {
 	// Internal hook entrypoint is intentionally hidden from normal help.
+	if len(os.Args) >= 2 && os.Args[1] == "pre-push-filter" {
+		if err := runPrePushFilter(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "ByeClaude pre-push:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if len(os.Args) >= 3 && os.Args[1] == "hook-filter" {
 		fs := flag.NewFlagSet("hook-filter", flag.ContinueOnError)
 		rulesFile := rulesFlag(fs)
@@ -589,7 +781,7 @@ func init() {
 			fmt.Fprintln(os.Stderr, "hook-filter requires a commit message path")
 			os.Exit(1)
 		}
-		matcher, err := resolveMatcher(*rulesFile)
+		matcher, err := resolveLocalMatcher(".", *rulesFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

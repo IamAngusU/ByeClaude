@@ -1,5 +1,44 @@
 # Release integrity and reproducibility
 
+## Installation
+
+The installers default to the `v0.1.0-alpha.2` tag. This is explicit
+because GitHub's `latest` download endpoint excludes prereleases. Override
+`BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
+stable release exists. Alpha.2 includes the terminal menu, saved blacklist,
+hook setup and GitHub verification. Go is only needed to build from source;
+release binaries need Git, with no admin rights or runtime installation.
+
+On Windows, download and inspect `install.ps1`, then run:
+
+```powershell
+powershell -NoProfile -File .\install.ps1 -AddToPath
+```
+
+`-AddToPath` adds the install directory to your **user** PATH without admin
+rights or changing system PATH. Reopen other cmd/PowerShell windows afterwards.
+Omit it to manage PATH yourself. `BYECLAUDE_INSTALL_DIR` selects the install
+directory. Existing binaries survive a failed checksum verification.
+
+For development from a checkout, build `go build -trimpath -o
+dist/byeclaude.exe ./cmd/byeclaude` on Windows (omit `.exe` on Unix). Keep that
+binary at a persistent path before installing Git hooks.
+
+## Release artifacts
+
+CI runs on the public [angusu-de mirror](https://github.com/angusu-de/ByeClaude/actions/workflows/ci.yml),
+using the same source commit as the canonical repository. Its
+[live evidence](https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md)
+records the exact commit, workflow attempt, job outcomes and individual steps.
+Missing, skipped and failed jobs never count as passed. The separate account
+belongs to the same maintainer; this is reproducibility evidence, not an
+independent audit. The SVG design is exported from `IamAngusU/Badges` at
+`775ec50cbc778fc4e4181ba14b98f9fc0beb4e5c` and vendored here so CI needs no private-repository token.
+
+When release builds run on that mirror, the verified release set is promoted
+unchanged to the canonical repository at the identical tag and source commit.
+Use the canonical release's build-evidence link to inspect the actual run.
+
 ByeClaude release tags pass the same rewrite, fixture, race, security, installer
 and attribution gates used for normal changes. A release publishes six static
 binaries: Linux, macOS and Windows on amd64 and arm64.

@@ -8,6 +8,40 @@ ByeClaude separates prevention from remediation.
 
 CI never force-pushes by default.
 
+## Zero-friction local setup
+
+```sh
+byeclaude setup
+byeclaude setup --apply
+byeclaude doctor
+```
+
+The first command only previews changes. `--apply` installs both Git hooks
+without replacing externally managed hooks or an unrelated pre-existing hook.
+Setup attempts to roll back newly installed hooks if later installation fails.
+On linked Git worktrees, the shared hooks directory requires the explicit
+`--shared-worktrees` acknowledgement before installation or removal, even
+when invoking individual `hook` commands. Git for Windows,
+macOS and Linux each invoke the same native Git hooks on ordinary pushes.
+GitHub Desktop and other IDEs will use the hooks when they invoke Git for the
+same local clone without disabling hooks. GitHub Desktop 3.5.5 (2026) improved hook support; review **Settings/Options > Git > Hooks**. On Windows, a [known Desktop pre-push issue](https://github.com/desktop/desktop/issues/22620) can fail before ByeClaude's hook even runs. If affected, push from a normal terminal until the Desktop version is fixed. [Official hook support](https://docs.github.com/en/desktop/making-changes-in-a-branch/working-with-git-hooks-in-github-desktop). Web/API commits never invoke local hooks.
+
+The hook stores an absolute path to the installed ByeClaude executable.
+`go run` is not suitable for installation because Go removes its temporary
+binary after execution. Use a persistent release binary or `go install`.
+
+## Pre-push attribution guard
+
+```sh
+byeclaude hook pre-push-install
+byeclaude hook pre-push-remove
+```
+
+The optional hook rejects a push when commit ancestry still contains
+matching Co-Authored-By trailers **or** matching Git author/committer headers.
+It does not silently rewrite history. Git permits --no-verify, so combine this
+with a [GitHub Ruleset](github-rulesets.md) for branch enforcement.
+
 ## Local `commit-msg` hook
 
 Install:
@@ -54,6 +88,7 @@ jobs:
         with:
           # Optional. Omit this for the built-in Claude/Anthropic rule.
           rules-file: .byeclaude-rules.json
+          include-identities: 'true'
 ```
 
 The example pins the first alpha release. Pin the action to an exact commit SHA for the strongest supply-chain stability.
