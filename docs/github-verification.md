@@ -14,7 +14,7 @@ The CLI also supports verification immediately after a guarded push:
 
 ```sh
 byeclaude push --backup BACKUP_ID --verify-github --github-user LOGIN
-byeclaude clean --apply --push --verify-github
+byeclaude clean --apply --push --verify-github --github-user LOGIN
 ```
 
 ## What is verified?

@@ -81,7 +81,7 @@ Usage:
   byeclaude verify --repo OWNER/REPO [--github-user LOGIN] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
-  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--json]
+  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
   byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE]
   byeclaude backups [--repo PATH]
@@ -262,6 +262,7 @@ func runClean(args []string) error {
 	remote := fs.String("remote", "origin", "remote to push")
 	replaceAuthor,replaceCommitter:=identityRewriteFlags(fs)
 	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect current GitHub history, PR refs and contributor API")
+	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -277,6 +278,7 @@ func runClean(args []string) error {
 	opts,err:=parseIdentityRewriteOptions(*replaceAuthor,*replaceCommitter)
 	if err!=nil{return err}
 	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
+	if *githubUser!="" && !*verifyGithub{return fmt.Errorf("--github-user requires --verify-github")}
 	if *verifyGithub && *jsonOut{return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")}
 	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
@@ -333,7 +335,7 @@ func runClean(args []string) error {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
 	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
-	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,"")}
+	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,*githubUser)}
 	if *push{fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")}
 	return nil
 }
@@ -351,6 +353,9 @@ func runPush(args []string) error {
 	}
 	if *backup == "" {
 		return fmt.Errorf("--backup is required; use the ID printed by clean --apply")
+	}
+	if *githubUser!="" && !*verifyGithub {
+		return fmt.Errorf("--github-user requires --verify-github")
 	}
 	matcher, err := resolveMatcher(*rulesFile)
 	if err != nil {
