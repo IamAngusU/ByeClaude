@@ -103,6 +103,7 @@ object was never uploaded.
 ## Verify what GitHub still shows
 
 ```sh
+byeclaude verify
 byeclaude verify --repo OWNER/REPO --github-user LOGIN
 ```
 

@@ -4,8 +4,9 @@ A successful local rewrite says nothing about every historical copy on GitHub.
 To audit GitHub using a **fresh remote clone**, run:
 
 ```sh
+byeclaude verify  # detects origin from the current Git repository
 byeclaude verify --repo OWNER/REPO
-byeclaude verify --repo OWNER/REPO --github-user LOGIN
+byeclaude verify --repo OWNER/REPO --github-user LOGIN --strict
 byeclaude verify --repo OWNER/REPO --max-pull-refs 500 --json
 ```
 

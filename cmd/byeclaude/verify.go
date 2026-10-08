@@ -9,11 +9,13 @@ import (
 	"github.com/IamAngusU/ByeClaude/internal/batch"
 	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/githubverify"
+	"github.com/IamAngusU/ByeClaude/internal/gitx"
 )
 
 func runVerify(args []string) error {
 	fs:=flag.NewFlagSet("verify",flag.ContinueOnError)
-	repoPath:=fs.String("repo","","canonical GitHub OWNER/NAME (not a local directory)")
+	repoPath:=fs.String("repo","","GitHub OWNER/NAME; defaults to current repository origin")
+	strict:=fs.Bool("strict",false,"exit nonzero if residual attribution or incomplete verification")
 	jsonOut:=fs.Bool("json",false,"JSON verification report")
 	rules:=rulesFlag(fs)
 	githubUser:=fs.String("github-user","","optional GitHub login to check in contributor API")
@@ -24,15 +26,27 @@ func runVerify(args []string) error {
 	matcher,err:=resolveMatcher(*rules)
 	if err!=nil{return err}
 	if *timeout<=0{return fmt.Errorf("timeout must be positive")}
+	target:=*repoPath
+	if target=="" {
+		local,err:=gitx.Open(".")
+		if err!=nil {return fmt.Errorf("not inside a Git repository; pass --repo OWNER/REPO: %w",err)}
+		remote,err:=local.Run("remote","get-url","origin")
+		if err!=nil{return fmt.Errorf("cannot detect origin; pass --repo OWNER/REPO: %w",err)}
+		target,err=canonicalGitHubRemote(string(remote))
+		if err!=nil{return fmt.Errorf("origin is not a supported GitHub repository; use --repo OWNER/REPO: %w",err)}
+	}
 	ctx,cancel:=context.WithTimeout(context.Background(),*timeout)
 	defer cancel()
 	report,err:=githubverify.Audit(ctx,githubverify.Options{
-		Repo:*repoPath,Token:batch.TokenFromEnv(),Matcher:matcher,
+		Repo:target,Token:batch.TokenFromEnv(),Matcher:matcher,
 		GitHubUser:*githubUser,MaxPullRefs:*maxPull,
 	})
 	if err!=nil{return err}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
+		if *strict && report.Overall!="clean_in_checked_scopes" {
+			return fmt.Errorf("GitHub verification: %s",report.Overall)
+		}
 		return nil
 	}
 	fmt.Printf("repository    %s\nverified      %s\noverall       %s\n",report.Repository,report.VerifiedAt,report.Overall)
@@ -49,5 +63,8 @@ func runVerify(args []string) error {
 	}
 	fmt.Println("limit        GitHub caches, external forks and old PR objects cannot be declared erased")
 	fmt.Println("refresh      contributor displays may take about 24h after a rewrite; rerun verify later")
+	if *strict && report.Overall!="clean_in_checked_scopes" {
+		return fmt.Errorf("GitHub verification: %s",report.Overall)
+	}
 	return nil
 }

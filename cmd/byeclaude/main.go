@@ -84,11 +84,11 @@ Usage:
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
   byeclaude batch plan ...
-  byeclaude verify --repo OWNER/REPO [--github-user LOGIN] [--max-pull-refs 200] [--rules FILE] [--json]
+  byeclaude verify [--repo OWNER/REPO] [--github-user LOGIN] [--strict] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
   byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
-  byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
+  byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
@@ -357,9 +357,6 @@ func runPush(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *backup == "" {
-		return fmt.Errorf("--backup is required; use the ID printed by clean --apply")
-	}
 	if *githubUser!="" && !*verifyGithub {
 		return fmt.Errorf("--github-user requires --verify-github")
 	}
@@ -370,6 +367,19 @@ func runPush(args []string) error {
 	repo, err := gitx.Open(*repoPath)
 	if err != nil {
 		return err
+	}
+	if *backup=="" {
+		ids,err:=clean.BackupRefs(repo)
+		if err!=nil{return err}
+		switch len(ids) {
+		case 0:
+			return fmt.Errorf("no ByeClaude backup found; use clean --apply to create a reviewed rewrite first")
+		case 1:
+			*backup=ids[0]
+			fmt.Printf("backup      using sole available backup %s\n",*backup)
+		default:
+			return fmt.Errorf("%d backups exist; choose an exact ID with --backup (run byeclaude backups)",len(ids))
+		}
 	}
 	report, err := clean.Scan(repo, matcher)
 	if err != nil {
