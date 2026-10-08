@@ -23,6 +23,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Prebuilt action on this platform
+        uses: ./
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -141,4 +145,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Pinned binary, failure and argument-handling tests
+        run: python3 -m unittest discover -s scripts -p 'test_action.py'
+      - name: Old history and shallow checkout integration
+        run: bash scripts/test-action-history.sh
       - uses: ./

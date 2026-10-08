@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$AddToPath, [switch]$NoPath)
+param([switch]$AddToPath, [switch]$NoPath, [switch]$NoStart)
 
 $ErrorActionPreference = 'Stop'
 $repo = 'IamAngusU/ByeClaude'
@@ -10,7 +10,7 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitect
     default { throw "Unsupported architecture: $_" }
 }
 $asset = "byeclaude_windows_${arch}.exe"
-$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.5' }
+$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.6' }
 
 if ($version -ne 'latest' -and $version -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
     throw "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag"
@@ -97,6 +97,22 @@ try {
     }
     Write-Host 'Local activity counters stay on this computer. Run byeclaude metrics to view them, or metrics off to disable.'
     Write-Host 'Powered by angusu.de | Angus Uelsmann'
+    $interactive = $false
+    try { $interactive = -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected } catch { }
+    $inCI = $env:CI -and $env:CI -notin @('false', '0')
+    if (-not $NoStart -and $env:BYECLAUDE_NO_START -ne '1' -and $interactive -and -not $inCI) {
+        if (Get-Command git -ErrorAction SilentlyContinue) {
+            Write-Host 'Opening guided setup. History and hooks change only after your confirmation.'
+            try {
+                & $target guide
+                if ($LASTEXITCODE -ne 0) { throw 'Guided setup did not finish' }
+            } catch { Write-Host "Setup can wait. Start it again with: & '$target' guide" }
+        } else {
+            Write-Host 'ByeClaude is installed. Install Git from https://git-scm.com/downloads, then run byeclaude.'
+        }
+    } else {
+        Write-Host 'Next: open a new terminal and run byeclaude for guided setup.'
+    }
 }
 finally {
     if (Test-Path -LiteralPath $tmp) {

@@ -11,6 +11,7 @@ trap cleanup EXIT INT TERM
 assets="$tmp/assets"
 export BYECLAUDE_STATE_DIR="$tmp/state"
 export BYECLAUDE_NO_PATH=1
+export BYECLAUDE_NO_START=1
 install_dir="$tmp/install"
 mkdir -p "$assets" "$install_dir"
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -30,6 +31,21 @@ printf '%s  %s\n' "$hash" "$asset" > "$assets/SHA256SUMS.txt"
 
 BYECLAUDE_VERSION="$version" BYECLAUDE_DOWNLOAD_BASE="file://$assets" BYECLAUDE_INSTALL_DIR="$install_dir" sh "$repo_root/install.sh"
 [ "$("$install_dir/byeclaude" version)" = "byeclaude $version" ]
+
+# A real pseudo-terminal should open the read-only guide after installation.
+# Input returns from the first guide choice, then exits the menu.
+if [ "$os" = linux ] && command -v script >/dev/null 2>&1; then
+  mkdir -p "$tmp/guide-repo"
+  git -C "$tmp/guide-repo" init -q
+  export GUIDE_REPO="$tmp/guide-repo" INSTALL_SCRIPT="$repo_root/install.sh"
+  printf 'q\nq\n' | CI=false BYECLAUDE_NO_START=0 BYECLAUDE_VERSION="$version" \
+    BYECLAUDE_DOWNLOAD_BASE="file://$assets" BYECLAUDE_INSTALL_DIR="$install_dir" \
+    timeout 20s script -q -e -c 'cd "$GUIDE_REPO" && sh "$INSTALL_SCRIPT"' /dev/null > "$tmp/guide.log"
+  grep -q 'Opening guided setup' "$tmp/guide.log"
+  grep -q 'Guided start / 1 of 4' "$tmp/guide.log"
+  [ -z "$(git -C "$tmp/guide-repo" show-ref)" ]
+  [ ! -f "$tmp/guide-repo/.git/hooks/pre-push" ]
+fi
 
 # A managed shell profile makes optional PATH setup fail without breaking install.
 mkdir -p "$tmp/home"
