@@ -36,3 +36,41 @@ func TestPrePushFailsClosedForMalformedInput(t *testing.T) {
 		if _,err:=CheckPushInput(repo,strings.NewReader(in),preset.Claude());err==nil {t.Errorf("accepted malformed update %q",in)}
 	}
 }
+
+func TestPrePushOnlyNewCommitsOnExistingRemoteBranch(t *testing.T) {
+	dir:=t.TempDir()
+	git(t,dir,"init","-q")
+	git(t,dir,"config","user.name","Human")
+	git(t,dir,"config","user.email","human@example.org")
+	git(t,dir,"commit","--allow-empty","-m","Already published\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	old:=strings.TrimSpace(git(t,dir,"rev-parse","HEAD"))
+	git(t,dir,"commit","--allow-empty","-m","New clean commit")
+	current:=strings.TrimSpace(git(t,dir,"rev-parse","HEAD"))
+	repo,err:=gitx.Open(dir)
+	if err!=nil {t.Fatal(err)}
+	input:=fmt.Sprintf("refs/heads/main %s refs/heads/main %s\\n",current,old)
+	out,err:=CheckPushInput(repo,strings.NewReader(input),preset.Claude())
+	if err!=nil {t.Fatal(err)}
+	if out.Commits!=1 || out.Trailers!=0 {t.Fatalf("prior remote history incorrectly blocked new push: %+v",out)}
+	git(t,dir,"commit","--allow-empty","-m","Fresh bad commit\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	bad:=strings.TrimSpace(git(t,dir,"rev-parse","HEAD"))
+	input=fmt.Sprintf("refs/heads/main %s refs/heads/main %s\\n",bad,current)
+	out,err=CheckPushInput(repo,strings.NewReader(input),preset.Claude())
+	if err!=nil {t.Fatal(err)}
+	if out.CommitsWithMatch!=1 || out.Trailers!=1 {t.Fatalf("new attribution was missed: %+v",out)}
+}
+
+func TestPrePushMissingRemoteTipFailsClosed(t *testing.T) {
+	dir:=t.TempDir()
+	git(t,dir,"init","-q")
+	git(t,dir,"config","user.name","Human")
+	git(t,dir,"config","user.email","human@example.org")
+	git(t,dir,"commit","--allow-empty","-m","Initial")
+	repo,err:=gitx.Open(dir)
+	if err!=nil {t.Fatal(err)}
+	local:=strings.TrimSpace(git(t,dir,"rev-parse","HEAD"))
+	remote:=strings.Repeat("a",40)
+	input:=fmt.Sprintf("refs/heads/main %s refs/heads/main %s\\n",local,remote)
+	_,err=CheckPushInput(repo,strings.NewReader(input),preset.Claude())
+	if err==nil || !strings.Contains(err.Error(),"fetch") {t.Fatalf("unknown remote must fail closed: %v",err)}
+}

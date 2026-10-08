@@ -31,9 +31,13 @@ type PushReport struct {
 }
 
 // CheckPushInput consumes the ref-update protocol sent to git's pre-push hook.
-// All commits reachable from pushed commit/tag tips are checked, including
-// ancestors, so the guard does not miss old trailers brought by a new branch.
-// Tag-only deletion and branch deletion have no new commits to inspect.
+// For updates to existing remote refs, only incoming commits not already in
+// the remote tip's ancestry are examined. This avoids blocking every future
+// push because of metadata already present in the remote's old history.
+// A brand-new remote ref has no previous tip, so its complete reachable
+// ancestry is checked. If the old remote tip is absent locally, fail closed
+// and ask the user to fetch instead of pretending the push is clean.
+// Deleting branches/tags has no new commits to inspect.
 func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matcher) (PushReport, error) {
 	report := PushReport{}
 	if matcher == nil {
@@ -42,6 +46,7 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 	reader := bufio.NewScanner(input)
 	reader.Buffer(make([]byte, 4096), 1024*1024)
 	tips := map[string]bool{}
+	previous := map[string]bool{}
 	for reader.Scan() {
 		line := strings.TrimSpace(reader.Text())
 		if line == "" {
@@ -51,7 +56,7 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 		if len(fields) != 4 {
 			return report, fmt.Errorf("invalid Git pre-push ref-update line")
 		}
-		localRef, localSHA := fields[0], fields[1]
+		localRef, localSHA, oldSHA := fields[0], fields[1], fields[3]
 		if !objectIDRE.MatchString(localSHA) || !objectIDRE.MatchString(fields[3]) {
 			return report, fmt.Errorf("invalid Git object ID in pre-push input")
 		}
@@ -70,6 +75,15 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 			return report, fmt.Errorf("cannot resolve pushed commit %s: %w", localSHA, err)
 		}
 		tips[strings.TrimSpace(string(peeled))] = true
+		if !isZeroSHA(oldSHA) {
+			remote, err := repo.RunContext(context.Background(), "rev-parse", "--verify", oldSHA+"^{commit}")
+			if err != nil {
+				// Remote-tracking refs can be stale or missing. We must not
+				// optimistically ignore an unknown remote history.
+				return report, fmt.Errorf("remote ref %s points at %s which is not locally available; fetch the remote before pushing (or use --no-verify if you explicitly accept bypassing the local guard)", fields[2], oldSHA)
+			}
+			previous[strings.TrimSpace(string(remote))] = true
+		}
 	}
 	if err := reader.Err(); err != nil {
 		return report, err
@@ -80,6 +94,9 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 	var inputBuf bytes.Buffer
 	for sha := range tips {
 		fmt.Fprintln(&inputBuf, sha)
+	}
+	for sha := range previous {
+		fmt.Fprintln(&inputBuf, "^"+sha)
 	}
 	commitsOut, err := repo.RunInput(inputBuf.Bytes(), "rev-list", "--stdin")
 	if err != nil {

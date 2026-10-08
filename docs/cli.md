@@ -88,7 +88,7 @@ and [GitHub rulesets](github-rulesets.md).
 
 - **Push was blocked:** `byeclaude scan --include-identities` and
   `byeclaude plan` show where the matching metadata is. The pre-push hook
-  conservatively checks reachable history, not just the most recent commit.
+  checks newly pushed history. For brand-new branches it checks full reachable ancestry; for existing branches it excludes the previously published remote ancestry.
 - **Existing hooks:** ByeClaude refuses to overwrite foreign hooks or
   `core.hooksPath`. Keep your hook manager and integrate ByeClaude manually
   (see [automation](automation.md)).
