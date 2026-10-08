@@ -231,6 +231,7 @@ func runPlan(args []string) error {
 	}
 	printIdentityTargets(opts)
 	printPlanReport(report)
+	if opts.Author==nil && opts.Committer==nil { identityAdvice(repo,matcher) }
 	return nil
 }
 
@@ -294,20 +295,24 @@ func runClean(args []string) error {
 		return err
 	}
 	if plan.MatchedCommits == 0 {
-		fmt.Println("No matching selected attribution metadata found. Nothing to do.")
+		if *jsonOut { fmt.Println(clean.JSON(plan)) } else {
+			fmt.Println("No matching selected attribution metadata found. Nothing to do.")
+			identityAdvice(repo, matcher)
+		}
 		return nil
 	}
 	if plan.AuthorsToReplace+plan.CommittersToReplace>0 && !*jsonOut {
 		printIdentityTargets(opts)
 	}
 	if !*apply {
-		printPlanReport(plan)
-		fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
+		if *jsonOut { fmt.Println(clean.JSON(plan)) } else {
+			printPlanReport(plan)
+			fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
+		}
 		return nil
 	}
-	oldRefs, err := clean.LocalRefs(repo)
-	if err != nil {
-		return err
+	if !plan.RewriteReady {
+		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
 	}
 	report, _, err := clean.RewriteWithIdentity(repo, matcher, opts)
 	if err != nil {
@@ -318,17 +323,17 @@ func runClean(args []string) error {
 	if after.MatchedCommits != 0 {
 		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
 	}
-	if *push {
-		if err := clean.Push(repo, *remote, oldRefs); err != nil {
-			return fmt.Errorf("local rewrite succeeded, push failed: %w", err)
-		}
-	}
 	scan, err := clean.Scan(repo, matcher)
 	if err != nil {
 		return err
 	}
 	if len(scan.Matches) != 0 {
 		return fmt.Errorf("verification failed: %d matching trailers remain", len(scan.Matches))
+	}
+	if *push {
+		if err := clean.PushBackup(repo, *remote, report.Backup); err != nil {
+			return fmt.Errorf("local rewrite succeeded (backup %s), but remote push failed: %w", report.Backup, err)
+		}
 	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
@@ -394,6 +399,7 @@ func runPush(args []string) error {
 	if len(report.Matches) != 0 {
 		return fmt.Errorf("local history still contains %d matching trailer(s); refusing to publish", len(report.Matches))
 	}
+	identityAdvice(repo, matcher)
 	if err := clean.PushBackup(repo, *remote, *backup); err != nil {
 		return err
 	}
