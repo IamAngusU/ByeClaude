@@ -5,40 +5,62 @@
   </picture>
 </p>
 
-<h1 align="center">Audit declared AI attribution. Clean Git history safely.</h1>
+<h1 align="center">Audit AI co-author attribution. Rewrite only when you mean it.</h1>
 
-<p align="center">Scan one repo or an account, measure declared co-author evidence, preview rewrite impact, and sanitize only when you explicitly ask.</p>
+<p align="center">Scan Git history, preview the exact rewrite impact, and remove matching co-author trailers only after an explicit apply.</p>
 
 <p align="center">
-  <a href="#30-second-flow"><img src="docs/assets/readme/badge-default.svg" height="34" alt="Read-only by default"></a>
-  <a href="#safety-first"><img src="docs/assets/readme/badge-safety.svg" height="34" alt="Backup and guarded leases"></a>
-  <a href="#install"><img src="docs/assets/readme/badge-platforms.svg" height="34" alt="Windows, Linux and macOS"></a>
-  <a href="LICENSE"><img src="docs/assets/readme/badge-license.svg" height="34" alt="MIT license"></a>
+  <a href="#30-second-flow"><img src="docs/assets/readme/badge-default.svg" height="48" alt="Read-only first"></a>
+  <a href="#safety-first"><img src="docs/assets/readme/badge-safety.svg" height="48" alt="Backup and guarded leases"></a>
+  <a href="#install"><img src="docs/assets/readme/badge-platforms.svg" height="48" alt="Windows, Linux and macOS"></a>
+  <a href="LICENSE"><img src="docs/assets/readme/badge-license.svg" height="48" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="#30-second-flow"><img src="docs/assets/readme/badge-start.svg" width="480" alt="Start ByeClaude with a read-only scan"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/IamAngusU/icon-marquee">
+    <img width="760" src="docs/assets/readme/stack-marquee.svg" alt="ByeClaude ecosystem: Git, GitHub, Go, PowerShell, Windows, Linux, macOS, Claude Code and ChatGPT">
+  </a>
+  <br>
+  <sub>Dogfooded with <a href="https://github.com/IamAngusU/icon-marquee">Icon Marquee</a> · Git, Go, CI, supported platforms and the AI-attribution ecosystem in one moving row.</sub>
 </p>
 
 <p align="center"><a href="#30-second-flow">Quick start</a> · <a href="#keep-it-clean">Keep it clean</a> · <a href="#what-the-rewrite-changes">Rewrite model</a> · <a href="#safety-first">Safety</a> · <a href="#install">Install</a> · <a href="docs/README.md">Docs</a></p>
 
-Claude Code can add a `Co-Authored-By: Claude … <noreply@anthropic.com>` trailer to a commit. GitHub recognizes `Co-authored-by` trailers as additional authors, so that attribution can surface in repository history and contributor data.
+ByeClaude is a Git-aware attribution auditor and history sanitizer. Claude/Anthropic is the narrow built-in default; validated rule sets can classify several declared co-author identities without turning the rewrite engine into an arbitrary regex tool.
 
-**ByeClaude** is a Git-aware attribution auditor and history sanitizer. Claude/Anthropic is the built-in default; validated rule sets can classify several declared co-author identities without turning the rewrite engine into an arbitrary regex tool.
+It is deliberately **read-only first**. A normal audit does not touch refs, files or remotes. Cleanup is a separate, explicit operation with a local backup and guarded publication.
 
 ## Why use it?
-
-The tool is for cases where the repository owner has deliberately decided that AI-tool co-author trailers should not remain part of the published Git history. Common reasons include repository hygiene, contributor-graph accuracy, a customer delivery requirement, an internal attribution policy, or simple personal preference.
-
-ByeClaude does **not** decide whether removing attribution is appropriate for a project, and it does not claim that a matching trailer proves how much code an AI produced. It gives the repository owner a narrow, reviewable mechanism for inspecting and changing Git metadata.
 
 | You want to… | ByeClaude does… |
 | --- | --- |
 | Audit declared AI/tool co-authors | Scans every commit reachable from local heads, tags and `HEAD`, using the Claude default or a validated rule set. |
-| Audit several repositories or an account | Read-only batch scan by explicit repo, public/private/all scope, with bounded concurrency and timing metrics by default. |
-| Remove them | Rewrites matching commit messages and the descendants whose parent IDs must change. File trees stay untouched. |
+| See the blast radius first | `plan` shows matched commits, descendants, affected refs, tags, signature risk and estimated object writes without changing anything. |
+| Remove matching trailers | Rewrites only commit messages that match the active rules, plus descendants whose parent IDs must change. File trees stay untouched. |
 | Keep them from coming back | Installs a conservative `commit-msg` hook and ships a read-only GitHub Actions guard. |
-| Avoid clobbering shared work | Creates local backup refs, blocks unsafe repository states, and uses atomic force-with-lease for remote updates. |
+| Avoid clobbering shared work | Creates local backup refs and publishes with an atomic force-with-lease against the reviewed rewrite. |
+| Audit several repositories | Batch scan and batch plan stay read-only in this alpha and report per-repository plus aggregate metrics. |
 
 ## 30-second flow
 
-Start read-only:
+> [!TIP]
+> **New here? Start with `byeclaude scan`. It is read-only.**
+
+### 1. Install
+
+For the current alpha:
+
+```sh
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
+```
+
+Release binaries and checksum-verifying installers are documented under [Install](#install).
+
+### 2. Audit
 
 ```sh
 byeclaude scan
@@ -54,36 +76,43 @@ duration    184ms
   c0b7bd296ec4  [claude-anthropic] Claude Sonnet 4 <noreply@anthropic.com>
 ```
 
-Nothing changed. See the actual rewrite impact before touching history:
+Nothing changed.
+
+### 3. Preview the exact rewrite
 
 ```sh
 byeclaude plan
 ```
 
-`plan` reports matched commits, descendants that would get new IDs, parent links to reconnect, affected branch/tag refs, annotated tags, signatures at risk and an approximate number of new Git objects. It is read-only.
+`plan` is still read-only. It reports matched commits, descendants that would receive new IDs, parent links to reconnect, affected branch/tag refs, annotated tags, signatures at risk and an approximate object-write count.
 
-When you are ready, rewrite locally:
+### 4. Apply locally
 
 > [!WARNING]
-> **Signed commits/tags that must be rewritten cannot keep their old valid signatures.** A signature covers the original Git object bytes. ByeClaude reports dropped signature fields, but it cannot make the old signature valid on the new object. If preserving signed history matters more than removing attribution, stop here. [Details](docs/safety.md#signatures).
+> **Signed commits or tags that must be rewritten cannot keep their old valid signatures.** A signature covers the original Git object bytes. If preserving signed history matters more than removing attribution, stop here and read [the signature notes](docs/safety.md#signatures).
 
 ```sh
 byeclaude clean --apply
 ```
 
-ByeClaude creates a local backup, records the exact rewritten ref tips, rewrites the necessary commit DAG, updates local heads/tags in one ref transaction, then rescans the result. The command prints the backup ID.
+ByeClaude creates a local backup, records the rewritten ref tips, rewrites the necessary commit DAG, updates local heads/tags in one ref transaction, then rescans the result. GitHub is still unchanged.
 
-Review the graph and working tree. Then publish exactly that recorded rewrite:
+### 5. Review, then publish
 
 ```sh
 git log --oneline --decorate --graph --all --max-count=40
 byeclaude push --backup BACKUP_ID
 ```
 
-The reviewed push fails if a local ref moved after the rewrite or if a collaborator moved the remote ref you are about to replace. A remote rewrite changes commit IDs for everyone using those refs.
+The push fails if a local ref moved after the rewrite or if a collaborator moved the remote ref you are about to replace.
 
-> [!TIP]
-> `byeclaude clean --apply --push` remains available as a one-shot shortcut when you deliberately do not need an inspection gap between rewrite and publish.
+Want prevention too?
+
+```sh
+byeclaude hook install
+```
+
+That removes only matching co-author trailers from future local commit messages. The repository also ships a read-only GitHub Actions guard for shared branches.
 
 ## It scans more than the current branch
 
