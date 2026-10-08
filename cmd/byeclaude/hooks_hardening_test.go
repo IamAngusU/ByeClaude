@@ -68,3 +68,19 @@ func TestSetupDifferentRulesCannotBeSilentlyReused(t *testing.T) {
 		t.Fatalf("missing rules should be detected: %+v %v", h, err)
 	}
 }
+
+func TestDoctorDetectsDirectoryInsteadOfHookBinary(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	target := t.TempDir()
+	script := "#!/bin/sh\n# Installed by ByeClaude.\nexec " +
+		shellQuote(filepath.ToSlash(target)) + " hook-filter \"$1\"\n"
+	hook := filepath.Join(dir, ".git", "hooks", "commit-msg")
+	if err := os.WriteFile(hook, []byte(script), 0755); err != nil { t.Fatal(err) }
+	repo, err := gitx.Open(dir)
+	if err != nil { t.Fatal(err) }
+	got, err := inspectHook(repo, "commit-msg")
+	if err != nil || got.Status != "invalid_binary" {
+		t.Fatalf("directory must not be treated as an executable: %+v, %v", got, err)
+	}
+}
