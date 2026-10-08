@@ -81,8 +81,10 @@ byeclaude hook install            # sanitize commit messages before creation
 byeclaude hook pre-push-install   # block matching metadata before a push
 ```
 
-For shared branches, [export a GitHub Ruleset](docs/github-rulesets.md) to
-reject matching messages server-side, including pushes that bypass local hooks.
+For shared branches, [export a GitHub Ruleset](docs/github-rulesets.md)
+to reject matching messages server-side when metadata rules are available on
+your GitHub plan. A rejected branch update is not proof that the underlying
+object was never uploaded.
 
 ## Verify what GitHub still shows
 

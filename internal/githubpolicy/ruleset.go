@@ -139,7 +139,10 @@ func (c Client) do(ctx context.Context, method, path string, body any, destinati
 	if err!=nil{return fmt.Errorf("GitHub API request failed: %w",err)}
 	defer resp.Body.Close()
 	if resp.StatusCode<200 || resp.StatusCode>=300 {
-		return fmt.Errorf("GitHub %s %s returned HTTP %d",method,path,resp.StatusCode)
+		if resp.StatusCode==http.StatusUnprocessableEntity {
+			return fmt.Errorf("GitHub rejected %s %s (HTTP 422); check metadata-rule plan eligibility (GitHub Enterprise organization), regex validity, and repository permissions",method,path)
+		}
+		return fmt.Errorf("GitHub %s %s returned HTTP %d; check repository visibility and token permissions",method,path,resp.StatusCode)
 	}
 	if destination!=nil {
 		return json.NewDecoder(resp.Body).Decode(destination)

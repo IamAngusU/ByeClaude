@@ -1,8 +1,20 @@
 # GitHub Ruleset integration
 
 Local Git hooks are bypassable with --no-verify, and they do not run on
-GitHub web/API commits. GitHub Rulesets can reject a matching push to a
-protected branch server-side, rather than rewriting its metadata.
+GitHub web/API commits. GitHub Rulesets can prevent a matching commit from
+updating protected branches server-side, rather than rewriting metadata.
+
+**Availability:** GitHub documents commit metadata restrictions as an
+additional Rulesets feature for GitHub Enterprise organizations. Standard
+GitHub Free/Pro repository rulesets do not necessarily support it. GitHub
+may reject an installation with HTTP 422 or a permission error. The
+export remains useful as a proposal even without access to this feature.
+
+**Reachability:** GitHub rejects the ref update, but says commit objects
+from a rejected update may still be retrievable by SHA. Never claim that
+server-side rulesets guarantee "never uploaded" or erase old PR history.
+Only a local pre-push hook can stop a compliant client before the upload
+begins, and Git hooks can be bypassed. [GitHub ruleset documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#metadata-restrictions).
 
 Export a **proposal** first:
 
