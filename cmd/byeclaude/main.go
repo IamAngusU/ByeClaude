@@ -76,7 +76,7 @@ Usage:
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
   byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--json]
   byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
-  byeclaude hook install|remove [--repo PATH] [--rules FILE]
+  byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
@@ -415,7 +415,12 @@ func runHook(args []string) error {
 	if err != nil {
 		return err
 	}
-	path := filepath.Join(repo.GitDir, "hooks", "commit-msg")
+	prePush := strings.HasPrefix(action, "pre-push-")
+	if action == "pre-push-install" { action = "install" }
+	if action == "pre-push-remove" { action = "remove" }
+	hookName := "commit-msg"
+	if prePush { hookName = "pre-push" }
+	path := filepath.Join(repo.GitDir, "hooks", hookName)
 	switch action {
 	case "install":
 		matcherPath := strings.TrimSpace(*rulesFile)
@@ -468,6 +473,9 @@ func runHook(args []string) error {
 			hookArgs = " --rules " + shellQuote(matcherPath)
 		}
 		script := fmt.Sprintf("#!/bin/sh\n# Installed by ByeClaude.\nexec %s hook-filter%s \"$1\"\n", shellQuote(exe), hookArgs)
+		if prePush {
+			script = fmt.Sprintf("#!/bin/sh\n# Installed by ByeClaude.\nexec %s pre-push-filter%s \"$@\"\n", shellQuote(exe), hookArgs)
+		}
 		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0755) // #nosec G302,G304,G703 -- executable Git hook created exclusively at the resolved hook path
 		if err != nil {
 			return err
@@ -602,6 +610,13 @@ func pathIsInsideDirectory(path, directory string) (bool, error) {
 
 func init() {
 	// Internal hook entrypoint is intentionally hidden from normal help.
+	if len(os.Args) >= 2 && os.Args[1] == "pre-push-filter" {
+		if err := runPrePushFilter(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "ByeClaude pre-push:", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if len(os.Args) >= 3 && os.Args[1] == "hook-filter" {
 		fs := flag.NewFlagSet("hook-filter", flag.ContinueOnError)
 		rulesFile := rulesFlag(fs)
