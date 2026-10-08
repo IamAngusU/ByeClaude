@@ -28,8 +28,11 @@ func TestPrePushRejectsMatchingTrailersAndAllowsDeletion(t *testing.T) {
 	if err!=nil || rep.Commits != 0 {t.Fatalf("delete rejected: %+v, %v",rep,err)}
 }
 func TestPrePushFailsClosedForMalformedInput(t *testing.T) {
-	repo, err := gitx.Open(t.TempDir())
-	if err==nil { t.Fatal("expected absent repo to fail") }
-	_ = repo
-	_ = err
+	dir := t.TempDir()
+	git(t,dir,"init","-q")
+	repo,err:=gitx.Open(dir)
+	if err!=nil{t.Fatal(err)}
+	for _,in:=range []string{"refs/heads/main bad-id refs/heads/main deadbeef", "refs/heads/main 123"} {
+		if _,err:=CheckPushInput(repo,strings.NewReader(in),preset.Claude());err==nil {t.Errorf("accepted malformed update %q",in)}
+	}
 }
