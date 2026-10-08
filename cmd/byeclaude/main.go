@@ -287,6 +287,7 @@ func runClean(args []string) error {
 	}
 	opts,err:=resolveIdentityFlags(repo,identityFlags)
 	if err!=nil{return err}
+	if *push && !*apply {return fmt.Errorf("--push requires --apply; first preview with byeclaude plan, then clean --apply and push separately")}
 	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
 	if *githubUser!="" && !*verifyGithub{return fmt.Errorf("--github-user requires --verify-github")}
 	if *verifyGithub && *jsonOut{return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")}
@@ -352,6 +353,7 @@ func runClean(args []string) error {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
 	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
+	if opts.Author==nil && opts.Committer==nil {identityAdvice(repo, matcher)}
 	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,*githubUser)}
 	if *push{fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")}
 	return nil

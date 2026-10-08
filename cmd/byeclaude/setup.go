@@ -74,6 +74,15 @@ func runSetup(args []string) error {
 	for _, state := range states {
 		fmt.Printf("%-12s %s\n", state.Name, state.Status)
 	}
+	if headers.Authors>0 {
+		fmt.Println("option       Misattributed author? Preview: byeclaude plan --author-from-git")
+	}
+	if headers.Committers>0 {
+		fmt.Println("option       Misattributed committer? Preview: byeclaude plan --committer-from-git")
+	}
+	if headers.Authors+headers.Committers>0 {
+		fmt.Println("note         Git config is only a suggested identity; verify real authorship")
+	}
 	if !*apply {
 		fmt.Println("dry run      no hooks changed")
 		fmt.Println("next         byeclaude setup --apply")
