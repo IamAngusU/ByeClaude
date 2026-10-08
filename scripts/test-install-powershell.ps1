@@ -10,6 +10,9 @@ $originalInstall = $env:BYECLAUDE_INSTALL_DIR
 $originalGOOS = $env:GOOS
 $originalGOARCH = $env:GOARCH
 $originalCGO = $env:CGO_ENABLED
+$originalState = $env:BYECLAUDE_STATE_DIR
+$originalLocalAppData = $env:LOCALAPPDATA
+$originalUserProfile = $env:USERPROFILE
 
 try {
     New-Item -ItemType Directory -Path $assets, $install | Out-Null
@@ -31,13 +34,39 @@ try {
     $env:BYECLAUDE_VERSION = $version
     $env:BYECLAUDE_DOWNLOAD_BASE = ([uri]$assets).AbsoluteUri.TrimEnd('/')
     $env:BYECLAUDE_INSTALL_DIR = $install
-    & (Join-Path $repoRoot 'install.ps1')
+    $env:BYECLAUDE_STATE_DIR = Join-Path $temporary 'state'
+    & (Join-Path $repoRoot 'install.ps1') -NoPath
 
     $installed = Join-Path $install 'byeclaude.exe'
     if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'Installer did not create byeclaude.exe.' }
     $reported = (& $installed version).Trim()
     if ($reported -ne "byeclaude $version") { throw "Installed binary reported unexpected version: $reported" }
     $installedHash = (Get-FileHash -LiteralPath $installed -Algorithm SHA256).Hash
+
+    # Optional PATH failure must leave a working binary and preserve user PATH.
+    $beforeUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $blockedState = Join-Path $temporary 'blocked-state'
+    [IO.File]::WriteAllText($blockedState, 'keep')
+    $env:BYECLAUDE_STATE_DIR = $blockedState
+    $pathFailureOutput = & (Join-Path $repoRoot 'install.ps1') *>&1 | Out-String
+    if ($pathFailureOutput -notmatch 'PATH setup deferred') { throw 'Expected a nonfatal PATH setup diagnostic.' }
+    if ((& $installed version).Trim() -ne "byeclaude $version") { throw 'PATH failure broke the installed binary.' }
+    if ([Environment]::GetEnvironmentVariable('Path', 'User') -ne $beforeUserPath) { throw 'Installer test changed real user PATH.' }
+
+    # A blocked custom destination falls back without elevation.
+    $env:BYECLAUDE_STATE_DIR = Join-Path $temporary 'state'
+    $blockedDestination = Join-Path $temporary 'blocked-destination'
+    [IO.File]::WriteAllText($blockedDestination, 'keep')
+    $env:BYECLAUDE_INSTALL_DIR = $blockedDestination
+    $env:LOCALAPPDATA = Join-Path $temporary 'fallback-local'
+    $env:USERPROFILE = Join-Path $temporary 'fallback-user'
+    & (Join-Path $repoRoot 'install.ps1') -NoPath
+    $fallbackBinary = Join-Path $env:LOCALAPPDATA 'Programs\ByeClaude\byeclaude.exe'
+    if ((& $fallbackBinary version).Trim() -ne "byeclaude $version") { throw 'User-directory fallback failed.' }
+    if ([IO.File]::ReadAllText($blockedDestination) -ne 'keep') { throw 'Blocked destination was replaced.' }
+    $env:BYECLAUDE_INSTALL_DIR = $install
+    $env:LOCALAPPDATA = $originalLocalAppData
+    $env:USERPROFILE = $originalUserProfile
 
     [IO.File]::WriteAllBytes($asset, [byte[]](1, 2, 3, 4))
     $rejected = $false
@@ -61,6 +90,9 @@ finally {
     $env:GOOS = $originalGOOS
     $env:GOARCH = $originalGOARCH
     $env:CGO_ENABLED = $originalCGO
+    $env:BYECLAUDE_STATE_DIR = $originalState
+    $env:LOCALAPPDATA = $originalLocalAppData
+    $env:USERPROFILE = $originalUserProfile
     if (Test-Path -LiteralPath $temporary) {
         $resolved = [IO.Path]::GetFullPath($temporary)
         $prefix = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar

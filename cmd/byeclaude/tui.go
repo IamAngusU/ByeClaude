@@ -48,6 +48,14 @@ func runTUI(args []string) error {
 	}
 	ui := terminalUI{in: bufio.NewReader(os.Stdin), out: os.Stdout, repo: *repoPath, color: color, guided: *guide}
 	ui.invoke = func(command string, args []string) error { return executeMenuCommand(command, args, ui.out) }
+	if err := ui.offerPathRetry(); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if !errors.Is(err, errMenuBack) {
+			return err
+		}
+	}
 	return ui.run()
 }
 
@@ -91,7 +99,7 @@ func (ui *terminalUI) run() error {
 		} else {
 			ui.dashboard(repo)
 			var choice string
-			choice, err = ui.choice("Choose [Enter: guided start]", "g", "g", "1", "2", "3", "4", "5", "6", "7", "h", "q")
+			choice, err = ui.choice("Choose [Enter: guided start]", "g", "g", "1", "2", "3", "4", "5", "6", "7", "m", "h", "q")
 			if err == nil {
 				args := []string{"--repo", ui.repo}
 				switch choice {
@@ -121,6 +129,8 @@ func (ui *terminalUI) run() error {
 					err = ui.selectRepository()
 				case "h":
 					ui.help()
+				case "m":
+					err = ui.showMetrics()
 				}
 			}
 		}
@@ -145,6 +155,7 @@ func (ui *terminalUI) run() error {
 
 func (ui *terminalUI) dashboard(repo *gitx.Repo) {
 	ui.heading("BYECLAUDE / Your history. Your attribution.")
+	ui.hint("Powered by angusu.de | Angus Uelsmann")
 	fmt.Fprintln(ui.out, "  Repository  "+terminalText(repo.Root))
 	set, saved, err := blacklist.Load(repo)
 	if err != nil {
@@ -179,7 +190,8 @@ func (ui *terminalUI) dashboard(repo *gitx.Repo) {
 	ui.option("3", "Preview a cleanup", "See the impact first. Nothing changes without typing CLEAN.")
 	ui.option("4", "Protect future commits", "Preview and install local commit and push checks.")
 	fmt.Fprintln(ui.out, "  5  Diagnose protection    6  Backups and recovery    7  Change folder")
-	fmt.Fprintln(ui.out, "  h  Explain the basics    q  Exit")
+	fmt.Fprintln(ui.out, "  m  My local metrics      h  Explain the basics       q  Exit")
+	ui.hint("Local activity counters: m to view; metrics off disables collection.")
 	ui.hint("Type a choice and press Enter. GitHub is unchanged by this menu.")
 }
 
@@ -264,6 +276,8 @@ func (ui *terminalUI) audit() error {
 
 func (ui *terminalUI) guide(repo *gitx.Repo) error {
 	ui.heading("Guided start / 1 of 4: Choose identities")
+	ui.hint("Powered by angusu.de | Angus Uelsmann")
+	ui.hint("Local activity counters: m in the menu; metrics off disables collection.")
 	ui.hint("Claude/Anthropic is selected by default. Other tools need their exact email.")
 	ui.hint("Each change is confirmed separately. q returns to the main menu.")
 	if set, _, err := blacklist.Load(repo); err == nil {

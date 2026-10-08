@@ -2,23 +2,45 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.3` tag. This is explicit
+The installers default to the `v0.1.0-alpha.4` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
-stable release exists. Alpha.2 includes the terminal menu, saved blacklist,
-hook setup and GitHub verification. Go is only needed to build from source;
+stable release exists. Alpha.4 adds local metrics and optional, recoverable
+user PATH setup. Go is only needed to build from source;
 release binaries need Git, with no admin rights or runtime installation.
 
 On Windows, download and inspect `install.ps1`, then run:
 
 ```powershell
-powershell -NoProfile -File .\install.ps1 -AddToPath
+powershell -NoProfile -File .\install.ps1
 ```
 
-`-AddToPath` adds the install directory to your **user** PATH without admin
-rights or changing system PATH. Reopen other cmd/PowerShell windows afterwards.
-Omit it to manage PATH yourself. `BYECLAUDE_INSTALL_DIR` selects the install
-directory. Existing binaries survive a failed checksum verification.
+The installer adds the install directory to your **user** PATH by default,
+without administrator rights, UAC or changes to system PATH. `-AddToPath` is
+still accepted for compatibility; `-NoPath` opts out. Reopen cmd/PowerShell
+afterwards. `BYECLAUDE_INSTALL_DIR` selects a preferred directory; if staging
+there is impossible, the installer tries `%LOCALAPPDATA%\Programs\ByeClaude`,
+then `%USERPROFILE%\.local\bin\ByeClaude`. It reports the actual destination.
+
+On Unix, the default is `~/.local/bin`; an unwritable custom directory falls
+back there without sudo. PATH setup maintains a marked block in Bash's
+`.bashrc` and active login profile, Zsh's `.zshrc` (respecting absolute
+`ZDOTDIR`), or sh's `.profile`. Linked, ambiguous or oversized profiles and
+unsupported shells are left for manual setup. `BYECLAUDE_NO_PATH=1` opts out.
+
+PATH failure is nonfatal once the binary is installed. The full executable
+path is printed, and a saved pending preference offers Retry / Later / No at
+the next interactive start. `byeclaude path status`, `path setup` and `path
+skip` inspect, retry or disable reminders. No prompt appears in scripts or
+Git hooks. If the retry preference itself cannot be saved, the diagnostic
+explicitly tells you to retry manually. Neither setup nor the application
+requests elevation; declining a separate administrator prompt is therefore
+unnecessary for normal installation.
+
+Failed integrity checks still stop installation. Existing binaries survive a
+failed checksum verification. If no writable directory exists, or an existing
+binary is locked against replacement, the installer reports that genuine
+failure rather than claiming a successful installation.
 
 For development from a checkout, build `go build -trimpath -o
 dist/byeclaude.exe ./cmd/byeclaude` on Windows (omit `.exe` on Unix). Keep that

@@ -9,6 +9,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 assets="$tmp/assets"
+export BYECLAUDE_STATE_DIR="$tmp/state"
+export BYECLAUDE_NO_PATH=1
 install_dir="$tmp/install"
 mkdir -p "$assets" "$install_dir"
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -28,6 +30,21 @@ printf '%s  %s\n' "$hash" "$asset" > "$assets/SHA256SUMS.txt"
 
 BYECLAUDE_VERSION="$version" BYECLAUDE_DOWNLOAD_BASE="file://$assets" BYECLAUDE_INSTALL_DIR="$install_dir" sh "$repo_root/install.sh"
 [ "$("$install_dir/byeclaude" version)" = "byeclaude $version" ]
+
+# A managed shell profile makes optional PATH setup fail without breaking install.
+mkdir -p "$tmp/home"
+printf 'preserve\n' > "$tmp/home/managed-profile"
+ln -s "$tmp/home/managed-profile" "$tmp/home/.bashrc"
+HOME="$tmp/home" SHELL=/bin/bash BYECLAUDE_NO_PATH=0 BYECLAUDE_VERSION="$version" BYECLAUDE_DOWNLOAD_BASE="file://$assets" BYECLAUDE_INSTALL_DIR="$install_dir" sh "$repo_root/install.sh" > "$tmp/path-failure.log"
+grep -q 'PATH setup deferred' "$tmp/path-failure.log"
+[ "$(cat "$tmp/home/managed-profile")" = preserve ]
+[ "$("$install_dir/byeclaude" version)" = "byeclaude $version" ]
+
+# An unwritable custom destination falls back to a user directory without sudo.
+printf 'keep' > "$tmp/blocked-destination"
+HOME="$tmp/home" BYECLAUDE_VERSION="$version" BYECLAUDE_DOWNLOAD_BASE="file://$assets" BYECLAUDE_INSTALL_DIR="$tmp/blocked-destination" sh "$repo_root/install.sh"
+[ "$("$tmp/home/.local/bin/byeclaude" version)" = "byeclaude $version" ]
+[ "$(cat "$tmp/blocked-destination")" = keep ]
 if command -v sha256sum >/dev/null 2>&1; then
   installed_hash=$(sha256sum "$install_dir/byeclaude" | awk '{print $1}')
 else

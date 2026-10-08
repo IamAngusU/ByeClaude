@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$AddToPath)
+param([switch]$AddToPath, [switch]$NoPath)
 
 $ErrorActionPreference = 'Stop'
 $repo = 'IamAngusU/ByeClaude'
@@ -10,7 +10,7 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitect
     default { throw "Unsupported architecture: $_" }
 }
 $asset = "byeclaude_windows_${arch}.exe"
-$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.3' }
+$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.4' }
 
 if ($version -ne 'latest' -and $version -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
     throw "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag"
@@ -56,17 +56,28 @@ try {
     $actual = (Get-FileHash -LiteralPath $bin -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actual -ne $expected) { throw "Checksum mismatch for $asset" }
 
-    $dest = if ($env:BYECLAUDE_INSTALL_DIR) {
-        [IO.Path]::GetFullPath($env:BYECLAUDE_INSTALL_DIR)
+    $destinations = @()
+    if ($env:BYECLAUDE_INSTALL_DIR) { $destinations += [IO.Path]::GetFullPath($env:BYECLAUDE_INSTALL_DIR) }
+    if ($env:LOCALAPPDATA) { $destinations += Join-Path $env:LOCALAPPDATA 'Programs\ByeClaude' }
+    if ($env:USERPROFILE) { $destinations += Join-Path $env:USERPROFILE '.local\bin\ByeClaude' }
+    $stage = $null
+    foreach ($candidate in ($destinations | Select-Object -Unique)) {
+        $candidateStage = Join-Path $candidate ('.byeclaude-' + [guid]::NewGuid().ToString('N') + '.exe')
+        try {
+            New-Item -ItemType Directory -Force -Path $candidate | Out-Null
+            Copy-Item -LiteralPath $bin -Destination $candidateStage
+            $dest = $candidate
+            $stage = $candidateStage
+            break
+        }
+        catch {
+            Remove-Item -LiteralPath $candidateStage -Force -ErrorAction SilentlyContinue
+            Write-Host "Cannot write to $candidate. Trying a user-owned folder; no administrator access is requested."
+        }
     }
-    else {
-        Join-Path $env:LOCALAPPDATA 'Programs\ByeClaude'
-    }
-    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    if (-not $stage) { throw 'No writable installation folder was found. Choose a writable BYECLAUDE_INSTALL_DIR and retry; no existing installation was replaced.' }
     $target = Join-Path $dest 'byeclaude.exe'
-    $stage = Join-Path $dest ('.byeclaude-' + [guid]::NewGuid().ToString('N') + '.exe')
     try {
-        Copy-Item -LiteralPath $bin -Destination $stage
         & $stage version | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'Downloaded ByeClaude binary did not execute successfully' }
         Move-Item -LiteralPath $stage -Destination $target -Force
@@ -76,20 +87,16 @@ try {
     }
 
     Write-Host "Installed byeclaude to $target"
-    if ($AddToPath) {
-        $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-        if (($userPath -split [IO.Path]::PathSeparator) -notcontains $dest) {
-            $updatedPath = if ([string]::IsNullOrEmpty($userPath)) { $dest } else { $userPath.TrimEnd(';') + ';' + $dest }
-            [Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
-        }
-        if (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $dest) {
-            $env:PATH = $env:PATH.TrimEnd(';') + ';' + $dest
-        }
-        Write-Host 'Ready: run byeclaude. Reopen other terminals to use the updated PATH.'
+    $pathAction = if ($NoPath -or $env:BYECLAUDE_NO_PATH -eq '1') { 'skip' } else { 'setup' }
+    try {
+        & $target path $pathAction
+        if ($LASTEXITCODE -ne 0) { throw 'Optional PATH setup did not finish' }
+    } catch {
+        Write-Host "PATH setup can wait. ByeClaude is installed at $target."
+        Write-Host "Start it by its full path; run 'path setup' to retry."
     }
-    elseif (($env:PATH -split [IO.Path]::PathSeparator) -notcontains $dest) {
-        Write-Host 'Rerun install.ps1 -AddToPath to enable byeclaude in cmd and PowerShell.'
-    }
+    Write-Host 'Local activity counters stay on this computer. Run byeclaude metrics to view them, or metrics off to disable.'
+    Write-Host 'Powered by angusu.de | Angus Uelsmann'
 }
 finally {
     if (Test-Path -LiteralPath $tmp) {
@@ -99,6 +106,6 @@ finally {
             -not ([IO.Path]::GetFileName($resolved) -match '^byeclaude-[0-9a-f]{32}$')) {
             throw "Refusing to remove unexpected temporary directory: $resolved"
         }
-        Remove-Item -LiteralPath $resolved -Recurse -Force
+        Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction SilentlyContinue
     }
 }

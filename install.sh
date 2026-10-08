@@ -8,7 +8,7 @@ case "$os" in linux|darwin) ;; *) echo "Unsupported OS: $os" >&2; exit 1 ;; esac
 case "$arch" in x86_64|amd64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
 
 asset="byeclaude_${os}_${arch}"
-version=${BYECLAUDE_VERSION:-v0.1.0-alpha.3}
+version=${BYECLAUDE_VERSION:-v0.1.0-alpha.4}
 if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
   echo "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag" >&2
   exit 1
@@ -44,17 +44,24 @@ chmod 0755 "$tmp/byeclaude"
 
 if [ -n "${BYECLAUDE_INSTALL_DIR:-}" ]; then
   prefix=$BYECLAUDE_INSTALL_DIR
-  mkdir -p "$prefix"
-elif [ -d /usr/local/bin ] && [ -w /usr/local/bin ]; then
-  prefix=/usr/local/bin
 else
   prefix="$HOME/.local/bin"
-  mkdir -p "$prefix"
 fi
 
-stage=$(mktemp "$prefix/.byeclaude.XXXXXX")
+if ! mkdir -p "$prefix" 2>/dev/null || ! stage=$(mktemp "$prefix/.byeclaude.XXXXXX" 2>/dev/null); then
+  echo "Cannot write to $prefix. Trying your user directory; no sudo is requested."
+  prefix="$HOME/.local/bin"
+  mkdir -p "$prefix"
+  stage=$(mktemp "$prefix/.byeclaude.XXXXXX")
+fi
 install -m 0755 "$tmp/byeclaude" "$stage"
 mv -f "$stage" "$prefix/byeclaude"
 
 echo "Installed byeclaude to $prefix/byeclaude"
-case ":$PATH:" in *":$prefix:"*) ;; *) echo "Add $prefix to PATH." ;; esac
+if [ "${BYECLAUDE_NO_PATH:-}" = 1 ]; then
+  "$prefix/byeclaude" path skip || echo "PATH reminder preference could not be saved. The binary remains usable."
+else
+  "$prefix/byeclaude" path setup || echo "PATH setup can wait. Start $prefix/byeclaude directly and use path setup to retry."
+fi
+echo 'Local activity counters stay on this computer. Use byeclaude metrics or metrics off.'
+echo 'Powered by angusu.de | Angus Uelsmann'

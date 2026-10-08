@@ -74,6 +74,9 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 	if report.CommitsRewritten != 2 {
 		t.Fatalf("rewritten commits = %d, want 2", report.CommitsRewritten)
 	}
+	if report.CreditsRemoved != 1 {
+		t.Fatalf("removed credit count includes descendants: %d", report.CreditsRemoved)
+	}
 	if report.TagsRewritten != 1 {
 		t.Fatalf("rewritten tags = %d, want 1", report.TagsRewritten)
 	}
