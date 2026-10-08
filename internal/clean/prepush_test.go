@@ -74,3 +74,26 @@ func TestPrePushMissingRemoteTipFailsClosed(t *testing.T) {
 	_,err=CheckPushInput(repo,strings.NewReader(input),preset.Claude())
 	if err==nil || !strings.Contains(err.Error(),"fetch") {t.Fatalf("unknown remote must fail closed: %v",err)}
 }
+
+func TestPrePushDoesNotSharePreviousHistoryAcrossDifferentRefs(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Human")
+	git(t, dir, "config", "user.email", "human@example.org")
+	git(t, dir, "commit", "--allow-empty", "-m", "Existing polluted history\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	oldDirty := strings.TrimSpace(git(t, dir, "rev-parse", "HEAD"))
+	git(t, dir, "commit", "--allow-empty", "-m", "Clean update")
+	cleanHead := strings.TrimSpace(git(t, dir, "rev-parse", "HEAD"))
+	repo, err := gitx.Open(dir)
+	if err != nil { t.Fatal(err) }
+	zeros := strings.Repeat("0", 40)
+	input := fmt.Sprintf(
+		"refs/heads/main %s refs/heads/main %s\nrefs/heads/feature %s refs/heads/feature %s\n",
+		cleanHead, oldDirty, oldDirty, zeros,
+	)
+	report, err := CheckPushInput(repo, strings.NewReader(input), preset.Claude())
+	if err != nil { t.Fatal(err) }
+	if report.CommitsWithMatch != 1 || report.Trailers != 1 {
+		t.Fatalf("new branch must not inherit another ref's exclusions: %+v", report)
+	}
+}
