@@ -18,6 +18,12 @@
 
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#what-changes">Before / after</a> · <a href="#safety-first">Safety</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
+<p align="center">
+  <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md"><img src="https://raw.githubusercontent.com/angusu-de/ByeClaude/ci-proof/proof/public-proof.svg" height="54" alt="Live CI evidence: ten jobs, with the exact commit and individual steps linked"></a>
+</p>
+
+<p align="center"><sub>Public CI on a separate account, same maintainer. Click for the tested commit and every CI step. Badge design: IamAngusU/Badges.</sub></p>
+
 Claude Code can append `Co-Authored-By: Claude <noreply@anthropic.com>` to Git commits. GitHub recognizes these trailers as additional contributor attribution. **ByeClaude** audits that *declared metadata* and lets repository owners remove matching trailers without changing the committed file trees.
 
 Claude/Anthropic is the built-in rule. A [saved blacklist](docs/rules.md) can check several declared tool identities in the same repository.
@@ -32,22 +38,41 @@ Claude/Anthropic is the built-in rule. A [saved blacklist](docs/rules.md) can ch
 
 ## Quick start
 
-**Updated source:** Build a persistent binary with Go 1.27+ and Git. From this checkout on Windows:
+**Windows:** Install [Git](https://git-scm.com/downloads), then run in PowerShell:
 
 ```powershell
-go build -trimpath -o .\dist\byeclaude.exe ./cmd/byeclaude
-.\dist\byeclaude.exe tui --repo C:\path\to\your\repo
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.ps1 -OutFile install-byeclaude.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install-byeclaude.ps1 -AddToPath
 ```
 
-The terminal menu works in cmd and PowerShell: audit, manage the blacklist,
-preview cleanup, install protection, and inspect backups. Enter keeps cleanup
-as a preview; applying requires typing `CLEAN`. No remote push runs from the menu.
-Once installed on PATH, just run `byeclaude` inside a repository.
+Open a new cmd or PowerShell window and run `byeclaude` in your repository.
+You can also start it anywhere and choose a repository folder. No admin rights,
+Go installation or GitHub login is needed for local work.
 
-**Install:** Get a [checksum-verified release for Windows, macOS or Linux](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.1), or install the current alpha using Go 1.27+:
+**macOS / Linux:** With Git installed:
 
 ```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.sh -o install-byeclaude.sh
+sh install-byeclaude.sh
+byeclaude
+```
+
+The installers check the release binary's SHA-256 before replacing an existing
+installation. Inspect the downloaded script first if desired. If the Unix
+installer reports a PATH change, add the printed directory to your shell PATH.
+
+The terminal menu handles audits, a blacklist of several identities, cleanup
+previews and hook setup. Choose a number and press Enter. Cleanup requires
+typing `CLEAN`; publication stays a separate guarded command.
+
+![Recorded terminal flow: add an identity, preview cleanup, then protect future commits](docs/assets/readme/terminal-flow.gif)
+
+<sub>Actual Windows terminal session in a disposable demo repository, rendered from its transcript. [Full transcript](docs/assets/readme/terminal-session.txt).</sub>
+
+**Other options:** Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.2), or build using Go 1.27+:
+
+```sh
+go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.2
 ```
 
 Git is required. See [installation options and integrity notes](docs/supply-chain.md).

@@ -327,6 +327,11 @@ func runClean(args []string) error {
 	if *verifyGithub && *jsonOut {
 		return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")
 	}
+	if *verifyGithub {
+		if _, err := verificationTarget(repo, *remote, *githubUser); err != nil {
+			return err
+		}
+	}
 	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
@@ -430,6 +435,7 @@ func runPush(args []string) error {
 		return err
 	}
 	if *backup == "" {
+		// Validation below still runs before any publication.
 		ids, err := clean.BackupRefs(repo)
 		if err != nil {
 			return err
@@ -442,6 +448,11 @@ func runPush(args []string) error {
 			fmt.Printf("backup      using sole available backup %s\n", *backup)
 		default:
 			return fmt.Errorf("%d backups exist; choose an exact ID with --backup (run byeclaude backups)", len(ids))
+		}
+	}
+	if *verifyGithub {
+		if _, err := verificationTarget(repo, *remote, *githubUser); err != nil {
+			return err
 		}
 	}
 	report, err := clean.Scan(repo, matcher)

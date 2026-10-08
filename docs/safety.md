@@ -42,6 +42,12 @@ Read-only `scan` and `check` remain useful in several of these states, including
 
 ## Local backup refs
 
+Restore accepts refs still at their recorded rewrite result, refs already
+restored, and deleted refs. If any ref moved to later work, the entire restore
+stops before changing refs. Older backups without a recorded result cannot
+replace a different current ref automatically. Preserve newer work on another
+branch and inspect the backup before manual Git recovery.
+
 Before normal branch or tag refs move, ByeClaude copies their tips under:
 
 ```text

@@ -66,6 +66,10 @@ type Options struct {
 }
 
 func Audit(ctx context.Context, opts Options) (Report, error) {
+	return audit(ctx, opts, batch.PrepareRepository)
+}
+
+func audit(ctx context.Context, opts Options, prepare func(context.Context, batch.Spec, string, bool) (string, func(), error)) (Report, error) {
 	r := Report{
 		Repository:   opts.Repo,
 		VerifiedAt:   time.Now().UTC().Format(time.RFC3339),
@@ -85,6 +89,9 @@ func Audit(ctx context.Context, opts Options) (Report, error) {
 	if opts.Matcher == nil {
 		return r, fmt.Errorf("attribution matcher is required")
 	}
+	if err := ValidateGitHubUser(opts.GitHubUser); err != nil {
+		return r, err
+	}
 	if opts.MaxPullRefs < 1 || opts.MaxPullRefs > 1000 {
 		return r, fmt.Errorf("max-pull-refs must be between 1 and 1000")
 	}
@@ -92,7 +99,7 @@ func Audit(ctx context.Context, opts Options) (Report, error) {
 	if err != nil {
 		return r, err
 	}
-	repoPath, cleanup, err := batch.PrepareRepository(ctx, specs[0], opts.Token, false)
+	repoPath, cleanup, err := prepare(ctx, specs[0], opts.Token, false)
 	if err != nil {
 		return r, fmt.Errorf("cannot clone current GitHub refs: %w", err)
 	}

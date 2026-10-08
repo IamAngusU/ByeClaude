@@ -59,7 +59,7 @@ func TestSetupDifferentRulesCannotBeSilentlyReused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if h.Status != "installed" || h.RulesFile != filepath.Join(dir, "first.json") {
+	if h.Status != "installed" || !sameFile(t, h.RulesFile, filepath.Join(dir, "first.json")) {
 		t.Fatalf("unexpected configured rules: %+v", h)
 	}
 	err = runSetup([]string{"--repo", dir, "--rules", "second.json", "--apply"})
@@ -67,7 +67,7 @@ func TestSetupDifferentRulesCannotBeSilentlyReused(t *testing.T) {
 		t.Fatalf("expected policy mismatch error: %v", err)
 	}
 	h, err = inspectHook(repo, "commit-msg")
-	if err != nil || h.RulesFile != filepath.Join(dir, "first.json") {
+	if err != nil || !sameFile(t, h.RulesFile, filepath.Join(dir, "first.json")) {
 		t.Fatalf("mismatch mutated managed hook: %+v %v", h, err)
 	}
 	if err := os.Remove(filepath.Join(dir, "first.json")); err != nil {

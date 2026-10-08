@@ -4,3 +4,4 @@
 /release-artifacts/
 *.exe
 .DS_Store
+__pycache__/

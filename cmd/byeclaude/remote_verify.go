@@ -35,17 +35,28 @@ func canonicalGitHubRemote(raw string) (string, error) {
 	}
 	return path, nil
 }
-func verifyGitHubRemoteAfterPush(repo *gitx.Repo, remote string, matcher attribution.Matcher, githubUser string) error {
+func verificationTarget(repo *gitx.Repo, remote, githubUser string) (string, error) {
 	if err := githubverify.ValidateGitHubUser(githubUser); err != nil {
-		return err
+		return "", err
 	}
-	value, err := repo.Run("remote", "get-url", remote)
+	value, err := repo.Run("remote", "get-url", "--push", "--all", remote)
 	if err != nil {
-		return fmt.Errorf("push succeeded; cannot determine GitHub remote for verification: %w", err)
+		return "", fmt.Errorf("cannot determine GitHub push destination: %w", err)
+	}
+	if len(strings.Split(strings.TrimSpace(string(value)), "\n")) != 1 {
+		return "", fmt.Errorf("GitHub verification requires exactly one push destination")
 	}
 	slug, err := canonicalGitHubRemote(string(value))
 	if err != nil {
-		return fmt.Errorf("push succeeded; GitHub verification unavailable: %w", err)
+		return "", fmt.Errorf("GitHub verification unavailable: %w", err)
+	}
+	return slug, nil
+}
+
+func verifyGitHubRemoteAfterPush(repo *gitx.Repo, remote string, matcher attribution.Matcher, githubUser string) error {
+	slug, err := verificationTarget(repo, remote, githubUser)
+	if err != nil {
+		return fmt.Errorf("push succeeded; %w", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()

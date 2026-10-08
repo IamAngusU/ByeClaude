@@ -630,16 +630,34 @@ func Restore(repo *gitx.Repo, id string) (int, error) {
 	if len(items) == 0 {
 		return 0, fmt.Errorf("backup %q not found", id)
 	}
+	results, err := ResultLocalRefs(repo, id)
+	if err != nil {
+		return 0, err
+	}
+	expected := make(map[string]string, len(results))
+	for _, ref := range results {
+		expected[ref.Name] = ref.SHA
+	}
+	refs, err := LocalRefs(repo)
+	if err != nil {
+		return 0, err
+	}
+	currentByName := make(map[string]string, len(refs))
+	for _, ref := range refs {
+		currentByName[ref.Name] = ref.SHA
+	}
 
 	var tx strings.Builder
 	tx.WriteString("start\n")
 	for _, item := range items {
-		currentOut, err := repo.Run("show-ref", "--verify", "--hash", item.Name)
-		if err != nil {
+		current, exists := currentByName[item.Name]
+		if !exists {
 			fmt.Fprintf(&tx, "create %s %s\n", item.Name, item.SHA)
 			continue
 		}
-		current := strings.TrimSpace(string(currentOut))
+		if current != item.SHA && current != expected[item.Name] {
+			return 0, fmt.Errorf("local ref %s moved since rewrite %s; refusing to discard later work (preserve it on another branch before manual recovery)", item.Name, id)
+		}
 		fmt.Fprintf(&tx, "update %s %s %s\n", item.Name, item.SHA, current)
 	}
 	tx.WriteString("prepare\ncommit\n")

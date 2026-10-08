@@ -111,7 +111,7 @@ func TestMenuReadOnlyActionsAndRepositorySwitch(t *testing.T) {
 	if !strings.Contains(output.String(), "Choose 1-7 or q") || !strings.Contains(output.String(), "claude-anthropic") {
 		t.Fatal(output.String())
 	}
-	if strings.ReplaceAll(ui.repo, "\\", "/") != strings.ReplaceAll(second, "\\", "/") {
+	if !sameFile(t, ui.repo, second) {
 		t.Fatal("repository switch did not take effect")
 	}
 }
