@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
@@ -158,11 +159,15 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 		return result, nil
 	}
 	result.RulesFile = managed.RulesFile
-	if _, err := os.Stat(managed.Executable); os.IsNotExist(err) {
+	binaryInfo, err := os.Stat(managed.Executable)
+	if os.IsNotExist(err) {
 		result.Status = "stale_binary"
 		return result, nil
-	} else if err != nil {
-		return result, err
+	}
+	if err != nil {return result, err}
+	if !binaryInfo.Mode().IsRegular() || (runtime.GOOS != "windows" && binaryInfo.Mode()&0111 == 0) {
+		result.Status = "invalid_binary"
+		return result, nil
 	}
 	if managed.RulesFile != "" {
 		if _, err := resolveMatcher(managed.RulesFile); err != nil {
@@ -170,7 +175,7 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 			return result, nil
 		}
 	}
-	if info.Mode()&0111 == 0 {
+	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		result.Status = "not_executable"
 		return result, nil
 	}
