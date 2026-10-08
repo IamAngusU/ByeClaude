@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -60,8 +61,13 @@ func runSetup(args []string) error {
 	if err != nil {
 		return err
 	}
+	headers, err := clean.ScanMatchingHeadersContext(context.Background(), repo, matcher, []string{"refs/heads", "refs/tags"}, true)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("repository   %s\n", repo.Root)
-	fmt.Printf("existing     %d matching trailer(s) in reachable local history\n", len(scan.Matches))
+	fmt.Printf("existing     %d matching trailer(s), %d author(s), %d committer(s) in local history\n",
+		len(scan.Matches), headers.Authors, headers.Committers)
 	for _, state := range states {
 		fmt.Printf("%-12s %s\n", state.Name, state.Status)
 	}
@@ -101,7 +107,7 @@ func runSetup(args []string) error {
 		installed = append(installed, state.Name)
 	}
 	fmt.Println("ready        commit-msg and pre-push hooks installed")
-	if len(scan.Matches) > 0 {
+	if len(scan.Matches) > 0 || headers.Authors+headers.Committers > 0 {
 		fmt.Println("note         pre-push examines reachable history; existing matches can block your first push")
 		fmt.Println("next         byeclaude plan")
 	}
