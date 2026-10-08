@@ -52,8 +52,8 @@ func runSetup(args []string) error {
 		if err != nil {
 			return err
 		}
-		if status.Status == "conflict" || status.Status == "not_executable" || status.Status == "stale_binary" || status.Status == "stale_rules" {
-			return fmt.Errorf("%s hook requires manual attention (%s): %s; setup will not overwrite it", name, status.Status, status.Path)
+		if status.Status == "conflict" || status.Status == "not_executable" || status.Status == "stale_binary" || status.Status == "stale_rules" || status.Status == "invalid_binary" {
+			return fmt.Errorf("%s hook needs repair (%s): %s; run 'byeclaude doctor' for details; setup will not replace it automatically", name, status.Status, status.Path)
 		}
 		if status.Status == "installed" && status.RulesFile != rulesPath {
 			return fmt.Errorf("%s hook already uses rules %q, but you selected %q; remove/reinstall it deliberately", name, status.RulesFile, rulesPath)
@@ -160,6 +160,16 @@ func runDoctor(args []string) error {
 			return err
 		}
 		fmt.Printf("%-12s %-18s %s\n", name, status.Status, status.Path)
+		switch status.Status {
+		case "stale_binary", "invalid_binary":
+			fmt.Printf("fix          %s hook points at a missing or unusable executable; run 'byeclaude hook %s --repo %q' then 'byeclaude setup --repo %q --apply'\n",name, map[string]string{"commit-msg":"remove","pre-push":"pre-push-remove"}[name],repo.Root,repo.Root)
+		case "stale_rules":
+			fmt.Println("fix          configured rules file is missing/invalid; restore it or remove and reinstall the managed hook")
+		case "not_executable":
+			fmt.Println("fix          hook is not executable; fix its file mode before retrying setup")
+		case "conflict":
+			fmt.Println("fix          another tool owns this hook; integrate ByeClaude via the existing hook manager")
+		}
 		if status.RulesFile != "" { fmt.Printf("rules        %s\n", status.RulesFile) }
 	}
 	fmt.Println("note         hooks apply to this Git repository, not GitHub web/API commits")
