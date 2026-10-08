@@ -22,6 +22,7 @@ Export a **proposal** first:
 byeclaude ruleset export --repo OWNER/REPO
 byeclaude ruleset export --repo OWNER/REPO --rules ./rules.json
 byeclaude ruleset export --repo OWNER/REPO --include-identities
+byeclaude ruleset export --repo OWNER/REPO --all-branches
 ```
 
 The default exports an active branch ruleset with a Co-Authored-By message
@@ -42,7 +43,7 @@ byeclaude ruleset status --repo OWNER/REPO
 
 Without --confirm, install only prints the candidate. It refuses to
 overwrite an existing ByeClaude-named ruleset, and reads back newly created
-rulesets. The default targets all branches, not tags. An installed ruleset
+rulesets. The default targets only the repository default branch to avoid disrupting feature-branch work. Use `--all-branches` only when you deliberately want to enforce across every branch. Rules do not target tags. An installed ruleset
 cannot retroactively sanitize past commits or old PR refs.
 
 ## Local protection

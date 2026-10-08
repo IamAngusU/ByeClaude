@@ -15,7 +15,7 @@ import (
 func TestGeneratedRulesetMatchesClaudeTrailerOnly(t *testing.T) {
 	r,err:=GenerateRuleset(attribution.Rule{RuleID:"claude",NameContains:[]string{"claude"},EmailDomains:[]string{"anthropic.com"}},true)
 	if err!=nil {t.Fatal(err)}
-	if len(r.Rules)!=3 || r.Enforcement!="active" || r.Target!="branch" {t.Fatalf("invalid policy: %+v",r)}
+	if len(r.Rules)!=3 || r.Enforcement!="active" || r.Target!="branch" || len(r.Conditions.RefName.Include)!=1 || r.Conditions.RefName.Include[0]!="~DEFAULT_BRANCH" {t.Fatalf("invalid policy: %+v",r)}
 	pattern:=regexp.MustCompile(r.Rules[0].Parameters.Pattern)
 	for _,text:=range []string{
 		"fix\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n",

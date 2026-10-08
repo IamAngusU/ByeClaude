@@ -63,7 +63,7 @@ func GenerateRuleset(matcher attribution.Matcher, includeIdentityEmails bool) (R
 		if email!="" {emailPatterns=append(emailPatterns,email)}
 	}
 	out:=Ruleset{Name:"ByeClaude attribution guard",Target:"branch",Enforcement:"active"}
-	out.Conditions.RefName.Include=[]string{"~ALL"}
+	out.Conditions.RefName.Include=[]string{"~DEFAULT_BRANCH"}
 	out.Conditions.RefName.Exclude=[]string{}
 	out.Rules=[]Rule{{
 		Type:"commit_message_pattern",

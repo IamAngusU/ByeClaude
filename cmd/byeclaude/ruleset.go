@@ -20,6 +20,7 @@ func runRuleset(args []string) error {
 	repo:=fs.String("repo","","GitHub repository OWNER/NAME")
 	rules:=rulesFlag(fs)
 	identities:=fs.Bool("include-identities",false,"also block author and committer emails matching selected rules")
+	allBranches:=fs.Bool("all-branches",false,"enforce on all branches instead of only the default branch")
 	confirm:=fs.Bool("confirm",false,"explicitly approve a GitHub repository ruleset creation")
 	if err:=fs.Parse(args[1:]);err!=nil{return err}
 	if err:=githubpolicy.ValidateRepo(*repo);err!=nil{return err}
@@ -37,6 +38,7 @@ func runRuleset(args []string) error {
 		if err!=nil{return err}
 		policy,err:=githubpolicy.GenerateRuleset(matcher,*identities)
 		if err!=nil{return err}
+		if *allBranches {policy.Conditions.RefName.Include=[]string{"~ALL"}}
 		if action=="export" || !*confirm {
 			data,_:=json.MarshalIndent(policy,"","  ")
 			fmt.Println(string(data))
