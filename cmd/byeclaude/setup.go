@@ -89,6 +89,9 @@ func runSetup(args []string) error {
 			action = "pre-push-install"
 		}
 		installArgs := []string{action, "--repo", repo.Root}
+		if *shared {
+			installArgs = append(installArgs, "--shared-worktrees")
+		}
 		if strings.TrimSpace(*rulesFile) != "" {
 			installArgs = append(installArgs, "--rules", *rulesFile)
 		}
@@ -98,7 +101,11 @@ func runSetup(args []string) error {
 				if installed[i] == "pre-push" {
 					rollback = "pre-push-remove"
 				}
-				if rollbackErr := runHook([]string{rollback, "--repo", repo.Root}); rollbackErr != nil {
+				rollbackArgs := []string{rollback, "--repo", repo.Root}
+				if *shared {
+					rollbackArgs = append(rollbackArgs, "--shared-worktrees")
+				}
+				if rollbackErr := runHook(rollbackArgs); rollbackErr != nil {
 					fmt.Fprintln(os.Stderr, "rollback error:", rollbackErr)
 				}
 			}

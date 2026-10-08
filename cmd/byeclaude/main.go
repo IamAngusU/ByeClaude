@@ -89,7 +89,7 @@ Usage:
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
   byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
   byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
-  byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE]
+  byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE] [--shared-worktrees]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
@@ -456,12 +456,20 @@ func runHook(args []string) error {
 	fs := flag.NewFlagSet("hook "+action, flag.ContinueOnError)
 	repoPath, _ := common(fs)
 	rulesFile := rulesFlag(fs)
+	shared := fs.Bool("shared-worktrees", false, "allow installing/removing a hook shared across linked Git worktrees")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
 	repo, err := gitx.Open(*repoPath)
 	if err != nil {
 		return err
+	}
+	out, err := repo.Run("worktree", "list", "--porcelain")
+	if err != nil {
+		return err
+	}
+	if strings.Count("\n"+string(out), "\nworktree ") > 1 && !*shared {
+		return fmt.Errorf("this hook directory is shared by linked worktrees; pass --shared-worktrees to acknowledge")
 	}
 	prePush := strings.HasPrefix(action, "pre-push-")
 	if action == "pre-push-install" { action = "install" }
