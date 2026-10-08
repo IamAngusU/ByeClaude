@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+case "${1:-}" in
+  '') ;; --no-start) BYECLAUDE_NO_START=1 ;; *) echo 'Usage: sh install.sh [--no-start]' >&2; exit 1 ;;
+esac
+[ "$#" -le 1 ] || { echo 'Usage: sh install.sh [--no-start]' >&2; exit 1; }
+
 repo="IamAngusU/ByeClaude"
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m)
@@ -8,7 +13,7 @@ case "$os" in linux|darwin) ;; *) echo "Unsupported OS: $os" >&2; exit 1 ;; esac
 case "$arch" in x86_64|amd64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
 
 asset="byeclaude_${os}_${arch}"
-version=${BYECLAUDE_VERSION:-v0.1.0-alpha.5}
+version=${BYECLAUDE_VERSION:-v0.1.0-alpha.6}
 if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
   echo "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag" >&2
   exit 1
@@ -65,3 +70,14 @@ else
 fi
 echo 'Local activity counters stay on this computer. Use byeclaude metrics or metrics off.'
 echo 'Powered by angusu.de | Angus Uelsmann'
+case "${CI:-}" in ''|false|0) interactive_ci=false ;; *) interactive_ci=true ;; esac
+if [ "${BYECLAUDE_NO_START:-}" != 1 ] && [ "$interactive_ci" = false ] && [ -t 0 ] && [ -t 1 ]; then
+  if command -v git >/dev/null 2>&1; then
+    echo 'Opening guided setup. History and hooks change only after your confirmation.'
+    "$prefix/byeclaude" guide || echo "Setup can wait. Run $prefix/byeclaude guide when ready."
+  else
+    echo 'ByeClaude is installed. Install Git from https://git-scm.com/downloads, then run byeclaude.'
+  fi
+else
+  echo 'Next: open a new terminal and run byeclaude for guided setup.'
+fi

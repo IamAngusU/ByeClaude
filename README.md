@@ -24,48 +24,56 @@ Some tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` t
 
 ## Quick start
 
-Install [Git](https://git-scm.com/downloads) first. The release binary needs **no Go compiler, admin rights or GitHub login** for local work. Choose your platform:
+**Install → guided setup → use Git normally.** You need [Git](https://git-scm.com/downloads), but no Go compiler, administrator rights or GitHub login for local work. Copy **one line** for your platform:
 
 <details open>
-<summary><strong>Windows: run in PowerShell</strong></summary>
+<summary><strong>Windows · paste into PowerShell</strong></summary>
 
 ```powershell
-$installer = Join-Path $env:TEMP 'byeclaude-install.ps1'
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.5/install.ps1 -OutFile $installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $installer
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install.ps1 | iex
 ```
-
-Then open a **new cmd or PowerShell window**. The installer checks the binary's SHA-256 and sets up your user PATH by default, without UAC. A blocked destination falls back to a user folder. If PATH setup fails, the installed binary still works: use the full path printed by the installer and retry on the next interactive start. Use `-NoPath` to manage PATH yourself.
 
 </details>
 
 <details>
-<summary><strong>macOS or Linux: run in your terminal</strong></summary>
+<summary><strong>macOS / Linux · paste into Bash, Zsh or sh</strong></summary>
 
 ```sh
-installer="$(mktemp)"
-curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.5/install.sh -o "$installer" && sh "$installer"
-rm -- "$installer"
+(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install.sh -o "$f" && sh "$f")
 ```
-
-The installer checks the binary's SHA-256, installs to `~/.local/bin` by default, and adds a marked PATH entry for Bash, Zsh or sh. Open a new terminal afterwards. Existing settings are preserved; a linked/managed profile or unsupported shell leaves PATH setup deferred. The full installed path still works. Set `BYECLAUDE_NO_PATH=1` to manage PATH yourself.
 
 </details>
 
-Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.5). [Installer details, checksums and source builds](docs/supply-chain.md).
+The script detects your platform, downloads the release, checks SHA-256, installs in your user folder, configures your user PATH and **opens guided setup in an interactive terminal**. No UAC or sudo is needed. Git itself is a prerequisite; the installer does not install a package manager or Git for you. [Inspect the Windows script](install.ps1) · [Inspect the Unix script](install.sh) · [Manual download and advanced options](docs/supply-chain.md).
 
-Now run:
+### Set up your repository
+
+Setup starts immediately after installation. Choose a local Git folder if asked, then follow the highlighted step:
+
+1. **Choose identities.** Keep Claude, or add the exact emails of other tools.
+2. **Check history.** Review matching credits, authors and committers. This is read-only.
+3. **Preview cleanup.** See the impact and backup plan. At the `Type CLEAN` confirmation, **Enter cancels**; **CLEAN** applies locally.
+4. **Protect future commits.** Answer **y** to install both local Git hooks; **Enter skips**.
+
+The installer never cleans history or installs Git hooks without these confirmations. A blocked PATH update does not prevent guided setup: the installer starts ByeClaude by its full path. You can retry PATH later.
+
+### Use it
+
+After setup, ordinary `git commit` and `git push` use the installed hooks. The commit hook removes matching co-author credits; the push hook checks history and may block a push until old matches have been reviewed. Hooks apply only to this clone.
+
+To reopen the menu, open a **new terminal** in your project and run:
 
 ```text
 byeclaude
 ```
 
-Start inside your Git project, or paste its **local folder path** when asked. Press **Enter for Guided start**:
+| Want to… | Run |
+| --- | --- |
+| Repeat guided setup | `byeclaude guide` |
+| Check without changing anything | `byeclaude scan` |
+| Watch your local activity | `byeclaude metrics --watch` |
 
-1. **Choose identities.** Keep Claude selected, or add an exact email from a commit's co-author credit.
-2. **Check history.** See matching credits, authors and committers. This changes nothing.
-3. **Preview cleanup.** Review affected commits and branches. Enter cancels; typing `CLEAN` applies locally and creates a backup.
-4. **Protect future commits.** Review both Git hooks. They are installed only after you answer `y` or `yes`.
+Scripts and CI never open the guide. Use `-NoStart` on the downloaded PowerShell installer, `--no-start` on the shell installer, or `BYECLAUDE_NO_START=1` to install without opening it. [PATH options and recovery](docs/supply-chain.md).
 
 Short gray explanations tell you what each choice does. The same words remain visible with `--no-color`. Use **h** for the basics, **q** to leave a form, or **q** at the main menu to exit. Incorrect answers can be corrected; cancelled or incomplete confirmations do not apply the pending change. Previously completed changes remain saved.
 

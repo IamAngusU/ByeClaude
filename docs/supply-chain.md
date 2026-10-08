@@ -2,7 +2,7 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.5` tag. This is explicit
+The installers default to the `v0.1.0-alpha.6` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
 stable release exists. Alpha.4 adds local metrics and optional, recoverable
@@ -18,7 +18,7 @@ powershell -NoProfile -File .\install.ps1
 The installer adds the install directory to your **user** PATH by default,
 without administrator rights, UAC or changes to system PATH. `-AddToPath` is
 still accepted for compatibility; `-NoPath` opts out. Reopen cmd/PowerShell
-afterwards. `BYECLAUDE_INSTALL_DIR` selects a preferred directory; if staging
+afterwards for PATH in other commands. In an interactive terminal, installation opens the guide immediately using the full installed path; repository changes still require confirmation. `-NoStart` or `BYECLAUDE_NO_START=1` disables automatic launch. CI and redirected input/output never launch it. `BYECLAUDE_INSTALL_DIR` selects a preferred directory; if staging
 there is impossible, the installer tries `%LOCALAPPDATA%\Programs\ByeClaude`,
 then `%USERPROFILE%\.local\bin\ByeClaude`. It reports the actual destination.
 
@@ -26,7 +26,7 @@ On Unix, the default is `~/.local/bin`; an unwritable custom directory falls
 back there without sudo. PATH setup maintains a marked block in Bash's
 `.bashrc` and active login profile, Zsh's `.zshrc` (respecting absolute
 `ZDOTDIR`), or sh's `.profile`. Linked, ambiguous or oversized profiles and
-unsupported shells are left for manual setup. `BYECLAUDE_NO_PATH=1` opts out.
+unsupported shells are left for manual setup. `BYECLAUDE_NO_PATH=1` opts out. The shell installer also opens guided setup in an interactive terminal; `--no-start` or `BYECLAUDE_NO_START=1` disables it. Git must already be installed.
 
 PATH failure is nonfatal once the binary is installed. The full executable
 path is printed, and a saved pending preference offers Retry / Later / No at
@@ -99,3 +99,7 @@ until an independently verifiable signing identity and transparency-log flow
 are actually configured.
 
 Run 'byeclaude licenses' to read the BSD license notices embedded for the Go terminal support packages. The release SBOM lists their pinned versions.
+
+## Prebuilt GitHub Action
+
+The Action has its own reviewed [engine pin](../action-release/README.md). SHA-256 values are stored in the Action source, and verified before the downloaded binary executes. It uses neither the user installer nor a mutable downloaded checksum as the trust anchor. A missing release, failed download or digest mismatch fails the guard; there is no Go build fallback.

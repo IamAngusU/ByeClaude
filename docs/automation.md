@@ -8,7 +8,7 @@ ByeClaude separates prevention from remediation.
 
 CI never force-pushes by default.
 
-## Zero-friction local setup
+## Local setup
 
 ```sh
 byeclaude setup
@@ -62,7 +62,9 @@ byeclaude hook remove
 
 ## GitHub Actions guard
 
-Checkout full history, then use the action:
+**This checks all reachable fetched history, not only the new commit or pull-request diff.** A matching credit from months ago can fail a workflow triggered by an unrelated change. Before making this a required check, run `byeclaude check --include-remotes` locally and review existing matches. Cleanup stays an explicit decision; this action never rewrites or pushes.
+
+The action downloads a pinned, precompiled release binary and verifies its SHA-256 against hashes committed with the action. It does not install Go or compile code. Checkout full history, then use the action:
 
 ```yaml
 name: ByeClaude
@@ -81,17 +83,17 @@ jobs:
   attribution:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.5
-        with:
-          # Optional. Omit this for the built-in Claude/Anthropic rule.
-          rules-file: .byeclaude-rules.json
-          include-identities: 'true'
+          fetch-depth: 0  # Required: old history is part of the check.
+          persist-credentials: false
+      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.6
+        # Optional: with: { include-identities: 'true' } also checks authors/committers.
 ```
 
-The example pins the first alpha release. Pin the action to an exact commit SHA for the strongest supply-chain stability.
+The example is ready to copy and uses the built-in Claude/Anthropic rule; no extra rules file is required. Add `rules-file` only after committing your own reviewed JSON file.
+
+This action revision pins the **alpha.5 audit engine** ([version and six digests](../action-release/README.md)); the CLI installer now supplies alpha.6. Action revisions pin an already published engine so the checksums can be reviewed before consumption. For an immutable action and digest manifest, replace the action tag with its [full commit SHA](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
 
 The action runs the equivalent of:
 
@@ -103,7 +105,7 @@ A pull request can be checked while `HEAD` is detached because audit mode treats
 
 ## Why `fetch-depth: 0` matters
 
-A default shallow checkout does not contain the repository's full history. ByeClaude can only audit objects that are present locally, so the guard deliberately expects a full-history checkout.
+A default shallow checkout does not contain the repository's full history. The action rejects shallow repositories with a `fetch-depth: 0` hint. It audits reachable objects in the fetched heads, tags, HEAD and (by default) remote-tracking refs. It cannot audit unfetched objects or every historical GitHub pull-request object.
 
 The optional scheduled run is useful for quiet branches that may contain an old matching commit but do not trigger a new push or pull request.
 
@@ -123,15 +125,15 @@ The command writes a JSON report and exits non-zero when matches exist.
 Commit a reviewed structured rules file to the repository, for example `.byeclaude-rules.json`, then pass it to the reusable action:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
   with:
     fetch-depth: 0
-- uses: IamAngusU/ByeClaude@v0.1.0-alpha.5
+- uses: IamAngusU/ByeClaude@v0.1.0-alpha.6
   with:
     rules-file: .byeclaude-rules.json
 ```
 
-The action resolves a repository-relative rules path inside `GITHUB_WORKSPACE`. The default remains the built-in Claude/Anthropic rule when the input is empty.
+The action accepts a repository-relative rules path inside `GITHUB_WORKSPACE`; absolute paths and `..` traversal are rejected. Boolean inputs must be `true` or `false`. Linux, macOS and Windows runners on X64 or ARM64 are supported. Downloads go into a unique temporary directory and are removed after the check; PATH and metrics are left unchanged. Self-hosted runners need Bash, Git, curl and SHA-256 tooling (Git Bash on Windows). The default remains the built-in Claude/Anthropic rule when the input is empty.
 
 For local prevention using the same policy:
 

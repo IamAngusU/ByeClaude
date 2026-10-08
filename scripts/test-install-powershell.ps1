@@ -13,8 +13,10 @@ $originalCGO = $env:CGO_ENABLED
 $originalState = $env:BYECLAUDE_STATE_DIR
 $originalLocalAppData = $env:LOCALAPPDATA
 $originalUserProfile = $env:USERPROFILE
+$originalNoStart = $env:BYECLAUDE_NO_START
 
 try {
+    $env:BYECLAUDE_NO_START = '1'
     New-Item -ItemType Directory -Path $assets, $install | Out-Null
     $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
         'X64' { 'amd64' }
@@ -35,7 +37,8 @@ try {
     $env:BYECLAUDE_DOWNLOAD_BASE = ([uri]$assets).AbsoluteUri.TrimEnd('/')
     $env:BYECLAUDE_INSTALL_DIR = $install
     $env:BYECLAUDE_STATE_DIR = Join-Path $temporary 'state'
-    & (Join-Path $repoRoot 'install.ps1') -NoPath
+    $firstOutput = & (Join-Path $repoRoot 'install.ps1') -NoPath -NoStart *>&1 | Out-String
+    if ($firstOutput -notmatch 'Next: open a new terminal' -or $firstOutput -match 'Opening guided setup') { throw 'Unattended installation must not open the guide.' }
 
     $installed = Join-Path $install 'byeclaude.exe'
     if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'Installer did not create byeclaude.exe.' }
@@ -67,6 +70,7 @@ try {
     $env:BYECLAUDE_INSTALL_DIR = $install
     $env:LOCALAPPDATA = $originalLocalAppData
     $env:USERPROFILE = $originalUserProfile
+    $env:BYECLAUDE_NO_START = $originalNoStart
 
     [IO.File]::WriteAllBytes($asset, [byte[]](1, 2, 3, 4))
     $rejected = $false

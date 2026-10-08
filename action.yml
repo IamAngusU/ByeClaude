@@ -19,34 +19,13 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Set up Go
-      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-      with:
-        go-version-file: ${{ github.action_path }}/go.mod
-        cache: false
-    - name: Check Git history
+    - name: Verify release binary and check full Git history
       shell: bash
       env:
         BYECLAUDE_INCLUDE_REMOTES: ${{ inputs.include-remotes }}
         BYECLAUDE_RULES_FILE: ${{ inputs.rules-file }}
         BYECLAUDE_INCLUDE_IDENTITIES: ${{ inputs.include-identities }}
-      run: |
-        args=()
-        if [ "$BYECLAUDE_INCLUDE_IDENTITIES" = "true" ]; then
-          args+=(--include-identities)
-        fi
-        if [ "$BYECLAUDE_INCLUDE_REMOTES" = "true" ]; then
-          args+=(--include-remotes)
-        fi
-        if [ -n "$BYECLAUDE_RULES_FILE" ]; then
-          case "$BYECLAUDE_RULES_FILE" in
-            /*) rules="$BYECLAUDE_RULES_FILE" ;;
-            *) rules="$GITHUB_WORKSPACE/$BYECLAUDE_RULES_FILE" ;;
-          esac
-          args+=(--rules "$rules")
-        fi
-        cd "$GITHUB_ACTION_PATH"
-        go run ./cmd/byeclaude check "${args[@]}" --repo "$GITHUB_WORKSPACE"
+      run: bash "$GITHUB_ACTION_PATH/scripts/run-action.sh"
 
 branding:
   icon: git-branch
