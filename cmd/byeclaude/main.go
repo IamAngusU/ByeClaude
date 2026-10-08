@@ -33,6 +33,8 @@ func main() {
 		err = runIdentity(os.Args[2:])
 	case "ruleset":
 		err = runRuleset(os.Args[2:])
+	case "verify":
+		err = runVerify(os.Args[2:])
 	case "clean":
 		err = runClean(os.Args[2:])
 	case "batch":
@@ -75,6 +77,7 @@ Usage:
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
   byeclaude batch check ...
   byeclaude batch plan ...
+  byeclaude verify --repo OWNER/REPO [--github-user LOGIN] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
   byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--json]
