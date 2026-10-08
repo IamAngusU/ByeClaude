@@ -62,11 +62,11 @@ byeclaude plan  # preview every commit/ref/tag that would change
 byeclaude clean --apply  # rewrite locally and create backup refs
 ```
 
-Review the result and **save the printed backup ID**. Publishing is a separate, guarded action:
+Review the result and **save the printed backup ID**. Publishing is separate and guarded. If you have exactly one backup, ByeClaude can select it automatically:
 
 ```sh
 git log --oneline --decorate --graph --all --max-count=40
-byeclaude push --backup BACKUP_ID
+byeclaude push  # or: byeclaude push --backup BACKUP_ID
 ```
 
 The push uses an atomic force-with-lease expectation and refuses to overwrite a remote ref that moved after your review. [Backups and recovery](docs/safety.md).
@@ -136,7 +136,7 @@ A trailer is evidence of *declared attribution*, **not** a measurement of how mu
 
 ## Documentation
 
-[Full documentation](docs/README.md) · [GitHub verification](docs/github-verification.md) · [GitHub Rulesets](docs/github-rulesets.md) · [Identity correction](docs/identity-correction.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
+[Command reference](docs/cli.md) · [Full documentation](docs/README.md) · [GitHub verification](docs/github-verification.md) · [GitHub Rulesets](docs/github-rulesets.md) · [Identity correction](docs/identity-correction.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
 

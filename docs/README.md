@@ -4,6 +4,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 
 | Guide | Use it when… |
 | --- | --- |
+| [Command reference](cli.md) | You want one place with all commands, first-run setup and safe cleanup flow. |
 | [How the rewrite works](how-it-works.md) | You want to understand exactly which Git objects change and why descendant commit IDs move. |
 | [Matching architecture](matching.md) | You want to see how the Claude preset is separated from the vendor-neutral rewrite engine. |
 | [Multiple attribution rules](rules.md) | You want Claude plus other declared co-author identities in one validated rule set. |
