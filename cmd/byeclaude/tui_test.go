@@ -14,7 +14,7 @@ func TestMenuPreviewNeverAppliesOnDefaultOrEOF(t *testing.T) {
 			dir := createCLIRepository(t, true)
 			before := runGit(t, dir, "rev-parse", "HEAD")
 			var output bytes.Buffer
-			ui := terminalUI{repo: dir, in: bufio.NewScanner(strings.NewReader(input)), out: &output, invoke: func(command string, args []string) error {
+			ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader(input)), out: &output, invoke: func(command string, args []string) error {
 				if command == "clean" || strings.Contains(strings.Join(args, " "), "--apply") {
 					t.Fatal("default/EOF attempted mutation")
 				}
@@ -38,7 +38,7 @@ func TestMenuRequiresExactCleanupConfirmationAndKeepsRoleSelection(t *testing.T)
 		dir := createCLIRepository(t, true)
 		applied := false
 		var output bytes.Buffer
-		ui := terminalUI{repo: dir, in: bufio.NewScanner(strings.NewReader("3\n2\n" + answer + "\nq\n")), out: &output, invoke: func(command string, args []string) error {
+		ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader("3\n2\n" + answer + "\nq\n")), out: &output, invoke: func(command string, args []string) error {
 			joined := strings.Join(args, " ")
 			if command == "plan" || command == "clean" {
 				if !strings.Contains(joined, "--author-from-git") || strings.Contains(joined, "--identity-from-git") {
@@ -65,10 +65,8 @@ func TestMenuRequiresExactCleanupConfirmationAndKeepsRoleSelection(t *testing.T)
 func TestMenuRefusesChangedHistoryAfterPreview(t *testing.T) {
 	dir := createCLIRepository(t, true)
 	var output bytes.Buffer
-	ui := terminalUI{repo: dir, in: bufio.NewScanner(strings.NewReader("3\n1\nCLEAN\nq\n")), out: &output, invoke: func(command string, args []string) error {
-		if command == "plan" {
-			runGit(t, dir, "commit", "--allow-empty", "-m", "Concurrent change")
-		}
+	observer := &promptObserver{buffer: &output, prompt: "Type CLEAN", onPrompt: func() { runGit(t, dir, "commit", "--allow-empty", "-m", "Concurrent change") }}
+	ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader("3\n1\nCLEAN\nq\n")), out: observer, invoke: func(command string, args []string) error {
 		if command == "clean" {
 			t.Fatal("applied changed history")
 		}
@@ -85,7 +83,7 @@ func TestMenuRefusesChangedHistoryAfterPreview(t *testing.T) {
 func TestMenuAddsAndRemovesExplicitEmails(t *testing.T) {
 	dir := createCLIRepository(t, false)
 	var output bytes.Buffer
-	ui := terminalUI{repo: dir, in: bufio.NewScanner(strings.NewReader("2\na\nhelper\nhelper@example.org\n2\nr\nhelper\nq\n")), out: &output, invoke: invokeMenuCommand}
+	ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader("2\na\nhelper\nhelper@example.org\ny\n2\nr\nhelper\ny\nq\n")), out: &output, invoke: invokeMenuCommand}
 	if err := ui.run(); err != nil {
 		t.Fatal(err)
 	}
@@ -101,14 +99,14 @@ func TestMenuReadOnlyActionsAndRepositorySwitch(t *testing.T) {
 	before := runGit(t, first, "rev-parse", "HEAD")
 	var output bytes.Buffer
 	input := "1\n5\n6\n7\n" + second + "\n2\n\n4\n\n3\nq\nunknown\nq\n"
-	ui := terminalUI{repo: first, in: bufio.NewScanner(strings.NewReader(input)), out: &output, invoke: invokeMenuCommand}
+	ui := terminalUI{repo: first, in: bufio.NewReader(strings.NewReader(input)), out: &output, invoke: invokeMenuCommand}
 	if err := ui.run(); err != nil {
 		t.Fatal(err)
 	}
 	if runGit(t, first, "rev-parse", "HEAD") != before {
 		t.Fatal("read-only menu changed first repository")
 	}
-	if !strings.Contains(output.String(), "Choose 1-7 or q") || !strings.Contains(output.String(), "claude-anthropic") {
+	if !strings.Contains(output.String(), "Nothing was changed by that answer") || !strings.Contains(output.String(), "claude-anthropic") {
 		t.Fatal(output.String())
 	}
 	if !sameFile(t, ui.repo, second) {
@@ -121,7 +119,7 @@ func TestMenuInstallsHooksOnlyAfterSuccessfulPreview(t *testing.T) {
 		dir := createCLIRepository(t, false)
 		applied := false
 		var output bytes.Buffer
-		ui := terminalUI{repo: dir, in: bufio.NewScanner(strings.NewReader("4\ny\nq\n")), out: &output, invoke: func(command string, args []string) error {
+		ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader("4\ny\nq\n")), out: &output, invoke: func(command string, args []string) error {
 			if strings.Contains(strings.Join(args, " "), "--apply") {
 				applied = true
 				return nil
@@ -138,4 +136,22 @@ func TestMenuInstallsHooksOnlyAfterSuccessfulPreview(t *testing.T) {
 			t.Fatal("setup did not respect failed preview")
 		}
 	}
+}
+
+func invokeMenuCommand(command string, args []string) error {
+	switch command {
+	case "scan":
+		return runScan(args)
+	case "clean":
+		return runClean(args)
+	case "setup":
+		return runSetup(args)
+	case "doctor":
+		return runDoctor(args)
+	case "backups":
+		return runBackups(args)
+	case "blacklist":
+		return runBlacklist(args)
+	}
+	return fmt.Errorf("unknown menu command %q", command)
 }

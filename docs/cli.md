@@ -1,22 +1,38 @@
 # ByeClaude command reference
 
-> **Release note:** The commands introduced by this development PR require
-> building the updated source. They are not included in the existing
-> `v0.1.0-alpha.1` binary. Install a tested newer release once published.
+The guided menu and input-recovery improvements described here ship in alpha.3.
+The underlying blacklist, hook and verification commands are also in alpha.2.
 
 ## First 60 seconds
 
 For an interactive terminal, run `byeclaude` or `byeclaude tui --repo PATH`.
-Choose a numbered action and press Enter. It works in cmd, Windows PowerShell,
+Press Enter for the guided first-use flow, or choose a numbered action.
+`byeclaude guide` opens the walkthrough directly. It works in cmd, Windows PowerShell,
 PowerShell 7, and ordinary Unix terminals. `--no-color` or `NO_COLOR` disables
-color. Piped input never starts an interactive session implicitly.
+color without hiding any explanations. Redirected input/output and CI never
+start an interactive session; use explicit commands in those environments.
 
 The menu shows the current repository, active blacklist and hook status.
 Cleanup previews are read-only until you type `CLEAN`; a change to refs,
 configured identity or rules during review cancels the apply. Hook installation
-requires `y`. Publishing remains the separate `push` command. Ctrl+C or EOF
-at a prompt cancels without applying. To undo an already completed cleanup,
+requires `y` or `yes`. Adding/removing blacklist rules also asks before saving;
+resetting all rules requires `RESET`. Publishing remains the separate `push`
+command. Ctrl+C or EOF at a prompt cancels the pending choice; an incomplete
+answer without Enter is never confirmation. Previously completed choices stay
+saved. To undo an already completed cleanup,
 use its backup ID with `restore --backup ID --apply`.
+
+The guide walks through identities, a read-only audit, an optional cleanup
+preview and hook setup. Default answers never rewrite history or install hooks.
+Invalid choices, rule labels and emails get up to three attempts. Oversized
+lines are drained before another answer is read, and invalid UTF-8, terminal
+controls and invisible formatting characters are rejected. A bad folder does
+not replace the current repository. Empty, already clean and blocked cleanup
+plans do not offer an apply confirmation.
+
+Menu command output is bounded to 1 MiB and terminal control characters are
+removed from repository-supplied metadata. Exceeding the limit stops the menu
+action with a diagnostic; use the explicit CLI for large reports.
 
 Run these commands **inside the Git clone you intend to protect**:
 
@@ -57,6 +73,7 @@ collaborators before any rewrite.
 | Task | Command |
 | --- | --- |
 | Open the terminal menu | `byeclaude tui` |
+| Start the guided walkthrough | `byeclaude guide` |
 | Inspect the saved blacklist | `byeclaude blacklist list` |
 | Add a declared identity to the blacklist | `byeclaude blacklist add --id helper --email helper@example.org` |
 | Test a name/email against active rules | `byeclaude blacklist test --name Helper --email helper@example.org` |

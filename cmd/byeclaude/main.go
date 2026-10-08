@@ -30,6 +30,8 @@ func main() {
 	switch os.Args[1] {
 	case "tui":
 		err = runTUI(os.Args[2:])
+	case "guide":
+		err = runTUI(append([]string{"--guide"}, os.Args[2:]...))
 	case "blacklist":
 		err = runBlacklist(os.Args[2:])
 	case "scan":
@@ -83,6 +85,7 @@ func usage() {
 
 Usage:
   byeclaude tui [--repo PATH] [--no-color]
+  byeclaude guide [--repo PATH] [--no-color]
   byeclaude blacklist list|add|remove|reset|export|test [--repo PATH] [--id ID] [--email ADDRESS] [--name TEXT] [--domain DOMAIN]
   byeclaude setup [--repo PATH] [--rules FILE] [--apply]
   byeclaude doctor [--repo PATH]
