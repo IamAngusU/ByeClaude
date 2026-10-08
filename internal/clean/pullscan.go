@@ -13,11 +13,17 @@ import (
 // ScanPullRefsContext audits commit objects reachable via refs/pull/* alone.
 // These refs are GitHub-managed and are never rewritten by ByeClaude.
 func ScanPullRefsContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher) (model.ScanReport, error) {
+	refs,err:=refsFromNamespacesContext(ctx,repo,"refs/pull")
+	if err!=nil{return model.ScanReport{},err}
+	return ScanSelectedPullRefsContext(ctx,repo,matcher,refs)
+}
+
+// ScanSelectedPullRefsContext limits the commit walk to the explicitly
+// selected pull refs, even when a mirror already contains other PR refs.
+func ScanSelectedPullRefsContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, refs []Ref) (model.ScanReport,error) {
 	started := time.Now()
 	report := model.ScanReport{Repository:repo.Root,RuleMatches:map[string]int{}}
 	if matcher==nil{return report,fmt.Errorf("attribution matcher is required")}
-	refs,err:=refsFromNamespacesContext(ctx,repo,"refs/pull")
-	if err!=nil{return report,err}
 	commits,err:=commitsForRefsContext(ctx,repo,refs)
 	if err!=nil{return report,err}
 	raw,err:=repo.CatFileBatch(ctx,commits,"commit")

@@ -36,6 +36,14 @@ func ScanMatchingHeadersContext(ctx context.Context, repo *gitx.Repo, matcher at
 			refs=append(refs,Ref{Name:"HEAD",SHA:strings.TrimSpace(string(out)),Type:"commit"})
 		}
 	}
+	return ScanMatchingHeadersForRefsContext(ctx,repo,matcher,refs)
+}
+
+// ScanMatchingHeadersForRefsContext checks exactly the supplied roots, not
+// unrelated PR refs that may already exist in a metadata mirror.
+func ScanMatchingHeadersForRefsContext(ctx context.Context,repo *gitx.Repo,matcher attribution.Matcher,refs []Ref)(HeaderScanReport,error){
+	var report HeaderScanReport
+	if matcher==nil{return report,fmt.Errorf("attribution matcher is required")}
 	commits,err:=commitsForRefsContext(ctx,repo,refs)
 	if err!=nil{return report,err}
 	raw,err:=repo.CatFileBatch(ctx,commits,"commit")

@@ -154,9 +154,13 @@ func scanPullRefs(ctx context.Context,repo *gitx.Repo,matcher attribution.Matche
 		out.Status="partial"
 		return out
 	}
-	scan,err:=clean.ScanPullRefsContext(ctx,repo,matcher)
+	selected:=make([]clean.Ref,0,count)
+	for _,e:=range entries[:count] {
+		selected=append(selected,clean.Ref{Name:e.ref,SHA:e.sha,Type:"commit"})
+	}
+	scan,err:=clean.ScanSelectedPullRefsContext(ctx,repo,matcher,selected)
 	if err!=nil{out.Error="could not scan fetched PR commits";out.Status="partial";return out}
-	matchingHeaders,err:=clean.ScanMatchingHeadersContext(ctx,repo,matcher,[]string{"refs/pull"},false)
+	matchingHeaders,err:=clean.ScanMatchingHeadersForRefsContext(ctx,repo,matcher,selected)
 	if err!=nil{out.Error="could not scan PR author/committer fields";out.Status="partial";return out}
 	out.MatchedCommits=scan.MatchedCommits
 	out.MatchingTrailers=len(scan.Matches)
