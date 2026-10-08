@@ -72,7 +72,7 @@ func usage() {
 Usage:
   byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
-  byeclaude plan [--repo PATH] [--rules FILE] [--json]
+  byeclaude plan [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--json]
   byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
@@ -81,8 +81,8 @@ Usage:
   byeclaude verify --repo OWNER/REPO [--github-user LOGIN] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
-  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--json]
-  byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
+  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--json]
+  byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE]
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
@@ -201,6 +201,7 @@ func runPlan(args []string) error {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	rulesFile := rulesFlag(fs)
+	author,committer:=identityRewriteFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -259,8 +260,8 @@ func runClean(args []string) error {
 	apply := fs.Bool("apply", false, "rewrite local history")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
-	replaceAuthor := fs.String("replace-author", "", "explicit replacement 'Name <email>' for matching Git author identities")
-	replaceCommitter := fs.String("replace-committer", "", "explicit replacement 'Name <email>' for matching Git committer identities")
+	replaceAuthor,replaceCommitter:=identityRewriteFlags(fs)
+	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect current GitHub history, PR refs and contributor API")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -273,17 +274,10 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts := clean.IdentityRewriteOptions{}
-	if *replaceAuthor != "" {
-		r, err := clean.ParseIdentityReplacement(*replaceAuthor)
-		if err != nil { return err }
-		opts.Author = &r
-	}
-	if *replaceCommitter != "" {
-		r, err := clean.ParseIdentityReplacement(*replaceCommitter)
-		if err != nil { return err }
-		opts.Committer = &r
-	}
+	opts,err:=parseIdentityRewriteOptions(*replaceAuthor,*replaceCommitter)
+	if err!=nil{return err}
+	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
+	if *verifyGithub && *jsonOut{return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")}
 	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
@@ -339,6 +333,8 @@ func runClean(args []string) error {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
 	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
+	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,"")}
+	if *push{fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")}
 	return nil
 }
 
@@ -347,6 +343,8 @@ func runPush(args []string) error {
 	repoPath, _ := common(fs)
 	backup := fs.String("backup", "", "backup ID printed by clean --apply")
 	remote := fs.String("remote", "origin", "remote to update")
+	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect GitHub refs and contributor API")
+	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -373,6 +371,8 @@ func runPush(args []string) error {
 		return err
 	}
 	fmt.Printf("push        %s updated from rewrite backup %s using atomic force-with-lease\n", *remote, *backup)
+	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,*githubUser)}
+	fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")
 	return nil
 }
 
