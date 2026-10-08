@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/IamAngusU/ByeClaude/internal/blacklist"
 	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/model"
 )
 
 func (ui *terminalUI) validated(prompt string, validate func(string) error) (string, error) {
@@ -271,11 +273,25 @@ func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 		return err
 	}
 	ui.hint("Calculating the impact on local history. No changes yet...")
-	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
+	var plan model.PlanReport
+	err = ui.working("Review cleanup impact", func(ctx context.Context) error {
+		var planErr error
+		plan, planErr = clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+		return planErr
+	})
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(ui.out, "\n  Commits checked   %d\n  Matching commits  %d\n  Credit lines      %d\n  Commits rewritten %d (including descendants)\n  Branches / tags   %d / %d\n  Signatures lost   %d\n", plan.Commits, plan.MatchedCommits, len(plan.Matches), plan.CommitsToRewrite, plan.BranchesToMove, plan.TagRefsToMove, plan.SignaturesAtRisk)
+	ui.rule()
+	ui.stat("Commits checked", plan.Commits)
+	ui.stat("Matching commits", plan.MatchedCommits)
+	ui.stat("Credit lines to remove", len(plan.Matches))
+	ui.stat("Commits to rewrite", plan.CommitsToRewrite)
+	ui.stat("Branches to move", plan.BranchesToMove)
+	ui.stat("Tags to move", plan.TagRefsToMove)
+	ui.stat("Signatures lost", plan.SignaturesAtRisk)
+	ui.rule()
+	ui.hint("Rewritten commits include descendants of matching commits.")
 	if plan.AuthorsToReplace+plan.CommittersToReplace > 0 {
 		fmt.Fprintf(ui.out, "  Identity changes  %d author(s), %d committer(s)\n", plan.AuthorsToReplace, plan.CommittersToReplace)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -14,7 +15,10 @@ import (
 	"strings"
 
 	"github.com/IamAngusU/ByeClaude/internal/blacklist"
+	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/metrics"
+	"github.com/IamAngusU/ByeClaude/internal/model"
 )
 
 func terminalInput() bool {
@@ -39,15 +43,17 @@ func runTUI(args []string) error {
 	if _, err := exec.LookPath("git"); err != nil {
 		return fmt.Errorf("Git was not found on PATH; install Git from https://git-scm.com/downloads, reopen your terminal and try again")
 	}
-	_, noColor := os.LookupEnv("NO_COLOR")
-	color := false
-	if !*plain && !noColor && os.Getenv("TERM") != "dumb" {
-		var restore func()
-		color, restore = enableTerminalColor(os.Stdout)
-		defer restore()
+	color, motion, restore := terminalPalette(*plain)
+	defer restore()
+	ui := terminalUI{in: bufio.NewReader(os.Stdin), out: os.Stdout, repo: *repoPath, color: color, motion: motion, guided: *guide}
+	ui.invoke = func(command string, args []string) error {
+		var output menuOutput
+		err := ui.working("Running "+command, func(context.Context) error { return executeMenuCommand(command, args, &output) })
+		if _, writeErr := fmt.Fprint(ui.out, output.data.String()); writeErr != nil {
+			return fmt.Errorf("%w: %w", errTerminalIO, writeErr)
+		}
+		return err
 	}
-	ui := terminalUI{in: bufio.NewReader(os.Stdin), out: os.Stdout, repo: *repoPath, color: color, guided: *guide}
-	ui.invoke = func(command string, args []string) error { return executeMenuCommand(command, args, ui.out) }
 	if err := ui.offerPathRetry(); err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil
@@ -66,6 +72,7 @@ type terminalUI struct {
 	out    io.Writer
 	repo   string
 	color  bool
+	motion bool
 	guided bool
 	invoke func(string, []string) error
 }
@@ -183,7 +190,7 @@ func (ui *terminalUI) dashboard(repo *gitx.Repo) {
 	} else {
 		ui.hint("Protection: not fully set up. Choose 4, or 5 to diagnose an existing hook.")
 	}
-	fmt.Fprintln(ui.out)
+	ui.rule()
 	ui.option("g", "Guided start", "Choose identities, check history, then decide what to change.")
 	ui.option("1", "Check this repository", "Find matching credits and identities. No changes.")
 	ui.option("2", "Choose blocked identities", "Keep Claude, add other exact emails, or remove a rule.")
@@ -267,14 +274,51 @@ func (ui *terminalUI) help() {
 func (ui *terminalUI) audit() error {
 	ui.heading("Check history / No changes")
 	ui.hint("Looking for matching co-author credits, authors and committers...")
-	if err := ui.invoke("scan", []string{"--repo", ui.repo, "--include-identities"}); err != nil {
+	repo, err := gitx.Open(ui.repo)
+	if err != nil {
 		return err
 	}
-	ui.hint("If matches were found, choose 3 to review a cleanup. Otherwise choose 4.")
+	matcher, err := resolveLocalMatcher(ui.repo, "")
+	if err != nil {
+		return err
+	}
+	var report model.ScanReport
+	err = ui.working("Check local history", func(ctx context.Context) error {
+		var scanErr error
+		report, scanErr = clean.ScanContext(ctx, repo, matcher)
+		if scanErr != nil {
+			return scanErr
+		}
+		headers, scanErr := clean.ScanMatchingHeadersContext(ctx, repo, matcher, []string{"refs/heads", "refs/tags"}, true)
+		report.MatchingAuthors, report.MatchingCommitters = headers.Authors, headers.Committers
+		return scanErr
+	})
+	if err != nil {
+		return err
+	}
+	metrics.Record(metrics.Counters{Scans: 1, CommitsInspected: metricCount(int64(report.Commits)), WorkMS: metricCount(report.DurationMS)})
+	ui.rule()
+	ui.stat("Commits checked", report.Commits)
+	ui.stat("Matching credit lines", len(report.Matches))
+	ui.stat("Matching authors", report.MatchingAuthors)
+	ui.stat("Matching committers", report.MatchingCommitters)
+	ui.rule()
+	if len(report.Matches)+report.MatchingAuthors+report.MatchingCommitters == 0 {
+		ui.hint("[x] No matching selected metadata. Choose 4 to protect future work.")
+	} else {
+		ui.hint("[!] Matches found. Choose 3 to review a cleanup.")
+		for _, m := range report.Matches[:min(5, len(report.Matches))] {
+			ui.hint(fmt.Sprintf("%.12s  %s <%s>", m.Commit, m.AttributionName, m.AttributionEmail))
+		}
+		if len(report.Matches) > 5 {
+			ui.hint(fmt.Sprintf("%d more credit lines. Full list: byeclaude scan --repo %q", len(report.Matches)-5, ui.repo))
+		}
+	}
 	return nil
 }
 
 func (ui *terminalUI) guide(repo *gitx.Repo) error {
+	ui.step(1)
 	ui.heading("Guided start / 1 of 4: Choose identities")
 	ui.hint("Powered by angusu.de | Angus Uelsmann")
 	ui.hint("Local activity counters: m in the menu; metrics off disables collection.")
@@ -297,10 +341,12 @@ func (ui *terminalUI) guide(repo *gitx.Repo) error {
 			return err
 		}
 	}
+	ui.step(2)
 	ui.heading("Guided start / 2 of 4: Check history")
 	if err := ui.audit(); err != nil {
 		return err
 	}
+	ui.step(3)
 	ui.heading("Guided start / 3 of 4: Review existing history")
 	choice, err = ui.choice("Preview cleanup? [Enter: preview, s: skip, q: back]", "preview", "preview", "s", "q")
 	if err != nil {
@@ -314,6 +360,7 @@ func (ui *terminalUI) guide(repo *gitx.Repo) error {
 			return err
 		}
 	}
+	ui.step(4)
 	ui.heading("Guided start / 4 of 4: Protect future commits")
 	if err := ui.protect(repo); err != nil {
 		return err

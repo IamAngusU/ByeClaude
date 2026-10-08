@@ -261,7 +261,7 @@ func TestMenuExplanationSurvivesNoColorAndOperationFailure(t *testing.T) {
 	dir := createCLIRepository(t, false)
 	for _, color := range []bool{true, false} {
 		var output bytes.Buffer
-		ui := terminalUI{repo: dir, color: color, in: bufio.NewReader(strings.NewReader("1\nh\nq\n")), out: &output, invoke: func(string, []string) error { return fmt.Errorf("fixture error\x1b[2J") }}
+		ui := terminalUI{repo: dir, color: color, in: bufio.NewReader(strings.NewReader("5\nh\nq\n")), out: &output, invoke: func(string, []string) error { return fmt.Errorf("fixture error\x1b[2J") }}
 		if err := ui.run(); err != nil {
 			t.Fatal(err)
 		}

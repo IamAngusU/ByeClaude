@@ -9,6 +9,7 @@ import (
 	"github.com/IamAngusU/ByeClaude/internal/attribution"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
 	"github.com/IamAngusU/ByeClaude/internal/model"
+	"github.com/IamAngusU/ByeClaude/internal/progress"
 )
 
 type tagPlanResult struct {
@@ -36,6 +37,7 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 		return model.PlanReport{}, fmt.Errorf("attribution matcher is required")
 	}
 
+	progress.Report(ctx, "Reading local history", 0, 0)
 	refs, err := LocalRefsContext(ctx, repo)
 	if err != nil {
 		return model.PlanReport{}, err
@@ -57,7 +59,11 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 		return report, err
 	}
 
+	progress.Report(ctx, "Reviewing commits", 0, len(commits))
 	for i, sha := range commits {
+		if err := ctx.Err(); err != nil {
+			return report, err
+		}
 		obj, err := parseCommit(rawCommits[i])
 		if err != nil {
 			return report, err
@@ -105,6 +111,7 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 			report.CommitsToRewrite++
 			report.SignaturesAtRisk += commitSignatureFields(obj)
 		}
+		progress.Report(ctx, "Reviewing commits", i+1, len(commits))
 	}
 
 	report.MatchedCommits = len(matched)
@@ -113,6 +120,7 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 		report.CommitMatchPct = (float64(report.MatchedCommits) / float64(report.Commits)) * 100
 	}
 
+	progress.Report(ctx, "Checking refs and rewrite safety", 0, 0)
 	tagMemo := map[string]tagPlanResult{}
 	tagCounted := map[string]bool{}
 	tagSignedCounted := map[string]bool{}

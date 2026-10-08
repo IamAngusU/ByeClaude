@@ -31,7 +31,7 @@ Install [Git](https://git-scm.com/downloads) first. The release binary needs **n
 
 ```powershell
 $installer = Join-Path $env:TEMP 'byeclaude-install.ps1'
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.4/install.ps1 -OutFile $installer
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.5/install.ps1 -OutFile $installer
 powershell -NoProfile -ExecutionPolicy Bypass -File $installer
 ```
 
@@ -44,7 +44,7 @@ Then open a **new cmd or PowerShell window**. The installer checks the binary's 
 
 ```sh
 installer="$(mktemp)"
-curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.4/install.sh -o "$installer" && sh "$installer"
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.5/install.sh -o "$installer" && sh "$installer"
 rm -- "$installer"
 ```
 
@@ -52,7 +52,7 @@ The installer checks the binary's SHA-256, installs to `~/.local/bin` by default
 
 </details>
 
-Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.4). [Installer details, checksums and source builds](docs/supply-chain.md).
+Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.5). [Installer details, checksums and source builds](docs/supply-chain.md).
 
 Now run:
 
@@ -71,15 +71,27 @@ Short gray explanations tell you what each choice does. The same words remain vi
 
 The terminal is credited **Powered by angusu.de | Angus Uelsmann**.
 
+Longer scans and previews show the current stage and actual commit progress. Other Git actions show a spinner until they finish.
+
+<details>
+<summary>See a real progress bar</summary>
+
+![Commit progress during a 16,000-commit preview](docs/assets/readme/terminal-progress.gif)
+<sub>Actual alpha.5 Windows preview; playback slowed for readability. Each percentage belongs to the named stage. [Transcript](docs/assets/readme/progress-session.txt).</sub>
+
+</details>
+
 ![Recorded guided terminal flow with explanations and a corrected input](docs/assets/readme/terminal-flow.gif)
-<sub>Alpha.3 guided-flow recording in a disposable Windows repository, rendered from its [transcript](docs/assets/readme/terminal-session.txt). Alpha.4 adds the metrics view below.</sub>
+<sub>Alpha.3 guided-flow recording in a disposable Windows repository, rendered from its [transcript](docs/assets/readme/terminal-session.txt). Alpha.5 adds the live dashboard and progress indicators shown below.</sub>
 
 ## See the work handled for you
 
-Choose **m** in the menu, or run `byeclaude metrics`. See removed credits, rewritten commits, automatic commit-message edits and blocked push attempts across your local usage. Counters stay on this computer; no repository names, emails or commit content are collected or uploaded. Recording starts with alpha.4 and can be disabled at any time.
+Choose **m** in the menu, or run `byeclaude metrics`. A compact dashboard highlights your totals; **w** opens the live view, **d** explains counting, and **e** models your own effort estimate. See removed credits, rewritten commits, automatic commit-message edits and blocked push attempts across your local usage. Counters stay on this computer; no repository names, emails or commit content are collected or uploaded. Recording starts with alpha.4 and can be disabled at any time.
 
 ```sh
 byeclaude metrics
+byeclaude metrics --watch                  # live totals and +changes; Enter returns
+byeclaude metrics --details                # counting notes, kept out of the dashboard
 byeclaude metrics --seconds-per-credit 30  # your assumption, not measured savings
 byeclaude metrics off                     # stop collecting; keep existing totals
 byeclaude metrics reset --confirm          # clear counters; Git backups stay intact
@@ -87,8 +99,8 @@ byeclaude metrics reset --confirm          # clear counters; Git backups stay in
 
 Repeated scans count as activity, not additional credits removed. Later-undone cleanups remain in activity totals; hook edits can precede a cancelled Git commit. Counter storage is best-effort and never blocks Git work. [What is counted and where it is stored](docs/metrics.md).
 
-![Actual local metrics and explicit manual-effort estimate](docs/assets/readme/terminal-metrics.gif)
-<sub>Alpha.4 Windows session, recorded with isolated demo counters. [Transcript](docs/assets/readme/metrics-session.txt).</sub>
+![Live local metrics increasing after actual demo operations](docs/assets/readme/terminal-metrics.gif)
+<sub>Alpha.5 Windows terminal recording. Real operations in a disposable repository; isolated counters. [Transcript](docs/assets/readme/metrics-session.txt).</sub>
 
 ## What changes?
 

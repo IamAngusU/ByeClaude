@@ -122,6 +122,6 @@ func (ui *terminalUI) hint(value string) {
 }
 
 func (ui *terminalUI) option(key, title, help string) {
-	fmt.Fprintf(ui.out, "  %s  %s\n", key, title)
+	fmt.Fprintf(ui.out, "  %s  %s\n", tint(ui.color, "1;36", key), tint(ui.color, "1", terminalText(title)))
 	ui.hint("   " + help)
 }

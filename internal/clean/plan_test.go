@@ -1,12 +1,14 @@
 package clean
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
 	"github.com/IamAngusU/ByeClaude/internal/preset"
+	"github.com/IamAngusU/ByeClaude/internal/progress"
 )
 
 func TestPlanCountsDescendantsAndParentLinks(t *testing.T) {
@@ -33,7 +35,9 @@ func TestPlanCountsDescendantsAndParentLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	report, err := Plan(repo, preset.Claude())
+	var events []progress.Event
+	ctx := progress.WithReporter(context.Background(), func(p progress.Event) { events = append(events, p) })
+	report, err := PlanWithIdentityContext(ctx, repo, preset.Claude(), IdentityRewriteOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +58,29 @@ func TestPlanCountsDescendantsAndParentLinks(t *testing.T) {
 	}
 	if !report.RewriteReady || report.RewriteBlocker != "" {
 		t.Fatalf("expected rewrite-ready plan: %#v", report)
+	}
+	for _, stage := range []string{"Loading commit objects", "Reviewing commits"} {
+		var completed int
+		for _, p := range events {
+			if p.Stage == stage {
+				if p.Total != 4 || p.Done < completed || p.Done > p.Total {
+					t.Fatal("false progress", p)
+				}
+				completed = p.Done
+			}
+		}
+		if completed != 4 {
+			t.Fatal("missing progress", stage, events)
+		}
+	}
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	cancelCtx = progress.WithReporter(cancelCtx, func(p progress.Event) {
+		if p.Stage == "Reviewing commits" {
+			cancel()
+		}
+	})
+	if _, err := PlanWithIdentityContext(cancelCtx, repo, preset.Claude(), IdentityRewriteOptions{}); err == nil {
+		t.Fatal("ignored cancellation")
 	}
 }
 

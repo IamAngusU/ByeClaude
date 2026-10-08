@@ -2,6 +2,14 @@
 
 `byeclaude metrics` shows work performed by this Windows/macOS/Linux user account, across its local repositories. The menu's **m** action shows the same counters and offers on/off controls, a confirmed reset and an optional manual-effort estimate. Alpha.4 starts recording new operations; it does not reconstruct earlier usage.
 
+## Dashboard and live view
+
+`byeclaude metrics --watch` refreshes the display once per second. In the menu, choose **m**, then **w**. Leave it open while another terminal runs scans, cleanups or Git hooks: totals update in place, and cyan `+` values show work recorded since opening the view. Press **Enter** to return; Ctrl+C exits the application. Reading metrics never adds activity.
+
+If another process resets counters, the live baseline restarts. Unavailable storage keeps the last known totals with an explicit stale-data notice and retries. Resizing below 72 columns or 30 rows replaces the dashboard with a resize hint; input still works. Starting in a smaller terminal, a pipe, CI, `TERM=dumb`, `NO_COLOR` or `--no-color` prints a static snapshot instead. Ordinary line input remains active; no raw input mode is used.
+
+`--details` shows processing time and counting notes separately. `--json` keeps its existing machine-readable schema and cannot be combined with `--watch`.
+
 ## What counts
 
 | Counter | Meaning |

@@ -147,7 +147,11 @@ func TestMetricControlsJSONAndExplicitEstimate(t *testing.T) {
 		t.Fatal(result)
 	}
 	output, err = captureCommand(t, func() error { return runMetrics(nil) })
-	if err != nil || !strings.Contains(output, "not time saved") || !strings.Contains(output, "No time-savings claim") {
+	if err != nil || !strings.Contains(output, "Credits removed") || !strings.Contains(output, "No time-savings claim") || strings.Contains(output, "\x1b") {
+		t.Fatal(output, err)
+	}
+	output, err = captureCommand(t, func() error { return runMetrics([]string{"--details"}) })
+	if err != nil || !strings.Contains(output, "not time saved") {
 		t.Fatal(output, err)
 	}
 	for _, args := range [][]string{{"reset"}, {"unknown"}, {"--seconds-per-credit", "NaN"}, {"--seconds-per-credit", "Inf"}, {"--seconds-per-credit", "-1"}} {
