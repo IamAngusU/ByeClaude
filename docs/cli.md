@@ -1,7 +1,7 @@
 # ByeClaude command reference
 
-The guided menu and input-recovery improvements described here ship in alpha.3.
-The underlying blacklist, hook and verification commands are also in alpha.2.
+Alpha.4 adds local activity metrics, recoverable user PATH setup and terminal
+branding to the guided menu introduced in alpha.3.
 
 ## First 60 seconds
 
@@ -13,6 +13,10 @@ color without hiding any explanations. Redirected input/output and CI never
 start an interactive session; use explicit commands in those environments.
 
 The menu shows the current repository, active blacklist and hook status.
+**m** opens local metrics and their controls. `byeclaude metrics` works outside
+a repository too; see [counting semantics and privacy](metrics.md).
+`byeclaude path setup` retries optional PATH configuration without elevation;
+`path status` explains the current command and `path skip` disables reminders.
 Cleanup previews are read-only until you type `CLEAN`; a change to refs,
 configured identity or rules during review cancels the apply. Hook installation
 requires `y` or `yes`. Adding/removing blacklist rules also asks before saving;

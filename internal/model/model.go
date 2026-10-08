@@ -23,6 +23,7 @@ type ScanReport struct {
 }
 
 type RewriteReport struct {
+	CreditsRemoved     int    `json:"credits_removed"`
 	Repository         string `json:"repository"`
 	Backup             string `json:"backup"`
 	CommitsVisited     int    `json:"commits_visited"`

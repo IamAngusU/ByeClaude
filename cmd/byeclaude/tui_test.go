@@ -140,6 +140,8 @@ func TestMenuInstallsHooksOnlyAfterSuccessfulPreview(t *testing.T) {
 
 func invokeMenuCommand(command string, args []string) error {
 	switch command {
+	case "metrics":
+		return runMetrics(args)
 	case "scan":
 		return runScan(args)
 	case "clean":

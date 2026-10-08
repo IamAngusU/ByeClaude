@@ -11,6 +11,7 @@ import (
 	"github.com/IamAngusU/ByeClaude/internal/attribution"
 	"github.com/IamAngusU/ByeClaude/internal/clean"
 	"github.com/IamAngusU/ByeClaude/internal/gitx"
+	"github.com/IamAngusU/ByeClaude/internal/metrics"
 	"github.com/IamAngusU/ByeClaude/internal/model"
 	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
@@ -34,6 +35,10 @@ func main() {
 		err = runTUI(append([]string{"--guide"}, os.Args[2:]...))
 	case "blacklist":
 		err = runBlacklist(os.Args[2:])
+	case "metrics":
+		err = runMetrics(os.Args[2:])
+	case "path":
+		err = runPath(os.Args[2:])
 	case "scan":
 		err = runScan(os.Args[2:])
 	case "setup":
@@ -86,6 +91,8 @@ func usage() {
 Usage:
   byeclaude tui [--repo PATH] [--no-color]
   byeclaude guide [--repo PATH] [--no-color]
+  byeclaude metrics [show|on|off|reset] [--confirm] [--json] [--seconds-per-credit N]
+  byeclaude path [status|setup|skip]
   byeclaude blacklist list|add|remove|reset|export|test [--repo PATH] [--id ID] [--email ADDRESS] [--name TEXT] [--domain DOMAIN]
   byeclaude setup [--repo PATH] [--rules FILE] [--apply]
   byeclaude doctor [--repo PATH]
@@ -108,6 +115,7 @@ Usage:
   byeclaude version
 
 Nothing is rewritten unless --apply is present. Remote writes require either --push on clean or the explicit push command.
+Powered by angusu.de | Angus Uelsmann
 `)
 }
 
@@ -158,6 +166,7 @@ func runScan(args []string) error {
 		report.MatchingAuthors = headers.Authors
 		report.MatchingCommitters = headers.Committers
 	}
+	metrics.Record(metrics.Counters{Scans: 1, CommitsInspected: metricCount(int64(report.Commits)), WorkMS: metricCount(report.DurationMS)})
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
@@ -208,6 +217,7 @@ func runCheck(args []string) error {
 		report.MatchingAuthors = headers.Authors
 		report.MatchingCommitters = headers.Committers
 	}
+	metrics.Record(metrics.Counters{Checks: 1, CommitsInspected: metricCount(int64(report.Commits)), WorkMS: metricCount(report.DurationMS)})
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 	} else {
@@ -367,6 +377,7 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
+	metrics.Record(metrics.Counters{Cleanups: 1, CleanupCredits: metricCount(int64(report.CreditsRemoved)), CommitsRewritten: metricCount(int64(report.CommitsRewritten)), IdentityFields: metricCount(int64(report.AuthorsReplaced)) + metricCount(int64(report.CommittersReplaced)), WorkMS: metricCount(report.DurationMS)})
 	after, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
@@ -733,7 +744,11 @@ func filterCommitMessage(path string, matcher attribution.Matcher) error {
 	if _, err := f.WriteString(out); err != nil {
 		return err
 	}
-	return f.Sync()
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	metrics.Record(metrics.Counters{HookEdits: 1, HookCredits: uint64(len(matches))})
+	return nil
 }
 
 // pathIsInsideDirectory compares filesystem identities instead of path strings.

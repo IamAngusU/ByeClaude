@@ -338,6 +338,7 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 		newSHA := strings.TrimSpace(string(newSHAOut))
 		mapping[sha] = newSHA
 		report.CommitsRewritten++
+		report.CreditsRemoved += len(removed)
 		report.SignaturesDropped += dropped
 		report.AuthorsReplaced += authors
 		report.CommittersReplaced += committers

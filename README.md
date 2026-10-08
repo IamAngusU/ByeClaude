@@ -31,11 +31,11 @@ Install [Git](https://git-scm.com/downloads) first. The release binary needs **n
 
 ```powershell
 $installer = Join-Path $env:TEMP 'byeclaude-install.ps1'
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.3/install.ps1 -OutFile $installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $installer -AddToPath
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.4/install.ps1 -OutFile $installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $installer
 ```
 
-Then open a **new cmd or PowerShell window**. The installer checks the binary's SHA-256 and adds its directory to your user PATH. It does not leave an installer file in your Git project.
+Then open a **new cmd or PowerShell window**. The installer checks the binary's SHA-256 and sets up your user PATH by default, without UAC. A blocked destination falls back to a user folder. If PATH setup fails, the installed binary still works: use the full path printed by the installer and retry on the next interactive start. Use `-NoPath` to manage PATH yourself.
 
 </details>
 
@@ -44,15 +44,15 @@ Then open a **new cmd or PowerShell window**. The installer checks the binary's 
 
 ```sh
 installer="$(mktemp)"
-curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.3/install.sh -o "$installer" && sh "$installer"
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.4/install.sh -o "$installer" && sh "$installer"
 rm -- "$installer"
 ```
 
-The installer checks the binary's SHA-256. If it installs to `~/.local/bin` and your shell cannot find the command, run `export PATH="$HOME/.local/bin:$PATH"`; add that line to your shell configuration to keep it for later sessions.
+The installer checks the binary's SHA-256, installs to `~/.local/bin` by default, and adds a marked PATH entry for Bash, Zsh or sh. Open a new terminal afterwards. Existing settings are preserved; a linked/managed profile or unsupported shell leaves PATH setup deferred. The full installed path still works. Set `BYECLAUDE_NO_PATH=1` to manage PATH yourself.
 
 </details>
 
-Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.3). [Installer details, checksums and source builds](docs/supply-chain.md).
+Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.4). [Installer details, checksums and source builds](docs/supply-chain.md).
 
 Now run:
 
@@ -69,8 +69,26 @@ Start inside your Git project, or paste its **local folder path** when asked. Pr
 
 Short gray explanations tell you what each choice does. The same words remain visible with `--no-color`. Use **h** for the basics, **q** to leave a form, or **q** at the main menu to exit. Incorrect answers can be corrected; cancelled or incomplete confirmations do not apply the pending change. Previously completed changes remain saved.
 
+The terminal is credited **Powered by angusu.de | Angus Uelsmann**.
+
 ![Recorded guided terminal flow with explanations and a corrected input](docs/assets/readme/terminal-flow.gif)
-<sub>Actual Windows terminal session in a disposable repository, rendered from its [transcript](docs/assets/readme/terminal-session.txt).</sub>
+<sub>Alpha.3 guided-flow recording in a disposable Windows repository, rendered from its [transcript](docs/assets/readme/terminal-session.txt). Alpha.4 adds the metrics view below.</sub>
+
+## See the work handled for you
+
+Choose **m** in the menu, or run `byeclaude metrics`. See removed credits, rewritten commits, automatic commit-message edits and blocked push attempts across your local usage. Counters stay on this computer; no repository names, emails or commit content are collected or uploaded. Recording starts with alpha.4 and can be disabled at any time.
+
+```sh
+byeclaude metrics
+byeclaude metrics --seconds-per-credit 30  # your assumption, not measured savings
+byeclaude metrics off                     # stop collecting; keep existing totals
+byeclaude metrics reset --confirm          # clear counters; Git backups stay intact
+```
+
+Repeated scans count as activity, not additional credits removed. Later-undone cleanups remain in activity totals; hook edits can precede a cancelled Git commit. Counter storage is best-effort and never blocks Git work. [What is counted and where it is stored](docs/metrics.md).
+
+![Actual local metrics and explicit manual-effort estimate](docs/assets/readme/terminal-metrics.gif)
+<sub>Alpha.4 Windows session, recorded with isolated demo counters. [Transcript](docs/assets/readme/metrics-session.txt).</sub>
 
 ## What changes?
 
@@ -98,6 +116,7 @@ To undo a local cleanup, choose **6** for backup IDs and instructions, or run `b
 | Situation | What to do |
 | --- | --- |
 | `byeclaude` is not found | Open a new terminal on Windows; on Unix, check the PATH instruction printed by the installer. You can also run the full installed path. |
+| PATH setup was denied or skipped | Use the full executable path with `path setup` to retry. A deferred attempt is offered again at the next interactive start; Later continues normally, and No stops reminders. No administrator access is required. |
 | The folder is rejected | Choose an existing local Git clone, not a GitHub URL or a file. Quotes and `~/` paths are accepted. The previous selection is kept if you cancel. |
 | Cleanup says the working tree is not clean | Commit or stash your work, then preview again. ByeClaude does not discard it for you. |
 | Protection conflicts with another hook | Choose **5**. Existing hooks are preserved; integrate with that hook manager instead of overwriting it. |
@@ -121,4 +140,4 @@ The menu is optional. Scripts can use `scan`, `check`, `plan`, `blacklist`, `set
 [Command reference](docs/cli.md) · [Rules and blacklist](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Batch scanning](docs/batch.md) · [GitHub verification](docs/github-verification.md) · [Identity correction](docs/identity-correction.md) · [Full documentation](docs/README.md)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
-<p align="center"><sub>Independent open-source project. Not affiliated with Anthropic. <a href="TRADEMARKS.md">Trademark notes</a>.</sub></p>
+<p align="center"><sub>Powered by <a href="https://angusu.de">angusu.de</a> · Angus Uelsmann. Independent open-source project. Not affiliated with Anthropic. <a href="TRADEMARKS.md">Trademark notes</a>.</sub></p>
