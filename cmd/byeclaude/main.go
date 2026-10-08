@@ -297,7 +297,7 @@ func runClean(args []string) error {
 		fmt.Println("No matching selected attribution metadata found. Nothing to do.")
 		return nil
 	}
-	if plan.AuthorsToReplace+plan.CommittersToReplace>0 {
+	if plan.AuthorsToReplace+plan.CommittersToReplace>0 && !*jsonOut {
 		printIdentityTargets(opts)
 	}
 	if !*apply {
