@@ -21,10 +21,10 @@ GitHub evaluates the regex on the entire message, while ByeClaude's CLI
 recognizes final trailer blocks only. A server-side rule can therefore
 reject a line that the CLI would intentionally leave alone.
 
-Explicit installation needs a token with repository administration access:
+Explicit installation needs GH_TOKEN or GITHUB_TOKEN supplied securely through the environment with repository administration access:
 
 ```sh
-GH_TOKEN=... byeclaude ruleset install --repo OWNER/REPO --confirm
+byeclaude ruleset install --repo OWNER/REPO --confirm
 byeclaude ruleset status --repo OWNER/REPO
 ```
 

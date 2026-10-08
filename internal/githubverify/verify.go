@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -229,9 +229,9 @@ func checkContributor(ctx context.Context, opts Options) ContributorCheck {
 	out.Errors="contributor pagination limit reached"
 	return out
 }
+var githubLoginRE=regexp.MustCompile("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
 func ValidateGitHubUser(login string) error {
 	if login=="" {return nil}
-	if strings.ContainsAny(login,"/\\?#& \t\r\n") || len(login)>39{return fmt.Errorf("invalid GitHub username")}
-	if _,err:=url.Parse("https://api.github.com/users/"+login);err!=nil{return err}
+	if !githubLoginRE.MatchString(login){return fmt.Errorf("invalid GitHub username")}
 	return nil
 }

@@ -144,8 +144,8 @@ func runScan(args []string) error {
 		for _, m := range report.Matches {
 		fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 	}
-	if len(report.Matches) == 0 {
-		fmt.Println("clean       no matching attribution trailers found")
+	if len(report.Matches) == 0 && report.MatchingAuthors+report.MatchingCommitters == 0 {
+		fmt.Println("clean       no matching selected metadata found")
 	}
 	return nil
 }
