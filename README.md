@@ -72,7 +72,7 @@ byeclaude push --backup BACKUP_ID
 The push uses an atomic force-with-lease expectation and refuses to overwrite a remote ref that moved after your review. [Backups and recovery](docs/safety.md).
 
 > [!NOTE]
-> New verification, pre-push and identity-correction commands are available on this development branch and require a new build or release. The existing `v0.1.0-alpha.1` binary does not contain them.
+> The verification, pre-push and identity-correction commands introduced here are not in the existing `v0.1.0-alpha.1` release. Build from updated source or wait for a new tested release tag.
 
 ## Prevent unwanted attribution before a push
 
