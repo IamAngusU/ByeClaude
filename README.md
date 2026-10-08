@@ -5,8 +5,13 @@
   </picture>
 </p>
 
-<h1 align="center">Remove unwanted co-author credits from Git history.</h1>
-<p align="center">Choose the identities. Preview the change. Keep your file contents.</p>
+<p align="center">
+  <a href="README.md"><img src="docs/assets/readme-language-en.svg" height="40" alt="Read this README in English"></a>
+  <a href="README.de.md"><img src="docs/assets/readme-language-de.svg" height="40" alt="Diese README auf Deutsch lesen"></a>
+</p>
+
+<h1 align="center">Audit and safely clean unwanted AI co-author credits from Git history.</h1>
+<p align="center">Scan first. Preview every rewrite. Keep file contents intact.</p>
 
 <p align="center">
   <a href="#quick-start"><img src="docs/assets/readme/badge-default.svg" height="40" alt="Read-only first"></a>
@@ -20,7 +25,11 @@
 <p align="center"><sub>Public CI on a separate account, same maintainer. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Tested commit and individual steps</a>. Badge design: IamAngusU/Badges.</sub></p>
 <p align="center"><a href="#quick-start">Get started</a> · <a href="#what-changes">What changes?</a> · <a href="#publish-when-ready">Publish</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
-Some tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` to a Git commit message. ByeClaude finds these declared credits and lets you remove the ones you choose. Claude/Anthropic is selected by default; a saved blacklist can cover several tool identities.
+Some AI tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` to a Git commit message. ByeClaude gives you control over that declared Git metadata: audit existing history, remove selected credits and prevent them from coming back. Claude/Anthropic is selected by default; a saved blacklist can cover several tool identities.
+
+Despite the name, this is not an anti-AI project and it is not an AI detector. ByeClaude does not guess who wrote code. It only works with declared Git metadata.
+
+I do not use Claude Code in my own day-to-day workflow, so the Claude attribution path is reproduced in disposable test repositories rather than my own history. The rewrite and safety behavior is covered by automated tests and public CI, but feedback from real Claude Code repositories is especially useful.
 
 ## Quick start
 
