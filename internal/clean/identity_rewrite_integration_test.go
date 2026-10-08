@@ -46,3 +46,47 @@ func TestMatchingGitHeaderReplacementIntegratedWithRewrite(t *testing.T) {
 	if err!=nil || headers.MatchedCommits!=0 {t.Fatalf("headers still match: %+v, %v",headers,err)}
 	if len(git(t,dir,"for-each-ref","refs/byeclaude/backups"))==0 {t.Fatal("backup refs missing")}
 }
+
+func TestAuthorOnlyCorrectionLeavesHumanCommitterAndTreeUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Actual Human Committer")
+	git(t, dir, "config", "user.email", "human@example.org")
+	git(t, dir, "commit", "--allow-empty",
+		"--author", "Claude Bot <noreply@anthropic.com>",
+		"-m", "Commit without a Co-Authored-By trailer")
+	beforeSHA := git(t, dir, "rev-parse", "HEAD")
+	beforeTree := git(t, dir, "rev-parse", "HEAD^{tree}")
+	repo, err := gitx.Open(dir)
+	if err != nil { t.Fatal(err) }
+	target := IdentityReplacement{Name: "Actual Author", Email: "actual@example.org"}
+	opts := IdentityRewriteOptions{Author: &target}
+	plan, err := PlanWithIdentity(repo, preset.Claude(), opts)
+	if err != nil { t.Fatal(err) }
+	if len(plan.Matches) != 0 || plan.AuthorsToReplace != 1 ||
+		plan.CommittersToReplace != 0 || plan.CommitsToRewrite != 1 {
+		t.Fatalf("author-only preview failed: %+v", plan)
+	}
+	if git(t, dir, "rev-parse", "HEAD") != beforeSHA {
+		t.Fatal("the read-only plan moved the commit reference")
+	}
+	result, _, err := RewriteWithIdentity(repo, preset.Claude(), opts)
+	if err != nil { t.Fatal(err) }
+	if result.AuthorsReplaced != 1 || result.CommittersReplaced != 0 {
+		t.Fatalf("unexpected identity replacements: %+v", result)
+	}
+	if git(t, dir, "rev-parse", "HEAD") == beforeSHA {
+		t.Fatal("corrected commit retained its old hash")
+	}
+	if got := git(t, dir, "rev-parse", "HEAD^{tree}"); got != beforeTree {
+		t.Fatalf("file tree changed during identity correction: %s -> %s", beforeTree, got)
+	}
+	metadata := git(t, dir, "log", "-1", "--format=%an <%ae> | %cn <%ce>")
+	if metadata != "Actual Author <actual@example.org> | Actual Human Committer <human@example.org>" {
+		t.Fatalf("wrong author or modified genuine committer: %s", metadata)
+	}
+	updated, err := PlanWithIdentity(repo, preset.Claude(), opts)
+	if err != nil || updated.MatchedCommits != 0 {
+		t.Fatalf("the corrected author still matches: %+v (%v)", updated, err)
+	}
+}
