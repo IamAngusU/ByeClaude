@@ -45,8 +45,8 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 	}
 	reader := bufio.NewScanner(input)
 	reader.Buffer(make([]byte, 4096), 1024*1024)
-	tips := map[string]bool{}
-	previous := map[string]bool{}
+	type pushRange struct{ tip, previous string }
+	var ranges []pushRange
 	for reader.Scan() {
 		line := strings.TrimSpace(reader.Text())
 		if line == "" {
@@ -74,7 +74,7 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 			}
 			return report, fmt.Errorf("cannot resolve pushed commit %s: %w", localSHA, err)
 		}
-		tips[strings.TrimSpace(string(peeled))] = true
+		next := pushRange{tip: strings.TrimSpace(string(peeled))}
 		if !isZeroSHA(oldSHA) {
 			remote, err := repo.RunContext(context.Background(), "rev-parse", "--verify", oldSHA+"^{commit}")
 			if err != nil {
@@ -82,27 +82,38 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 				// optimistically ignore an unknown remote history.
 				return report, fmt.Errorf("remote ref %s points at %s which is not locally available; fetch the remote before pushing (or use --no-verify if you explicitly accept bypassing the local guard)", fields[2], oldSHA)
 			}
-			previous[strings.TrimSpace(string(remote))] = true
+			next.previous = strings.TrimSpace(string(remote))
 		}
+		ranges = append(ranges, next)
 	}
 	if err := reader.Err(); err != nil {
 		return report, err
 	}
-	if len(tips) == 0 {
+	if len(ranges) == 0 {
 		return report, nil
 	}
-	var inputBuf bytes.Buffer
-	for sha := range tips {
-		fmt.Fprintln(&inputBuf, sha)
+	// Evaluate each ref update independently. Combining exclusions from
+	// multiple remote refs could hide attribution newly entering one ref
+	// merely because it already exists on another ref being updated.
+	seen := map[string]bool{}
+	var commits []string
+	for _, r := range ranges {
+		var inputBuf bytes.Buffer
+		fmt.Fprintln(&inputBuf, r.tip)
+		if r.previous != "" {
+			fmt.Fprintln(&inputBuf, "^"+r.previous)
+		}
+		commitsOut, err := repo.RunInput(inputBuf.Bytes(), "rev-list", "--stdin")
+		if err != nil {
+			return report, fmt.Errorf("list outgoing commits: %w", err)
+		}
+		for _, sha := range strings.Fields(string(commitsOut)) {
+			if !seen[sha] {
+				seen[sha] = true
+				commits = append(commits, sha)
+			}
+		}
 	}
-	for sha := range previous {
-		fmt.Fprintln(&inputBuf, "^"+sha)
-	}
-	commitsOut, err := repo.RunInput(inputBuf.Bytes(), "rev-list", "--stdin")
-	if err != nil {
-		return report, fmt.Errorf("list pushed commit ancestry: %w", err)
-	}
-	commits := strings.Fields(string(commitsOut))
 	raw, err := repo.CatFileBatch(context.Background(), commits, "commit")
 	if err != nil {
 		return report, err
