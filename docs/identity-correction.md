@@ -41,3 +41,21 @@ GitHub's contributor associations use author email; changing only the
 committer will not necessarily remove a contributor. Historical forks, old
 PR refs, local backups and caches remain out of scope. For a GitHub-facing
 audit see [GitHub verification](github-verification.md).
+
+## Use your Git identity as a suggested replacement
+
+If and **only if** the configured Git identity correctly identifies the real contributor,
+`--identity-from-git` reads `git config user.name` and `git config user.email` from
+this clone and replaces **matching** author and committer identities. It does not
+change unrelated authors and does not read a repository owner's username.
+
+```sh
+byeclaude plan --identity-from-git
+byeclaude clean --identity-from-git --apply
+```
+
+Both commands display the proposed replacement identity. If the Git config is
+missing or invalid, they refuse to rewrite and explain how to fix it.
+The flag is mutually exclusive with the manual replacement flags. Git configuration
+is not proof of GitHub account ownership or authorship, so double-check the
+attribution before applying.

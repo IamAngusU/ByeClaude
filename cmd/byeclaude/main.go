@@ -78,7 +78,7 @@ Usage:
   byeclaude doctor [--repo PATH]
   byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
-  byeclaude plan [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--json]
+  byeclaude plan [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--json]
   byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
   byeclaude batch scan --owner OWNER [--public|--private|--all] [--jobs N] [--json]
@@ -87,7 +87,7 @@ Usage:
   byeclaude verify [--repo OWNER/REPO] [--github-user LOGIN] [--strict] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
-  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
+  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
   byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE] [--shared-worktrees]
   byeclaude backups [--repo PATH]
@@ -207,7 +207,7 @@ func runPlan(args []string) error {
 	fs := flag.NewFlagSet("plan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	rulesFile := rulesFlag(fs)
-	author,committer:=identityRewriteFlags(fs)
+	author,committer,identityFromGit:=identityRewriteFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -219,7 +219,9 @@ func runPlan(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := clean.Plan(repo, matcher)
+	opts, err := resolveIdentityRewriteOptions(repo, *author, *committer, *identityFromGit)
+	if err != nil { return err }
+	report, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
 	}
@@ -227,6 +229,7 @@ func runPlan(args []string) error {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
+	printIdentityTargets(opts)
 	printPlanReport(report)
 	return nil
 }
@@ -266,7 +269,7 @@ func runClean(args []string) error {
 	apply := fs.Bool("apply", false, "rewrite local history")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
-	replaceAuthor,replaceCommitter:=identityRewriteFlags(fs)
+	replaceAuthor,replaceCommitter,identityFromGit:=identityRewriteFlags(fs)
 	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect current GitHub history, PR refs and contributor API")
 	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
@@ -281,7 +284,7 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts,err:=parseIdentityRewriteOptions(*replaceAuthor,*replaceCommitter)
+	opts,err:=resolveIdentityRewriteOptions(repo,*replaceAuthor,*replaceCommitter,*identityFromGit)
 	if err!=nil{return err}
 	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
 	if *githubUser!="" && !*verifyGithub{return fmt.Errorf("--github-user requires --verify-github")}
@@ -293,6 +296,9 @@ func runClean(args []string) error {
 	if plan.MatchedCommits == 0 {
 		fmt.Println("No matching selected attribution metadata found. Nothing to do.")
 		return nil
+	}
+	if plan.AuthorsToReplace+plan.CommittersToReplace>0 {
+		printIdentityTargets(opts)
 	}
 	if !*apply {
 		printPlanReport(plan)

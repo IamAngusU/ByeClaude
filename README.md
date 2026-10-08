@@ -120,6 +120,7 @@ audits and cached data. [Verification semantics](docs/github-verification.md).
 | Audit all public repositories for an account | `byeclaude batch scan --owner YOUR_NAME --public` |
 | Audit additional declared tool identities | `byeclaude scan --rules ./rules.json` |
 | Try the local, read-only public-repo web demo | `byeclaude serve` |
+| Preview correction with configured Git identity | `byeclaude plan --identity-from-git` |
 | Preview an explicit author/committer correction | `byeclaude plan --replace-author "Name <email@example.com>"` |
 | Check author/committer matches as well | `byeclaude check --include-identities` |
 
