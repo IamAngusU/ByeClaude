@@ -115,3 +115,45 @@ func TestIdentityRejectsUnsafeLocalConfig(t *testing.T) {
 	}
 	_ = filepath.Base(dir)
 }
+
+func TestGitIdentityRoleSpecificSelection(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	runGit(t, dir, "config", "user.name", "Correct Contributor")
+	runGit(t, dir, "config", "user.email", "correct@example.org")
+	repo, err := gitx.Open(dir)
+	if err != nil { t.Fatal(err) }
+	for _, tc := range []struct {
+		name string
+		author, committer string
+		both, fromAuthor, fromCommitter bool
+		wantAuthor, wantCommitter bool
+		wantError bool
+	}{
+		{name:"default"},
+		{name:"author only",fromAuthor:true,wantAuthor:true},
+		{name:"committer only",fromCommitter:true,wantCommitter:true},
+		{name:"both individually",fromAuthor:true,fromCommitter:true,wantAuthor:true,wantCommitter:true},
+		{name:"both shortcut",both:true,wantAuthor:true,wantCommitter:true},
+		{name:"manual committer plus configured author",fromAuthor:true,committer:"Somebody <else@example.org>",wantAuthor:true,wantCommitter:true},
+		{name:"manual author plus configured committer",author:"Somebody <else@example.org>",fromCommitter:true,wantAuthor:true,wantCommitter:true},
+		{name:"same role conflicts",author:"X <x@example.org>",fromAuthor:true,wantError:true},
+		{name:"shortcut conflicts",both:true,fromAuthor:true,wantError:true},
+		{name:"shortcut and explicit conflicts",both:true,committer:"X <x@example.org>",wantError:true},
+	} {
+		t.Run(tc.name,func(t *testing.T){
+			a,c,b,fa,fc:=tc.author,tc.committer,tc.both,tc.fromAuthor,tc.fromCommitter
+			got,err:=resolveIdentityFlags(repo,identitySelection{author:&a,committer:&c,bothFromGit:&b,authorFromGit:&fa,committerFromGit:&fc})
+			if tc.wantError {
+				if err==nil {t.Fatalf("expected conflict, got %+v",got)}
+				return
+			}
+			if err!=nil {t.Fatal(err)}
+			if (got.Author!=nil)!=tc.wantAuthor||(got.Committer!=nil)!=tc.wantCommitter {
+				t.Fatalf("unexpected identity fields: %+v",got)
+			}
+			if tc.fromAuthor && got.Author!=nil&&got.Author.Email!="correct@example.org" {t.Fatalf("wrong author: %+v",got)}
+			if tc.fromCommitter && got.Committer!=nil&&got.Committer.Email!="correct@example.org" {t.Fatalf("wrong committer: %+v",got)}
+		})
+	}
+}
