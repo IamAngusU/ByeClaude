@@ -63,3 +63,29 @@ func TestPullRefScanReportsCapInsteadOfClean(t *testing.T) {
 		t.Fatalf("missing partial result: %+v",result)
 	}
 }
+
+func TestPullRefSelectionDoesNotScanUnselectedRef(t *testing.T) {
+	dir:=t.TempDir()
+	remote:=filepath.Join(dir,"remote.git")
+	work:=filepath.Join(dir,"work")
+	mirror:=filepath.Join(dir,"mirror.git")
+	if err:=os.MkdirAll(work,0755);err!=nil{t.Fatal(err)}
+	runGitCmd(t,dir,"init","--bare","-q",remote)
+	runGitCmd(t,work,"init","-q")
+	runGitCmd(t,work,"config","user.name","Human")
+	runGitCmd(t,work,"config","user.email","human@example.org")
+	runGitCmd(t,work,"commit","--allow-empty","-m","Old\n\nCo-Authored-By: Claude <noreply@anthropic.com>")
+	runGitCmd(t,work,"remote","add","origin",remote)
+	runGitCmd(t,work,"push","-q","origin","HEAD:refs/pull/1/head")
+	// A clean, newer PR ref must be selected ahead of the older dirty ref.
+	runGitCmd(t,work,"checkout","--orphan","fresh")
+	runGitCmd(t,work,"commit","--allow-empty","-m","clean new history")
+	runGitCmd(t,work,"push","-q","origin","HEAD:refs/pull/2/head")
+	runGitCmd(t,dir,"clone","--mirror","-q",remote,mirror)
+	repo,err:=gitx.Open(mirror)
+	if err!=nil{t.Fatal(err)}
+	report:=scanPullRefs(context.Background(),repo,preset.Claude(),1)
+	if report.Status!="partial" || report.RefsSelected!=1 || report.RefsSkipped!=1 || report.MatchingTrailers!=0{
+		t.Fatalf("unselected old PR ref contaminated bounded audit: %+v",report)
+	}
+}
