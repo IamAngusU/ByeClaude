@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.1
+      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.3
         with:
           # Optional. Omit this for the built-in Claude/Anthropic rule.
           rules-file: .byeclaude-rules.json
@@ -126,7 +126,7 @@ Commit a reviewed structured rules file to the repository, for example `.byeclau
 - uses: actions/checkout@v4
   with:
     fetch-depth: 0
-- uses: IamAngusU/ByeClaude@v0.1.0-alpha.1
+- uses: IamAngusU/ByeClaude@v0.1.0-alpha.3
   with:
     rules-file: .byeclaude-rules.json
 ```

@@ -5,9 +5,8 @@
   </picture>
 </p>
 
-<h1 align="center">Clean unwanted AI co-author attribution from Git history.</h1>
-
-<p align="center">Find matching commit trailers. Preview the impact. Rewrite only when you choose to.</p>
+<h1 align="center">Remove unwanted co-author credits from Git history.</h1>
+<p align="center">Choose the identities. Preview the change. Keep your file contents.</p>
 
 <p align="center">
   <a href="#quick-start"><img src="docs/assets/readme/badge-default.svg" height="40" alt="Read-only first"></a>
@@ -15,182 +14,111 @@
   <a href="#quick-start"><img src="docs/assets/readme/badge-platforms.svg" height="40" alt="Windows, Linux and macOS"></a>
   <a href="LICENSE"><img src="docs/assets/readme/badge-license.svg" height="40" alt="MIT licensed"></a>
 </p>
-
-<p align="center"><a href="#quick-start">Quick start</a> · <a href="#what-changes">Before / after</a> · <a href="#safety-first">Safety</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
-
 <p align="center">
   <a href="https://github.com/angusu-de/ByeClaude/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/angusu-de/ByeClaude/ci-proof/proof/public-proof.svg" height="54" alt="Live CI status: open the ByeClaude CI workflow on angusu-de"></a>
 </p>
+<p align="center"><sub>Public CI on a separate account, same maintainer. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Tested commit and individual steps</a>. Badge design: IamAngusU/Badges.</sub></p>
+<p align="center"><a href="#quick-start">Get started</a> · <a href="#what-changes">What changes?</a> · <a href="#publish-when-ready">Publish</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
-<p align="center"><sub>Public CI on a separate account, same maintainer. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Tested commit and step-by-step evidence</a>. Badge design: IamAngusU/Badges.</sub></p>
-
-Claude Code can append `Co-Authored-By: Claude <noreply@anthropic.com>` to Git commits. GitHub recognizes these trailers as additional contributor attribution. **ByeClaude** audits that *declared metadata* and lets repository owners remove matching trailers without changing the committed file trees.
-
-Claude/Anthropic is the built-in rule. A [saved blacklist](docs/rules.md) can check several declared tool identities in the same repository.
-
-## What changes?
-
-<p align="center">
-  <img src="docs/assets/readme/attribution-before-after.svg" width="1040" alt="Illustrated before and after: a commit message keeps its text but loses the matching Claude co-author trailer; rewriting changes commit IDs, not file contents.">
-</p>
-
-**Only matching co-author trailers are removed from the message.** Rewriting a commit changes its ID, so reachable descendants and affected branch or tag references may also need new IDs. [See how rewriting works](docs/how-it-works.md).
+Some tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` to a Git commit message. ByeClaude finds these declared credits and lets you remove the ones you choose. Claude/Anthropic is selected by default; a saved blacklist can cover several tool identities.
 
 ## Quick start
 
-**Windows:** Install [Git](https://git-scm.com/downloads), then run in PowerShell:
+Install [Git](https://git-scm.com/downloads) first. The release binary needs **no Go compiler, admin rights or GitHub login** for local work. Choose your platform:
+
+<details open>
+<summary><strong>Windows: run in PowerShell</strong></summary>
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.ps1 -OutFile install-byeclaude.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install-byeclaude.ps1 -AddToPath
+$installer = Join-Path $env:TEMP 'byeclaude-install.ps1'
+Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.3/install.ps1 -OutFile $installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $installer -AddToPath
 ```
 
-Open a new cmd or PowerShell window and run `byeclaude` in your repository.
-You can also start it anywhere and choose a repository folder. No admin rights,
-Go installation or GitHub login is needed for local work.
+Then open a **new cmd or PowerShell window**. The installer checks the binary's SHA-256 and adds its directory to your user PATH. It does not leave an installer file in your Git project.
 
-**macOS / Linux:** With Git installed:
+</details>
+
+<details>
+<summary><strong>macOS or Linux: run in your terminal</strong></summary>
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.2/install.sh -o install-byeclaude.sh
-sh install-byeclaude.sh
+installer="$(mktemp)"
+curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.3/install.sh -o "$installer" && sh "$installer"
+rm -- "$installer"
+```
+
+The installer checks the binary's SHA-256. If it installs to `~/.local/bin` and your shell cannot find the command, run `export PATH="$HOME/.local/bin:$PATH"`; add that line to your shell configuration to keep it for later sessions.
+
+</details>
+
+Prefer a manual install? Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.3). [Installer details, checksums and source builds](docs/supply-chain.md).
+
+Now run:
+
+```text
 byeclaude
 ```
 
-The installers check the release binary's SHA-256 before replacing an existing
-installation. Inspect the downloaded script first if desired. If the Unix
-installer reports a PATH change, add the printed directory to your shell PATH.
+Start inside your Git project, or paste its **local folder path** when asked. Press **Enter for Guided start**:
 
-The terminal menu handles audits, a blacklist of several identities, cleanup
-previews and hook setup. Choose a number and press Enter. Cleanup requires
-typing `CLEAN`; publication stays a separate guarded command.
+1. **Choose identities.** Keep Claude selected, or add an exact email from a commit's co-author credit.
+2. **Check history.** See matching credits, authors and committers. This changes nothing.
+3. **Preview cleanup.** Review affected commits and branches. Enter cancels; typing `CLEAN` applies locally and creates a backup.
+4. **Protect future commits.** Review both Git hooks. They are installed only after you answer `y` or `yes`.
 
-![Recorded terminal flow: add an identity, preview cleanup, then protect future commits](docs/assets/readme/terminal-flow.gif)
+Short gray explanations tell you what each choice does. The same words remain visible with `--no-color`. Use **h** for the basics, **q** to leave a form, or **q** at the main menu to exit. Incorrect answers can be corrected; cancelled or incomplete confirmations do not apply the pending change. Previously completed changes remain saved.
 
-<sub>Actual Windows terminal session in a disposable demo repository, rendered from its transcript. [Full transcript](docs/assets/readme/terminal-session.txt).</sub>
+![Recorded guided terminal flow with explanations and a corrected input](docs/assets/readme/terminal-flow.gif)
+<sub>Actual Windows terminal session in a disposable repository, rendered from its [transcript](docs/assets/readme/terminal-session.txt).</sub>
 
-**Other options:** Download a [release binary](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.2), or build using Go 1.27+:
+## What changes?
 
-```sh
-go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.2
-```
+By default, cleanup removes only matching `Co-authored-by` lines. Human credits that do not match the blacklist remain. **Committed file contents stay identical.** Actual author/committer correction is an advanced, separate choice.
 
-Git is required. See [installation options and integrity notes](docs/supply-chain.md).
+<p align="center"><img src="docs/assets/readme/attribution-before-after.svg" width="1040" alt="A matching Claude co-author line is removed; file contents stay the same, while commit IDs change."></p>
 
-### Manage several identities
+Changing a commit also changes its ID and the IDs of affected descendants. Affected signatures cannot remain valid. ByeClaude reports this before applying and keeps local backup refs. [How it works](docs/how-it-works.md).
 
-```sh
-byeclaude blacklist list
-byeclaude blacklist add --id helper --email helper@example.org
-byeclaude blacklist test --name Helper --email helper@example.org
-byeclaude scan --include-identities
-```
+## Publish when ready
 
-Claude remains selected when you add another identity. The blacklist is saved
-in this clone's local Git configuration. Local scans, cleanup and default hooks
-use it automatically. Use the exact identity from your commits; provider names
-alone are not evidence. [Matching, export and removal](docs/rules.md).
-
-In a **local Git repository**, start with two read-only commands:
+**The menu does not push anything to GitHub.** To publish a reviewed cleanup, open a terminal in that same repository. Coordinate with collaborators first, then run:
 
 ```sh
-byeclaude scan  # find matching declared co-author trailers
-byeclaude plan  # preview every commit/ref/tag that would change
-```
-
-<p align="center">
-  <img src="docs/assets/readme/scan-terminal.svg" width="1040" alt="Illustrative ByeClaude terminal scan: 184 commits scanned, two matching Claude co-author trailers detected, no changes made.">
-</p>
-
-`plan` also reports affected descendants, signatures at risk and whether a cleanup is safe to apply. Nothing is rewritten by either command.
-
-### Clean only when you're ready
-
-> [!WARNING]
-> Rewriting changes commit IDs and can remove signatures from rewritten commits or tags. Coordinate with collaborators before publishing rewritten history. [Read the safety guide](docs/safety.md).
-
-```sh
-byeclaude clean --apply  # rewrite locally and create backup refs
-```
-
-Review the result and **save the printed backup ID**. Publishing is separate and guarded. If you have exactly one backup, ByeClaude can select it automatically:
-
-```sh
-git log --oneline --decorate --graph --all --max-count=40
-byeclaude push  # or: byeclaude push --backup BACKUP_ID
-```
-
-The push uses an atomic force-with-lease expectation and refuses to overwrite a remote ref that moved after your review. [Backups and recovery](docs/safety.md).
-
-> [!NOTE]
-> The verification, pre-push and identity-correction commands introduced here are not in the existing `v0.1.0-alpha.1` release. Build from updated source or wait for a new tested release tag.
-
-## Prevent unwanted attribution before a push
-
-One command prepares both Git hooks. By default, this is a read-only preview:
-
-```sh
-byeclaude setup
-byeclaude setup --apply
-byeclaude doctor
-```
-
-`setup --apply` installs the local `commit-msg` sanitizer and `pre-push` guard
-without overwriting unrelated hooks. It requires a persistent ByeClaude binary,
-not an ephemeral `go run` executable. Each clone needs setup once.
-
-Or install either hook individually:
-
-```sh
-byeclaude hook install            # sanitize commit messages before creation
-byeclaude hook pre-push-install   # block matching metadata before a push
-```
-
-For shared branches, [export a GitHub Ruleset](docs/github-rulesets.md)
-to reject matching messages server-side on the default branch when metadata rules are available on
-your GitHub plan. A rejected branch update is not proof that the underlying
-object was never uploaded.
-
-## Verify what GitHub still shows
-
-```sh
+byeclaude push
 byeclaude verify
-byeclaude verify --repo OWNER/REPO --github-user LOGIN
 ```
 
-This independently checks remote history, advertised PR refs and optional
-contributor API results. It distinguishes remaining evidence from partial
-audits and cached data. [Verification semantics](docs/github-verification.md).
+`push` selects a backup automatically when exactly one exists. With several backups, use `byeclaude backups`, then `byeclaude push --backup ID`. It refuses changed local refs and uses an atomic force-with-lease to protect newer remote work. `verify` checks current GitHub history and advertised PR refs; it reports incomplete checks explicitly.
 
-## Other useful commands
+To undo a local cleanup, choose **6** for backup IDs and instructions, or run `byeclaude restore --backup ID --apply`. Restore refuses to overwrite later local work. [Safety and recovery](docs/safety.md).
 
-| Need | Command |
+## Common questions
+
+| Situation | What to do |
 | --- | --- |
-| Prevent matching trailers in future local commits | `byeclaude hook install` |
-| Check history in CI | `byeclaude check --include-remotes` |
-| Audit all public repositories for an account | `byeclaude batch scan --owner YOUR_NAME --public` |
-| Audit additional declared tool identities | `byeclaude scan --rules ./rules.json` |
-| Try the local, read-only public-repo web demo | `byeclaude serve` |
-| Preview author-only correction | `byeclaude plan --author-from-git` |
-| Preview correction with configured Git identity | `byeclaude plan --identity-from-git` |
-| Preview an explicit author/committer correction | `byeclaude plan --replace-author "Name <email@example.com>"` |
-| Check author/committer matches as well | `byeclaude check --include-identities` |
-
-Batch operations are **read-only** in this alpha. ByeClaude also includes a [read-only GitHub Action](docs/automation.md) for shared branches.
+| `byeclaude` is not found | Open a new terminal on Windows; on Unix, check the PATH instruction printed by the installer. You can also run the full installed path. |
+| The folder is rejected | Choose an existing local Git clone, not a GitHub URL or a file. Quotes and `~/` paths are accepted. The previous selection is kept if you cancel. |
+| Cleanup says the working tree is not clean | Commit or stash your work, then preview again. ByeClaude does not discard it for you. |
+| Protection conflicts with another hook | Choose **5**. Existing hooks are preserved; integrate with that hook manager instead of overwriting it. |
+| A push is blocked after installing protection | Existing history can still contain matches. Choose **1**, then **3** to review them. Installing hooks alone does not clean old commits. |
+| The blacklist needs repair | Choose **2**, then **reset**. Review the warning and type `RESET` to restore the Claude default. |
+| I want to block several identities | Choose **2** to add each exact email. Existing rules stay selected; default hooks use the updated policy immediately. |
 
 ## Safety first
 
-- **Audit before modifying:** `scan`, `plan` and batch audits do not rewrite history.
-- **Reviewable changes:** Local cleanup creates backup refs; publish only the exact rewrite you reviewed.
-- **Narrow scope:** File trees are preserved. Only co-author trailers matching the active rules are removed from commit messages.
-- **Know the limits:** GitHub PR refs, forks, caches and unfetched objects may still retain old commits; contributor statistics can lag. [Scope and troubleshooting](docs/troubleshooting.md).
+- Audits and previews are read-only. Cleanup and hook installation need separate confirmation.
+- A changed repository or policy during review cancels the pending operation. Recovery and publishing protect newer work.
+- Hooks apply to this clone. GitHub web/API commits, other clones and deliberately bypassed hooks need separate protection.
+- GitHub caches, historical PR objects, forks and other clones may retain old commits. No tool can promise their erasure from this workflow.
 
-A trailer is evidence of *declared attribution*, **not** a measurement of how much code an AI produced. ByeClaude does not attempt to detect AI-written source code. [Evidence model](docs/evidence.md).
+ByeClaude checks **declared Git metadata**. It does not detect AI-written code or prove who authored a file. This is prerelease software; the [CI evidence](https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md) documents tested behavior, not a guarantee against every failure.
 
-## Documentation
+## More options
 
-[Command reference](docs/cli.md) · [Full documentation](docs/README.md) · [GitHub verification](docs/github-verification.md) · [GitHub Rulesets](docs/github-rulesets.md) · [Identity correction](docs/identity-correction.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
+The menu is optional. Scripts can use `scan`, `check`, `plan`, `blacklist`, `setup` and `verify` directly. Batch auditing remains read-only.
+
+[Command reference](docs/cli.md) · [Rules and blacklist](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Batch scanning](docs/batch.md) · [GitHub verification](docs/github-verification.md) · [Identity correction](docs/identity-correction.md) · [Full documentation](docs/README.md)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
-
 <p align="center"><sub>Independent open-source project. Not affiliated with Anthropic. <a href="TRADEMARKS.md">Trademark notes</a>.</sub></p>

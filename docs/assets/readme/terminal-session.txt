@@ -1,170 +1,153 @@
-Actual Windows PTY session, disposable demo repository.
-ANSI control sequences removed; no output values invented.
-Binary built from the alpha.2 development source on 2026-10-08.
+Actual Windows terminal session, recorded 2026-10-08.
+Alpha.3 development binary; disposable local repository.
+Terminal control sequences removed; prompt responses retained.
 
-  BYECLAUDE  /  Your history. Your attribution.
-  ------------------------------------------------------------
-  Repository  C:/Dev/ByeClaude/.git/terminal-demo
+BYECLAUDE / Your history. Your attribution.
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo-alpha3
   Blacklist   claude-anthropic (default)
-  commit-msg   missing
-  pre-push     missing
+  Protection: not fully set up. Choose 4, or 5 to diagnose an existing hook.
 
-  1  Audit history          Trailers + authors + committers
-  2  Manage blacklist       Add or remove identities
-  3  Preview cleanup        Review first, apply locally
-  4  Protect future work    Set up both Git hooks
-  5  Diagnose setup         Explain hook problems
-  6  Show backups           Recovery IDs
-  7  Switch repository      Choose another local folder
-  q  Exit  Nothing runs until selected. Publishing is a separate command.
-Choose > 2
-Blacklist: built-in Claude/Anthropic default
+  g  Guided start
+     Choose identities, check history, then decide what to change.
+  1  Check this repository
+     Find matching credits and identities. No changes.
+  2  Choose blocked identities
+     Keep Claude, add other exact emails, or remove a rule.
+  3  Preview a cleanup
+     See the impact first. Nothing changes without typing CLEAN.
+  4  Protect future commits
+     Preview and install local commit and push checks.
+  5  Diagnose protection    6  Backups and recovery    7  Change folder
+  h  Explain the basics    q  Exit
+  Type a choice and press Enter. GitHub is unchanged by this menu.
+Choose [Enter: guided start] >
+oops
+  Choose g, 1, 2, 3, 4, 5, 6, 7, h, q. Nothing was changed by that answer.
+Choose [Enter: guided start] > g
+  Guided start / 1 of 4: Choose identities
+  Claude/Anthropic is selected by default. Other tools need their exact email.
+  Each change is confirmed separately. q returns to the main menu.
   claude-anthropic
     name contains: ["claude"]
     email domains: ["anthropic.com"]
+Keep this blacklist, or manage it? [Enter: keep, m: manage, q: back] > m
 
-  a  Add exact email    r  Remove rule    Enter  Back
-Blacklist > a
-Rule ID (blank to cancel) > helper
-Exact email to block (blank to cancel) > helper@example.org
+  Choose blocked identities
+  Rules match declared Git metadata. They do not detect who wrote code.
+  Adding a rule keeps the others. Existing history changes only after cleanup.
+  claude-anthropic
+    name contains: ["claude"]
+    email domains: ["anthropic.com"]
+  a  Add exact email    r  Remove a rule    reset  Restore Claude default
+Blacklist [Enter: done, q: back] > a
+  Give the rule a short label, such as helper-bot (letters, digits, . _ -).
+Rule label [Enter or q: back] > helper-bot
+  Copy the exact email from a commit's co-author credit, e.g. helper@example.org.
+Email to block [Enter or q: back] > wrong-address
+  rule "helper-bot" needs a complete exact email address
+Email to block [Enter or q: back] > helper@example.org
+  Save rule helper-bot for exact email helper@example.org.
+Save this blacklist change? [y/N, q back] >
+yes
 Saved. Local scan, check, plan, clean and default hooks use this blacklist.
   claude-anthropic
     name contains: ["claude"]
     email domains: ["anthropic.com"]
-  helper
+  helper-bot
     exact emails:  ["helper@example.org"]
 
-  BYECLAUDE  /  Your history. Your attribution.
-  ------------------------------------------------------------
-  Repository  C:/Dev/ByeClaude/.git/terminal-demo
-  Blacklist   claude-anthropic, helper (saved)
-  commit-msg   missing
-  pre-push     missing
+  Guided start / 2 of 4: Check history
 
-  1  Audit history          Trailers + authors + committers
-  2  Manage blacklist       Add or remove identities
-  3  Preview cleanup        Review first, apply locally
-  4  Protect future work    Set up both Git hooks
-  5  Diagnose setup         Explain hook problems
-  6  Show backups           Recovery IDs
-  7  Switch repository      Choose another local folder
-  q  Exit
-
-  Nothing runs until selected. Publishing is a separate command.
-Choose >1
-repository  C:/Dev/ByeClaude/.git/terminal-demo
+  Check history / No changes
+  Looking for matching co-author credits, authors and committers...
+repository  C:/Dev/ByeClaude/.git/terminal-demo-alpha3
 commits     1
 matched     1 (100.00%)
 trailers    2
-duration    162ms
+duration    155ms
 identities  0 author(s), 0 committer(s)
-  bea00c400f23  [claude-anthropic] Claude <noreply@anthropic.com>
-  bea00c400f23  [helper] Helper <helper@example.org>
+  c9541b32a4ce  [claude-anthropic] Claude <noreply@anthropic.com>
+  c9541b32a4ce  [helper-bot] Helper Bot <helper@example.org>
+  If matches were found, choose 3 to review a cleanup. Otherwise choose 4.
 
-  BYECLAUDE  /  Your history. Your attribution.
-  ------------------------------------------------------------
-  Repository  C:/Dev/ByeClaude/.git/terminal-demo
-  Blacklist   claude-anthropic, helper (saved)
-  commit-msg   missing
-  pre-push     missing
+  Guided start / 3 of 4: Review existing history
+Preview cleanup? [Enter: preview, s: skip, q: back] >
 
-  1  Audit history          Trailers + authors + committers
-  2  Manage blacklist       Add or remove identities
-  3  Preview cleanup        Review first, apply locally
-  4  Protect future work    Set up both Git hooks
-  5  Diagnose setup         Explain hook problems
-  6  Show backups           Recovery IDs
-  7  Switch repository      Choose another local folder
-  q  Exit
+  Preview cleanup / Choose what changes
+  1  Remove matching co-author credit lines (recommended)
+     Keeps actual author and committer fields unchanged.
+  2  Also correct matching authors
+     Advanced: use your Git identity only if it is the actual author.
+  3  Also correct matching committers
+     Advanced: use your Git identity only if it is the actual committer.
+  4  Also correct both identity fields
+     Advanced: replaces only identities matching your blacklist.
+Preview mode [Enter: 1, q: back] >
+  Calculating the impact on local history. No changes yet...
 
-  Nothing runs until selected. Publishing is a separate command.
-Choose > 3
-
-  1  Matching co-author trailers only (default)
-  2  Also correct matching authors using your Git identity
-  3  Also correct matching committers using your Git identity
-  4  Also correct both roles using your Git identity
-Preview mode [1] (q to cancel) > 1
-repository   C:/Dev/ByeClaude/.git/terminal-demo
-commits      1
-matched      1 (100.00%)
-trailers     2
-rewrite      1 commit(s)
-descendants  0
-connections  0 parent link(s)
-refs         1 (1 branch(es), 0 tag ref(s))
-tag objects  0 annotated tag(s)
-signatures   0 at risk
-objects      ~1 write(s)
-ready        yes
-duration     254ms
-affected
-  refs/heads/main
-
-  Cleanup changes commit IDs and affected signatures. Backup refs are created.
-  Confirm any replacement identity belongs to the actual contributor.
-Type CLEAN to apply locally, or Enter to keep preview only >CLEAN
-backup      20261008T085848Z-4c23600c4beb
+  Commits checked   1
+  Matching commits  1
+  Credit lines      2
+  Commits rewritten 1 (including descendants)
+  Branches / tags   1 / 0
+  Signatures lost   0
+    refs/heads/main
+  Committed file contents stay the same. Commit IDs and affected signatures change.
+  A local backup is created. Nothing is pushed to GitHub.
+Type CLEAN to apply this cleanup locally [Enter: cancel, q: back] >
+CLEAN
+backup      20261008T100507Z-7076666f066a
 rewritten   1 commit(s)
 refs        1 updated
 tags        0 rewritten
-duration    341ms
+duration    338ms
 push        not requested; GitHub is unchanged
-verify      selected metadata absent from local heads/tags; external references
- not checked
+verify      selected metadata absent from local heads/tags; external references not checked
+  Local cleanup finished. Keep the backup ID; choose 6 for recovery instructions.
+  To publish later, open a terminal in this repository and run byeclaude push.
+  Coordinate with collaborators before publishing rewritten history.
 
-  Local cleanup complete. Keep the backup ID for recovery.
-  Review the result; publish separately with byeclaude push in this repository.
+  Guided start / 4 of 4: Protect future commits
 
-  BYECLAUDE  /  Your history. Your attribution.
-  ------------------------------------------------------------
-  Repository  C:/Dev/ByeClaude/.git/terminal-demo
-  Blacklist   claude-anthropic, helper (saved)
-  commit-msg   missing
-  pre-push     missing
-
-  1  Audit history          Trailers + authors + committers
-  2  Manage blacklist       Add or remove identities
-  3  Preview cleanup        Review first, apply locally
-  4  Protect future work    Set up both Git hooks
-  5  Diagnose setup         Explain hook problems
-  6  Show backups           Recovery IDs
-  7  Switch repository      Choose another local folder
-  q  Exit
-
-  Nothing runs until selected. Publishing is a separate command.
-Choose > 4
-repository   C:/Dev/ByeClaude/.git/terminal-demo
+  Protect future commits / Preview
+  The commit hook removes matching co-author credit lines from new commits.
+  The push hook blocks matching credits, authors or committers in history.
+  Existing history is not cleaned by installing hooks.
+repository   C:/Dev/ByeClaude/.git/terminal-demo-alpha3
 existing     0 matching trailer(s), 0 author(s), 0 committer(s) in local history
 commit-msg   missing
 pre-push     missing
 dry run      no hooks changed
 next         byeclaude setup --apply
-Install both hooks for this repository? [y/N] > y
-repository   C:/Dev/ByeClaude/.git/terminal-demo
+Install both hooks? [y/N, q back] >
+yes
+repository   C:/Dev/ByeClaude/.git/terminal-demo-alpha3
 existing     0 matching trailer(s), 0 author(s), 0 committer(s) in local history
 commit-msg   missing
 pre-push     missing
-Installed C:\Dev\ByeClaude\.git\terminal-demo\.git\hooks\commit-msg
-Installed C:\Dev\ByeClaude\.git\terminal-demo\.git\hooks\pre-push
+Installed C:\Dev\ByeClaude\.git\terminal-demo-alpha3\.git\hooks\commit-msg
+Installed C:\Dev\ByeClaude\.git\terminal-demo-alpha3\.git\hooks\pre-push
 ready        commit-msg and pre-push hooks installed
 check        byeclaude doctor
+  Walkthrough finished. You can review or change any choice from the menu.
 
-  BYECLAUDE  /  Your history. Your attribution.
-  ------------------------------------------------------------
-  Repository  C:/Dev/ByeClaude/.git/terminal-demo
-  Blacklist   claude-anthropic, helper (saved)
-  commit-msg   installed
-  pre-push     installed
+  BYECLAUDE / Your history. Your attribution.
+  Repository  C:/Dev/ByeClaude/.git/terminal-demo-alpha3
+  Blacklist   claude-anthropic, helper-bot (saved in this clone)
+  Protection: both local Git hooks are installed. Check history with 1.
 
-  1  Audit history          Trailers + authors + committers
-  2  Manage blacklist       Add or remove identities
-  3  Preview cleanup        Review first, apply locally
-  4  Protect future work    Set up both Git hooks
-  5  Diagnose setup         Explain hook problems
-  6  Show backups           Recovery IDs
-  7  Switch repository      Choose another local folder
-  q  Exit
-
-  Nothing runs until selected. Publishing is a separate command.
-Choose >q
+  g  Guided start
+     Choose identities, check history, then decide what to change.
+  1  Check this repository
+     Find matching credits and identities. No changes.
+  2  Choose blocked identities
+     Keep Claude, add other exact emails, or remove a rule.
+  3  Preview a cleanup
+     See the impact first. Nothing changes without typing CLEAN.
+  4  Protect future commits
+     Preview and install local commit and push checks.
+  5  Diagnose protection    6  Backups and recovery    7  Change folder
+  h  Explain the basics    q  Exit
+  Type a choice and press Enter. GitHub is unchanged by this menu.
+Choose [Enter: guided start] >
+q
