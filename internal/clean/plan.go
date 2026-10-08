@@ -20,7 +20,18 @@ func Plan(repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error
 }
 
 func PlanContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher) (model.PlanReport, error) {
+	return PlanWithIdentityContext(ctx, repo, matcher, IdentityRewriteOptions{})
+}
+
+func PlanWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.PlanReport, error) {
+	return PlanWithIdentityContext(context.Background(), repo, matcher, opts)
+}
+
+func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.PlanReport, error) {
 	started := time.Now()
+	if err := opts.Validate(matcher); err != nil {
+		return model.PlanReport{}, err
+	}
 	if matcher == nil {
 		return model.PlanReport{}, fmt.Errorf("attribution matcher is required")
 	}
@@ -69,6 +80,17 @@ func PlanContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Match
 				Rules:            append([]string(nil), evidence.RuleIDs...),
 				Line:             evidence.Line,
 			})
+		}
+
+		_, authorMatches, committerMatches, err := ReplaceMatchingCommitIdentities(obj, matcher, opts)
+		if err != nil {
+			return report, err
+		}
+		report.AuthorsToReplace += authorMatches
+		report.CommittersToReplace += committerMatches
+		if authorMatches != 0 || committerMatches != 0 {
+			commitMatched = true
+			matched[sha] = true
 		}
 
 		parentChanged := false

@@ -273,7 +273,14 @@ func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 }
 
 func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport, map[string]string, error) {
+	return RewriteWithIdentity(repo, matcher, IdentityRewriteOptions{})
+}
+
+func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
 	started := time.Now()
+	if err := opts.Validate(matcher); err != nil {
+		return model.RewriteReport{}, nil, err
+	}
 	if matcher == nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
 	}
@@ -308,6 +315,10 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 			return report, mapping, err
 		}
 		newMsg, removed := StripMatchingTrailers(obj.Message, matcher)
+		rewrittenObj, authors, committers, err := ReplaceMatchingCommitIdentities(obj, matcher, opts)
+		if err != nil {
+			return report, mapping, err
+		}
 		parentChanged := false
 		for _, p := range obj.parents() {
 			if n, ok := mapping[p]; ok && n != p {
@@ -315,11 +326,11 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 				break
 			}
 		}
-		if len(removed) == 0 && !parentChanged {
+		if len(removed) == 0 && authors == 0 && committers == 0 && !parentChanged {
 			mapping[sha] = sha
 			continue
 		}
-		newRaw, dropped := rebuildCommit(obj, mapping, newMsg)
+		newRaw, dropped := rebuildCommit(rewrittenObj, mapping, newMsg)
 		newSHAOut, err := repo.RunInput(newRaw, "hash-object", "-t", "commit", "-w", "--stdin")
 		if err != nil {
 			return report, mapping, err
@@ -328,6 +339,8 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 		mapping[sha] = newSHA
 		report.CommitsRewritten++
 		report.SignaturesDropped += dropped
+		report.AuthorsReplaced += authors
+		report.CommittersReplaced += committers
 	}
 
 	newRefs := make(map[string]string, len(refs))

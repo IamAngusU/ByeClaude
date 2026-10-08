@@ -74,7 +74,7 @@ Usage:
   byeclaude batch check ...
   byeclaude batch plan ...
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
-  byeclaude clean --apply [--repo PATH] [--rules FILE] [--push] [--remote origin] [--json]
+  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--push] [--json]
   byeclaude push --backup ID [--repo PATH] [--rules FILE] [--remote origin]
   byeclaude hook install|remove [--repo PATH] [--rules FILE]
   byeclaude backups [--repo PATH]
@@ -202,6 +202,9 @@ func printPlanReport(report model.PlanReport) {
 	fmt.Printf("commits      %d\n", report.Commits)
 	fmt.Printf("matched      %d (%.2f%%)\n", report.MatchedCommits, report.CommitMatchPct)
 	fmt.Printf("trailers     %d\n", len(report.Matches))
+	if report.AuthorsToReplace+report.CommittersToReplace > 0 {
+		fmt.Printf("identities   %d author(s), %d committer(s)\n", report.AuthorsToReplace, report.CommittersToReplace)
+	}
 	fmt.Printf("rewrite      %d commit(s)\n", report.CommitsToRewrite)
 	fmt.Printf("descendants  %d\n", report.DescendantCommits)
 	fmt.Printf("connections  %d parent link(s)\n", report.ParentLinksToRewrite)
@@ -229,6 +232,8 @@ func runClean(args []string) error {
 	apply := fs.Bool("apply", false, "rewrite local history")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
+	replaceAuthor := fs.String("replace-author", "", "explicit replacement 'Name <email>' for matching Git author identities")
+	replaceCommitter := fs.String("replace-committer", "", "explicit replacement 'Name <email>' for matching Git committer identities")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -241,12 +246,23 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	plan, err := clean.Plan(repo, matcher)
+	opts := clean.IdentityRewriteOptions{}
+	if *replaceAuthor != "" {
+		r, err := clean.ParseIdentityReplacement(*replaceAuthor)
+		if err != nil { return err }
+		opts.Author = &r
+	}
+	if *replaceCommitter != "" {
+		r, err := clean.ParseIdentityReplacement(*replaceCommitter)
+		if err != nil { return err }
+		opts.Committer = &r
+	}
+	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
 	}
-	if len(plan.Matches) == 0 {
-		fmt.Println("No matching attribution trailers found. Nothing to do.")
+	if plan.MatchedCommits == 0 {
+		fmt.Println("No matching selected attribution metadata found. Nothing to do.")
 		return nil
 	}
 	if !*apply {
@@ -258,27 +274,35 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, _, err := clean.Rewrite(repo, matcher)
+	report, _, err := clean.RewriteWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
+	}
+	after, err := clean.PlanWithIdentity(repo, matcher, opts)
+	if err != nil { return err }
+	if after.MatchedCommits != 0 {
+		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
 	}
 	if *push {
 		if err := clean.Push(repo, *remote, oldRefs); err != nil {
 			return fmt.Errorf("local rewrite succeeded, push failed: %w", err)
 		}
 	}
-	after, err := clean.Scan(repo, matcher)
+	scan, err := clean.Scan(repo, matcher)
 	if err != nil {
 		return err
 	}
-	if len(after.Matches) != 0 {
-		return fmt.Errorf("verification failed: %d matching trailers remain", len(after.Matches))
+	if len(scan.Matches) != 0 {
+		return fmt.Errorf("verification failed: %d matching trailers remain", len(scan.Matches))
 	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
 	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\nduration    %s\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten, metricDuration(report.DurationMS))
+	if report.AuthorsReplaced+report.CommittersReplaced > 0 {
+		fmt.Printf("identity    %d author(s), %d committer(s) replaced\n", report.AuthorsReplaced, report.CommittersReplaced)
+	}
 	if report.SignaturesDropped > 0 {
 		fmt.Printf("signatures  %d signature/mergetag field(s) dropped because rewritten objects cannot retain valid signatures\n", report.SignaturesDropped)
 	}
@@ -287,7 +311,7 @@ func runClean(args []string) error {
 	} else {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
-	fmt.Println("verify      no matching attribution trailers remain in local heads/tags")
+	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
 	return nil
 }
 

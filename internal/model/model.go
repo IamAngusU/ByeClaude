@@ -28,6 +28,8 @@ type RewriteReport struct {
 	RefsUpdated       int    `json:"refs_updated"`
 	TagsRewritten     int    `json:"tags_rewritten"`
 	SignaturesDropped int    `json:"signatures_dropped"`
+	AuthorsReplaced  int    `json:"authors_replaced,omitempty"`
+	CommittersReplaced int  `json:"committers_replaced,omitempty"`
 	DurationMS        int64  `json:"duration_ms"`
 }
 
@@ -40,6 +42,8 @@ type PlanReport struct {
 	RuleMatches            map[string]int `json:"rule_matches"`
 	CommitsToRewrite       int            `json:"commits_to_rewrite"`
 	DescendantCommits      int            `json:"descendant_commits_to_rewrite"`
+	AuthorsToReplace      int            `json:"authors_to_replace,omitempty"`
+	CommittersToReplace   int            `json:"committers_to_replace,omitempty"`
 	ParentLinksToRewrite   int            `json:"parent_links_to_rewrite"`
 	BranchesToMove         int            `json:"branches_to_move"`
 	TagRefsToMove          int            `json:"tag_refs_to_move"`
