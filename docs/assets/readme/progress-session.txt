@@ -1,0 +1,9 @@
+Actual Windows terminal preview, 2026-10-08.
+Alpha.5 development build; disposable 16,000-commit repository.
+Menu: 3, then 1. No rewrite applied.
+Sampled status line replay, slowed for readability.
+
+  Reading commits    [------------------]   0%  0/16000
+  Reading commits    [========----------]  48%  7762/16000
+  Reviewing commits  [=-----------------]  10%  1685/16000
+  [x] Review cleanup impact  0.6s

@@ -150,3 +150,9 @@ If you correct an author header, GitHub associates the resulting commit with an
 account by its **author email**, not merely by the new display name. Before
 applying `--author-from-git`, check `git config user.email` and confirm that
 it belongs to the account that should actually receive the authorship credit.
+
+### Terminal dashboard
+
+`byeclaude metrics --watch` shows local totals with live session deltas; Enter returns. `--details` explains counting and `--no-color` prints a static, unstyled view. In the menu use **m**, then **w**, **d** or **e**.
+
+Scans and cleanup previews show a commit-count progress bar while reading/reviewing objects. Unknown-size Git steps use a spinner, and only completed actions get a completion mark. A scan may load history again to check identity fields; the bar describes its current stage, not total elapsed time. Script and JSON output stay free of progress controls.

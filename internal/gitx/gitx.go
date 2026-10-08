@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/IamAngusU/ByeClaude/internal/progress"
 )
 
 type Repo struct {
@@ -137,6 +139,7 @@ func (r *Repo) CatFileBatch(ctx context.Context, objectNames []string, expectedT
 	}()
 
 	reader := bufio.NewReader(stdout)
+	progress.Report(ctx, "Loading commit objects", 0, len(objectNames))
 	objects := make([][]byte, 0, len(objectNames))
 	for i, requested := range objectNames {
 		header, err := reader.ReadString('\n')
@@ -185,6 +188,7 @@ func (r *Repo) CatFileBatch(ctx context.Context, objectNames []string, expectedT
 			return nil, fmt.Errorf("invalid cat-file separator after %s", requested)
 		}
 		objects = append(objects, data)
+		progress.Report(ctx, "Loading commit objects", i+1, len(objectNames))
 	}
 
 	if err := <-writeErr; err != nil {

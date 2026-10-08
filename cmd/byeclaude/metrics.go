@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"strconv"
@@ -19,14 +22,27 @@ func metricCount(value int64) uint64 {
 }
 
 func (ui *terminalUI) showMetrics() error {
-	if err := ui.invoke("metrics", nil); err != nil {
+	store, err := metrics.DefaultStore()
+	if err != nil {
 		return err
 	}
-	choice, err := ui.choice("Metrics [e: estimate, on/off: collection, reset, Enter: back]", "back", "e", "on", "off", "reset", "back", "q")
+	state, err := store.Read()
+	if err != nil {
+		return fmt.Errorf("local metrics unavailable: %w; repair with 'byeclaude metrics reset --confirm'; Git operations still work", err)
+	}
+	w, _ := terminalSize(ui.out)
+	fmt.Fprint(ui.out, "\n"+renderMetrics(state, metricsView{color: ui.color, width: w}))
+	choice, err := ui.choice("Metrics [w: live, d: details, e: estimate, on/off, reset, Enter: back]", "back", "w", "d", "e", "on", "off", "reset", "back", "q")
 	if err != nil {
 		return err
 	}
 	switch choice {
+	case "w":
+		return ui.watchMetrics(store, 0)
+	case "d":
+		fmt.Fprint(ui.out, renderMetrics(state, metricsView{color: ui.color, width: w, details: true}))
+		_, err := ui.ask("Enter to return")
+		return err
 	case "on", "off":
 		return ui.invoke("metrics", []string{choice})
 	case "reset":
@@ -52,7 +68,10 @@ func (ui *terminalUI) showMetrics() error {
 		if err != nil {
 			return err
 		}
-		return ui.invoke("metrics", []string{"--seconds-per-credit", value})
+		seconds, _ := strconv.ParseFloat(value, 64)
+		fmt.Fprint(ui.out, renderMetrics(state, metricsView{color: ui.color, width: w, seconds: seconds}))
+		_, err = ui.ask("Enter to return")
+		return err
 	}
 	return nil
 }
@@ -64,6 +83,9 @@ func runMetrics(args []string) error {
 	}
 	fs := flag.NewFlagSet("metrics", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print local counters as JSON")
+	watch := fs.Bool("watch", false, "refresh local counters every second; Enter returns")
+	details := fs.Bool("details", false, "show counting notes and processing time")
+	plain := fs.Bool("no-color", false, "disable color")
 	confirm := fs.Bool("confirm", false, "confirm deleting local counters")
 	seconds := fs.Float64("seconds-per-credit", 0, "optional manual-work estimate; seconds per removed credit (not measured savings)")
 	if err := fs.Parse(args); err != nil {
@@ -71,6 +93,12 @@ func runMetrics(args []string) error {
 	}
 	if fs.NArg() != 0 {
 		return fmt.Errorf("unexpected metrics arguments")
+	}
+	if *watch && (*jsonOut || action != "show") {
+		return fmt.Errorf("--watch works with metrics show, without --json")
+	}
+	if *watch && *details {
+		return fmt.Errorf("use --details without --watch to read the counting notes")
 	}
 	if math.IsNaN(*seconds) || math.IsInf(*seconds, 0) || *seconds < 0 || *seconds > 3600 {
 		return fmt.Errorf("seconds-per-credit must be between 0 and 3600")
@@ -112,30 +140,17 @@ func runMetrics(args []string) error {
 			EstimatedManualSeconds *float64 `json:"estimated_manual_seconds,omitempty"`
 		}{state, paused, *seconds, estimate})
 	}
-	fmt.Println("ByeClaude / Local metrics")
-	status := "on"
-	if !state.Enabled {
-		status = "off"
+	color, motion, restore := terminalPalette(*plain)
+	defer restore()
+	ui := terminalUI{in: bufio.NewReader(os.Stdin), out: os.Stdout, color: color, motion: motion}
+	if *watch {
+		err := ui.watchMetrics(store, *seconds)
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
 	}
-	if paused {
-		status += " (collection paused by environment / CI)"
-	}
-	fmt.Printf("Collection          %s\n", status)
-	if state.Since != "" {
-		fmt.Printf("Since               %s\n", state.Since)
-	}
-	c := state.Counters
-	fmt.Printf("\nWork handled for you\n  History credits removed     %d\n  Commit-message credits      %d (across %d hook edits)\n  Commits rewritten           %d (includes descendants)\n  Identity fields corrected   %d\n  Push attempts blocked       %d / %d checked\n", c.CleanupCredits, c.HookCredits, c.HookEdits, c.CommitsRewritten, c.IdentityFields, c.PushBlocks, c.PushChecks)
-	fmt.Printf("\nActivity\n  Scans / checks / cleanups   %d / %d / %d\n  Commits inspected          %d (repeat inspections count again)\n  Recorded processing time   %.2fs (not time saved)\n", c.Scans, c.Checks, c.Cleanups, c.CommitsInspected, float64(c.WorkMS)/1000)
-	if estimate != nil {
-		fmt.Printf("\nEstimated manual editing    %.1f minutes\nAssumption: %.1fs per removed credit; not measured time savings.\n", *estimate/60, *seconds)
-	} else {
-		fmt.Println("\nNo time-savings claim. Model an estimate with --seconds-per-credit 30.")
-	}
-	fmt.Println("Totals cover completed operations since reset, including later-undone work.")
-	fmt.Println("Hook edits count message edits, even if Git later cancels that commit.")
-	fmt.Println("Local counters only: no uploads, repository names, emails or commit content.")
-	fmt.Println("Storage is best-effort; unavailable or busy storage can omit operations.")
-	fmt.Println("Control: metrics off | metrics on | metrics reset --confirm")
-	return nil
+	w, _ := terminalSize(os.Stdout)
+	_, err = fmt.Fprint(os.Stdout, renderMetrics(state, metricsView{color: color, width: w, details: *details, seconds: *seconds}))
+	return err
 }

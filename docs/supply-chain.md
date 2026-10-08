@@ -2,7 +2,7 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.4` tag. This is explicit
+The installers default to the `v0.1.0-alpha.5` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
 stable release exists. Alpha.4 adds local metrics and optional, recoverable
@@ -97,3 +97,5 @@ linked dependency inventory, but neither one authenticates a compromised
 GitHub account. The project does not claim signed releases or SLSA provenance
 until an independently verifiable signing identity and transparency-log flow
 are actually configured.
+
+Run 'byeclaude licenses' to read the BSD license notices embedded for the Go terminal support packages. The release SBOM lists their pinned versions.

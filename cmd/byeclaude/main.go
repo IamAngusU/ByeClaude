@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +18,9 @@ import (
 )
 
 var version = "dev"
+
+//go:embed THIRD_PARTY_LICENSES.txt
+var thirdPartyLicenses string
 
 func main() {
 	if len(os.Args) < 2 {
@@ -72,6 +76,9 @@ func main() {
 	case "version", "--version", "-v":
 		fmt.Println("byeclaude", version)
 		return
+	case "licenses":
+		fmt.Print(thirdPartyLicenses)
+		return
 	case "help", "--help", "-h":
 		usage()
 		return
@@ -92,6 +99,7 @@ Usage:
   byeclaude tui [--repo PATH] [--no-color]
   byeclaude guide [--repo PATH] [--no-color]
   byeclaude metrics [show|on|off|reset] [--confirm] [--json] [--seconds-per-credit N]
+  byeclaude metrics [--watch] [--details] [--no-color]
   byeclaude path [status|setup|skip]
   byeclaude blacklist list|add|remove|reset|export|test [--repo PATH] [--id ID] [--email ADDRESS] [--name TEXT] [--domain DOMAIN]
   byeclaude setup [--repo PATH] [--rules FILE] [--apply]
@@ -113,6 +121,7 @@ Usage:
   byeclaude backups [--repo PATH]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
+  byeclaude licenses
 
 Nothing is rewritten unless --apply is present. Remote writes require either --push on clean or the explicit push command.
 Powered by angusu.de | Angus Uelsmann

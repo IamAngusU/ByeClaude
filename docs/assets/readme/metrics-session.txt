@@ -1,96 +1,88 @@
-Actual Windows terminal session, recorded 2026-10-08.
-Alpha.4 development binary; disposable local repository.
-Terminal control sequences removed; prompt responses retained.
+Actual Windows terminal session, 2026-10-08. Alpha.5 development build.
+Disposable demo repository and isolated counters.
+Commands in another terminal: scan; clean --apply; setup --apply; a Git commit filtered by the commit hook; a local push refused by the pre-push hook.
+ANSI screen replay; timings shortened. No fabricated metrics.
 
-BYECLAUDE / Your history. Your attribution.
+BYECLAUDE / MY IMPACT
   Powered by angusu.de | Angus Uelsmann
-  Repository  C:/Dev/ByeClaude/.git/metrics-demo-alpha4
-  Blacklist   claude-anthropic (default)
-  Protection: both local Git hooks are installed. Check history with 1.
+  LIVE / 1s  |  LOCAL ONLY  |  COLLECTION ON
+  --------------------------------------------------------------------
+  Credits removed       Pushes blocked        Commits rewritten
+  0                     0                     0
 
-  g  Guided start
-     Choose identities, check history, then decide what to change.
-  1  Check this repository
-     Find matching credits and identities. No changes.
-  2  Choose blocked identities
-     Keep Claude, add other exact emails, or remove a rule.
-  3  Preview a cleanup
-     See the impact first. Nothing changes without typing CLEAN.
-  4  Protect future commits
-     Preview and install local commit and push checks.
-  5  Diagnose protection    6  Backups and recovery    7  Change folder
-  m  My local metrics      h  Explain the basics       q  Exit
-  Local activity counters: m to view; metrics off disables collection.
-  Type a choice and press Enter. GitHub is unchanged by this menu.
-Choose [Enter: guided start] >
-m
-ByeClaude / Local metrics
-Collection          on
-Since               2026-10-08T11:07:45Z
-Work handled for you
-  History credits removed     1
-  Commit-message credits      1 (across 1 hook edits)
-  Commits rewritten           2 (includes descendants)
-  Identity fields corrected   0
-  Push attempts blocked       1 / 1 checked
-Activity
-  Scans / checks / cleanups   1 / 0 / 1
-  Commits inspected          1 (repeat inspections count again)
-  Recorded processing time   0.47s (not time saved)
-No time-savings claim. Model an estimate with --seconds-per-credit 30.
-Totals cover completed operations since reset, including later-undone work.
-Hook edits count message edits, even if Git later cancels that commit.
-Local counters only: no uploads, repository names, emails or commit content.
-Storage is best-effort; unavailable or busy storage can omit operations.
-Control: metrics off | metrics on | metrics reset --confirm
-Metrics [e: estimate, on/off: collection, reset, Enter: back] >
-e
-  Choose how long you would spend manually removing one credit.
-  This models manual editing effort; it is not measured time savings.
-Seconds per credit (1-3600) [Enter or q: back] > 30
-ByeClaude / Local metrics
-Collection          on
-Since               2026-10-08T11:07:45Z
+  --------------------------------------------------------------------
+  Activity                                     Total
+  History credits                                  0
+  Commit-hook credits                              0
+  Pushes checked                                   0
+  Identity fields corrected                        0
+  Scans                                            0
+  Checks                                           0
+  Cleanups applied                                 0
+  --------------------------------------------------------------------
+  No time-savings claim. Estimate: --seconds-per-credit 30.
+  Ready for your first scan. Completed work appears here.
+  + values = changes since opening this view.
 
-Work handled for you
-  History credits removed     1
-  Commit-message credits      1 (across 1 hook edits)
-  Commits rewritten           2 (includes descendants)
-  Identity fields corrected   0
-  Push attempts blocked       1 / 1 checked
-
-Activity
-  Scans / checks / cleanups   1 / 0 / 1
-  Commits inspected          1 (repeat inspections count again)
-  Recorded processing time   0.47s (not time saved)
-
-Estimated manual editing    1.0 minutes
-Assumption: 30.0s per removed credit; not measured time savings.
-Totals cover completed operations since reset, including later-undone work.
-Hook edits count message edits, even if Git later cancels that commit.
-Local counters only: no uploads, repository names, emails or commit content.
-Storage is best-effort; unavailable or busy storage can omit operations.
-Control: metrics off | metrics on | metrics reset --confirm
-
-  BYECLAUDE / Your history. Your attribution.
+BYECLAUDE / MY IMPACT
   Powered by angusu.de | Angus Uelsmann
-  Repository  C:/Dev/ByeClaude/.git/metrics-demo-alpha4
-  Blacklist   claude-anthropic (default)
-  Protection: both local Git hooks are installed. Check history with 1.
+  LIVE / 1s  |  LOCAL ONLY  |  COLLECTION ON
+  --------------------------------------------------------------------
+  Credits removed       Pushes blocked        Commits rewritten
+  3                     0                     5
+  +3                                          +5
+  --------------------------------------------------------------------
+  Activity                                     Total
+  History credits                                  3  +3
+  Commit-hook credits                              0
+  Pushes checked                                   0
+  Identity fields corrected                        0
+  Scans                                            1  +1
+  Checks                                           0
+  Cleanups applied                                 1  +1
+  --------------------------------------------------------------------
+  No time-savings claim. Estimate: --seconds-per-credit 30.
+  Activity since 08 Oct 2026; includes later-undone work.
+  + values = changes since opening this view.
 
-  g  Guided start
-     Choose identities, check history, then decide what to change.
-  1  Check this repository
-     Find matching credits and identities. No changes.
-  2  Choose blocked identities
-     Keep Claude, add other exact emails, or remove a rule.
-  3  Preview a cleanup
-     See the impact first. Nothing changes without typing CLEAN.
-  4  Protect future commits
-     Preview and install local commit and push checks.
-  5  Diagnose protection    6  Backups and recovery    7  Change folder
-  m  My local metrics      h  Explain the basics       q  Exit
-  Local activity counters: m to view; metrics off disables collection.
-  Type a choice and press Enter. GitHub is unchanged by this menu.
-Choose [Enter: guided start] >
-q
+BYECLAUDE / MY IMPACT
+  Powered by angusu.de | Angus Uelsmann
+  LIVE / 1s  |  LOCAL ONLY  |  COLLECTION ON
+  --------------------------------------------------------------------
+  Credits removed       Pushes blocked        Commits rewritten
+  4                     0                     5
+  +4                                          +5
+  --------------------------------------------------------------------
+  Activity                                     Total
+  History credits                                  3  +3
+  Commit-hook credits                              1  +1
+  Pushes checked                                   0
+  Identity fields corrected                        0
+  Scans                                            1  +1
+  Checks                                           0
+  Cleanups applied                                 1  +1
+  --------------------------------------------------------------------
+  No time-savings claim. Estimate: --seconds-per-credit 30.
+  Activity since 08 Oct 2026; includes later-undone work.
+  + values = changes since opening this view.
+
+BYECLAUDE / MY IMPACT
+  Powered by angusu.de | Angus Uelsmann
+  LIVE / 1s  |  LOCAL ONLY  |  COLLECTION ON
+  --------------------------------------------------------------------
+  Credits removed       Pushes blocked        Commits rewritten
+  4                     1                     5
+  +4                    +1                    +5
+  --------------------------------------------------------------------
+  Activity                                     Total
+  History credits                                  3  +3
+  Commit-hook credits                              1  +1
+  Pushes checked                                   1  +1
+  Identity fields corrected                        0
+  Scans                                            1  +1
+  Checks                                           0
+  Cleanups applied                                 1  +1
+  --------------------------------------------------------------------
+  No time-savings claim. Estimate: --seconds-per-credit 30.
+  Activity since 08 Oct 2026; includes later-undone work.
+  + values = changes since opening this view.
