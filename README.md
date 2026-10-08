@@ -52,7 +52,7 @@ Setup starts immediately after installation. Choose a local Git folder if asked,
 
 1. **Choose identities.** Keep Claude, or add the exact emails of other tools.
 2. **Check history.** Review matching credits, authors and committers. This is read-only.
-3. **Preview cleanup.** See the impact and backup plan. **Enter skips**; typing **CLEAN** applies locally.
+3. **Preview cleanup.** See the impact and backup plan. At the `Type CLEAN` confirmation, **Enter cancels**; **CLEAN** applies locally.
 4. **Protect future commits.** Answer **y** to install both local Git hooks; **Enter skips**.
 
 The installer never cleans history or installs Git hooks without these confirmations. A blocked PATH update does not prevent guided setup: the installer starts ByeClaude by its full path. You can retry PATH later.
