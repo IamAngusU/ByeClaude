@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="465" viewBox="0 0 1040 465" role="img" aria-labelledby="title description">
+<title id="title">ByeClaude CLI scan example</title>
+<desc id="description">Illustrative terminal output for byeclaude scan on a local repository: 184 commits scanned, two matching Claude attribution trailers found. Scanning is read-only.</desc>
+<style>
+.sans{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+.mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+</style>
+<rect x="1" y="1" width="1038" height="463" rx="24" fill="#F7F7F4" stroke="#E3E5E0" stroke-width="2"/>
+<rect x="28" y="28" width="984" height="366" rx="17" fill="#171D1A" stroke="#2D3932" stroke-width="2"/>
+<path d="M45 28h950a17 17 0 0 1 17 17v35H28V45a17 17 0 0 1 17-17Z" fill="#232B26"/>
+<circle cx="54" cy="54" r="6" fill="#C97772"/><circle cx="76" cy="54" r="6" fill="#D9B76C"/><circle cx="98" cy="54" r="6" fill="#83A887"/>
+<text x="130" y="59" class="sans" font-size="14" font-weight="600" fill="#D3DBD3">~/work/project</text>
+<rect x="860" y="43" width="124" height="23" rx="11.5" fill="#314438" stroke="#48634F"/>
+<text x="922" y="59" text-anchor="middle" class="sans" font-size="11" font-weight="700" letter-spacing="1" fill="#C3E1C9">READ-ONLY</text>
+<text x="57" y="115" class="mono" font-size="17" fill="#B5CFB8">$</text><text x="78" y="115" class="mono" font-size="17" font-weight="600" fill="#F0F2EF">byeclaude scan</text>
+<text x="57" y="162" class="mono" font-size="16" fill="#A7B3A9">repository</text><text x="193" y="162" class="mono" font-size="16" fill="#E6EBE5">/work/project</text>
+<text x="57" y="193" class="mono" font-size="16" fill="#A7B3A9">commits</text><text x="193" y="193" class="mono" font-size="16" fill="#E6EBE5">184</text>
+<text x="57" y="224" class="mono" font-size="16" fill="#A7B3A9">matched</text><text x="193" y="224" class="mono" font-size="16" fill="#D8E9BD">2 (1.09%)</text>
+<text x="57" y="255" class="mono" font-size="16" fill="#A7B3A9">trailers</text><text x="193" y="255" class="mono" font-size="16" fill="#E6EBE5">2</text>
+<text x="57" y="286" class="mono" font-size="16" fill="#A7B3A9">duration</text><text x="193" y="286" class="mono" font-size="16" fill="#E6EBE5">184ms</text>
+<text x="57" y="334" class="mono" font-size="14.4" fill="#C8CFCA">8a51b8b9dbd1</text><text x="187" y="334" class="mono" font-size="14.4" fill="#9FBEAA">[claude-anthropic]</text><text x="360" y="334" class="mono" font-size="14.4" fill="#DDE4DC">Claude Opus 4.8 &lt;noreply@anthropic.com&gt;</text>
+<text x="57" y="364" class="mono" font-size="14.4" fill="#C8CFCA">c0b7bd296ec4</text><text x="187" y="364" class="mono" font-size="14.4" fill="#9FBEAA">[claude-anthropic]</text><text x="360" y="364" class="mono" font-size="14.4" fill="#DDE4DC">Claude Sonnet 4 &lt;noreply@anthropic.com&gt;</text>
+<text x="29" y="428" class="sans" font-size="12.5" font-weight="650" letter-spacing="1.1" fill="#536358">EXAMPLE OUTPUT</text>
+<text x="192" y="428" class="sans" font-size="13.5" fill="#66736A">An audit only. No files, refs or remotes are modified.</text>
+</svg>

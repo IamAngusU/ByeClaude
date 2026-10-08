@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="450" viewBox="0 0 1040 450" role="img" aria-labelledby="title description">
+<title id="title">ByeClaude: before and after removing a declared Claude co-author trailer</title>
+<desc id="description">Two illustrated Git commit messages. Before: Fix duplicate variable declarations followed by a Claude co-author trailer. After: The message remains and the matching co-author trailer is gone. File trees are unchanged, but rewritten commit IDs change.</desc>
+<style>
+.sans{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+.mono{font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+</style>
+<rect x="1" y="1" width="1038" height="448" rx="24" fill="#F7F7F4" stroke="#E3E5E0" stroke-width="2"/>
+<text x="36" y="49" class="sans" font-weight="700" font-size="14" letter-spacing="1.8" fill="#5E675F">GIT COMMIT METADATA</text>
+<text x="36" y="80" class="sans" font-weight="600" font-size="22" fill="#1D2620">One trailer removed. No code changed.</text>
+<rect x="36" y="112" width="472" height="270" rx="17" fill="#FFFFFF" stroke="#E0E3DD" stroke-width="2"/>
+<rect x="532" y="112" width="472" height="270" rx="17" fill="#FFFFFF" stroke="#E0E3DD" stroke-width="2"/>
+<circle cx="62" cy="145" r="5" fill="#D8948C"/><text x="77" y="151" class="sans" font-size="14" font-weight="700" fill="#6A3C36" letter-spacing="1">BEFORE</text>
+<circle cx="558" cy="145" r="5" fill="#7BA98B"/><text x="573" y="151" class="sans" font-size="14" font-weight="700" fill="#336246" letter-spacing="1">AFTER</text>
+<line x1="54" y1="171" x2="490" y2="171" stroke="#EDEFEB"/><line x1="550" y1="171" x2="986" y2="171" stroke="#EDEFEB"/>
+<text x="58" y="205" class="mono" font-size="13.2" fill="#6A766D">$ git log -1 --format=%B</text>
+<text x="554" y="205" class="mono" font-size="13.2" fill="#6A766D">$ git log -1 --format=%B</text>
+<text x="58" y="246" class="mono" font-size="15" fill="#26322A">Fix duplicate variable declarations</text>
+<text x="554" y="246" class="mono" font-size="15" fill="#26322A">Fix duplicate variable declarations</text>
+<rect x="54" y="273" width="436" height="44" rx="9" fill="#FCF0EF" stroke="#F2D6D2"/>
+<text x="68" y="300" class="mono" font-size="12.3" fill="#9B4D45">Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;</text>
+<rect x="550" y="273" width="436" height="44" rx="9" fill="#F1F7F2" stroke="#DBEADF"/>
+<circle cx="573" cy="295" r="9" fill="#5D9270"/><path d="M569 295l3 3 5-6" stroke="#FFFFFF" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="592" y="300" class="sans" font-size="13.5" font-weight="600" fill="#447656">Matching co-author trailer removed</text>
+<text x="54" y="348" class="sans" font-size="12" fill="#8B9490">Commit message with declared co-author trailer</text>
+<text x="550" y="348" class="sans" font-size="12" fill="#8B9490">File trees and author details are preserved*</text>
+<circle cx="43" cy="413" r="4" fill="#6E8F79"/>
+<text x="56" y="418" class="sans" font-size="13" fill="#59675E">* Rewriting changes commit IDs (including affected descendants) and can invalidate signatures.</text>
+</svg>
