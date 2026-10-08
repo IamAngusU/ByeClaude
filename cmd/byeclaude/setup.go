@@ -24,10 +24,10 @@ func runSetup(args []string) error {
 	if err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
-	if err != nil {
-		return err
-	}
+	rulesPath, err := resolveRulesFile(repo, *rulesFile)
+	if err != nil { return err }
+	matcher, err := resolveMatcher(rulesPath)
+	if err != nil { return err }
 	override, err := effectiveHooksPath(repo)
 	if err != nil {
 		return err
@@ -52,8 +52,11 @@ func runSetup(args []string) error {
 		if err != nil {
 			return err
 		}
-		if status.Status == "conflict" || status.Status == "not_executable" || status.Status == "stale_binary" {
+		if status.Status == "conflict" || status.Status == "not_executable" || status.Status == "stale_binary" || status.Status == "stale_rules" {
 			return fmt.Errorf("%s hook requires manual attention (%s): %s; setup will not overwrite it", name, status.Status, status.Path)
+		}
+		if status.Status == "installed" && status.RulesFile != rulesPath {
+			return fmt.Errorf("%s hook already uses rules %q, but you selected %q; remove/reinstall it deliberately", name, status.RulesFile, rulesPath)
 		}
 		states = append(states, status)
 	}
@@ -92,8 +95,8 @@ func runSetup(args []string) error {
 		if *shared {
 			installArgs = append(installArgs, "--shared-worktrees")
 		}
-		if strings.TrimSpace(*rulesFile) != "" {
-			installArgs = append(installArgs, "--rules", *rulesFile)
+		if rulesPath != "" {
+			installArgs = append(installArgs, "--rules", rulesPath)
 		}
 		if err := runHook(installArgs); err != nil {
 			for i := len(installed) - 1; i >= 0; i-- {
@@ -148,6 +151,7 @@ func runDoctor(args []string) error {
 			return err
 		}
 		fmt.Printf("%-12s %-18s %s\n", name, status.Status, status.Path)
+		if status.RulesFile != "" { fmt.Printf("rules        %s\n", status.RulesFile) }
 	}
 	fmt.Println("note         hooks apply to this Git repository, not GitHub web/API commits")
 	fmt.Println("next         byeclaude setup --apply (if a hook is missing)")

@@ -488,17 +488,9 @@ func runHook(args []string) error {
 	}
 	switch action {
 	case "install":
-		matcherPath := strings.TrimSpace(*rulesFile)
-		if matcherPath != "" {
-			absRules, err := filepath.Abs(matcherPath)
-			if err != nil {
-				return err
-			}
-			if _, err := resolveMatcher(absRules); err != nil {
-				return err
-			}
-			matcherPath = filepath.ToSlash(absRules)
-		}
+		matcherPath, err := resolveRulesFile(repo, *rulesFile)
+		if err != nil { return err }
+		matcherPath = filepath.ToSlash(matcherPath)
 		if configured, ok, err := repo.RunOptional("config", "--path", "--get", "core.hooksPath"); err != nil {
 			return err
 		} else if ok && strings.TrimSpace(string(configured)) != "" {
@@ -517,7 +509,16 @@ func runHook(args []string) error {
 			if err != nil {
 				return err
 			}
-			if ownedByeClaudeHook(hookName, b) {
+			if current, ok := parseManagedHook(hookName, b); ok {
+				desired := filepath.FromSlash(matcherPath)
+				if current.RulesFile != desired {
+					return fmt.Errorf("%s hook already uses a different rules file (%q vs %q); remove or reconfigure it explicitly instead of silently reusing stale rules", hookName, current.RulesFile, desired)
+				}
+				status, err := inspectHook(repo, hookName)
+				if err != nil { return err }
+				if status.Status != "installed" {
+					return fmt.Errorf("%s hook is %s (%s); repair it before continuing", hookName, status.Status, path)
+				}
 				fmt.Println("Already installed", path)
 				return nil
 			}
