@@ -19,10 +19,10 @@
 <p align="center"><a href="#quick-start">Quick start</a> · <a href="#what-changes">Before / after</a> · <a href="#safety-first">Safety</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
 <p align="center">
-  <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md"><img src="https://raw.githubusercontent.com/angusu-de/ByeClaude/ci-proof/proof/public-proof.svg" height="54" alt="Live CI evidence: ten jobs, with the exact commit and individual steps linked"></a>
+  <a href="https://github.com/angusu-de/ByeClaude/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/angusu-de/ByeClaude/ci-proof/proof/public-proof.svg" height="54" alt="Live CI status: open the ByeClaude CI workflow on angusu-de"></a>
 </p>
 
-<p align="center"><sub>Public CI on a separate account, same maintainer. Click for the tested commit and every CI step. Badge design: IamAngusU/Badges.</sub></p>
+<p align="center"><sub>Public CI on a separate account, same maintainer. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Tested commit and step-by-step evidence</a>. Badge design: IamAngusU/Badges.</sub></p>
 
 Claude Code can append `Co-Authored-By: Claude <noreply@anthropic.com>` to Git commits. GitHub recognizes these trailers as additional contributor attribution. **ByeClaude** audits that *declared metadata* and lets repository owners remove matching trailers without changing the committed file trees.
 
