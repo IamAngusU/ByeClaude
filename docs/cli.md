@@ -19,8 +19,7 @@ byeclaude doctor         # check local protection
 No daemon, IDE plugin or background service is necessary. Git executes the
 hooks when a compatible client creates a commit or pushes the same local
 repository. VS Code, JetBrains and GitHub Desktop normally use Git hooks,
-but clients with their own disabled/custom hook settings will not. GitHub's
-website/API does not run hooks installed on a developer computer.
+but clients with their own disabled/custom hook settings will not. GitHub Desktop 3.5.5+ improved hook support (check Settings/Options > Git > Hooks), but its [Windows pre-push issue](https://github.com/desktop/desktop/issues/22620) can cause failures before the hook runs. If affected, push via terminal until fixed. GitHub's website/API does not run hooks installed on a developer computer.
 
 ## Clean existing history
 

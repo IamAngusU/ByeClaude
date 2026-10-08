@@ -23,7 +23,7 @@ On linked Git worktrees, the shared hooks directory requires the explicit
 `--shared-worktrees` acknowledgement before installation. Git for Windows,
 macOS and Linux each invoke the same native Git hooks on ordinary pushes.
 GitHub Desktop and other IDEs will use the hooks when they invoke Git for the
-same local clone without disabling hooks. Web/API commits never invoke local hooks.
+same local clone without disabling hooks. GitHub Desktop 3.5.5 (2026) improved hook support; review **Settings/Options > Git > Hooks**. On Windows, a [known Desktop pre-push issue](https://github.com/desktop/desktop/issues/22620) can fail before ByeClaude's hook even runs. If affected, push from a normal terminal until the Desktop version is fixed. [Official hook support](https://docs.github.com/en/desktop/making-changes-in-a-branch/working-with-git-hooks-in-github-desktop). Web/API commits never invoke local hooks.
 
 The hook stores an absolute path to the installed ByeClaude executable.
 `go run` is not suitable for installation because Go removes its temporary
