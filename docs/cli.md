@@ -103,3 +103,10 @@ and [GitHub rulesets](github-rulesets.md).
 - **Contributors are still visible:** Check
   `byeclaude verify --repo OWNER/REPO --github-user LOGIN`.
   Contributor data can lag, and old PR refs can remain reachable.
+
+### GitHub account identity
+
+If you correct an author header, GitHub associates the resulting commit with an
+account by its **author email**, not merely by the new display name. Before
+applying `--author-from-git`, check `git config user.email` and confirm that
+it belongs to the account that should actually receive the authorship credit.

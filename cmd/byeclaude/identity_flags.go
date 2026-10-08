@@ -96,5 +96,8 @@ func printIdentityTargets(opts clean.IdentityRewriteOptions) {
 	}
 	if opts.Author != nil || opts.Committer != nil {
 		fmt.Println("attribution   verify that the proposed identity is the actual contributor before applying")
+		if opts.Author != nil {
+			fmt.Println("github        the author email must be associated with the intended GitHub account to display that account")
+		}
 	}
 }

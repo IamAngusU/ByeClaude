@@ -76,3 +76,13 @@ No flags means **trailer-only cleanup**. Every identity option is opt-in and
 only affects identities matched by the active rules. `--author-from-git`
 never silently replaces a human author's identity. Manual replacements can
 be combined with Git-config selection for the other, nonconflicting role.
+
+### GitHub account association
+
+Changing the author header does not automatically associate the rewritten commit
+with your GitHub username. GitHub uses the author email address in the commit
+header to link it to a GitHub account. Use an email associated with the
+correct account, preferably your privacy-preserving GitHub `noreply` address
+when applicable. ByeClaude shows the selected email before applying, but
+cannot claim that an arbitrary configured Git address is verified or linked.
+See [GitHub's official troubleshooting guide](https://docs.github.com/en/pull-requests/committing-changes-to-your-project/troubleshooting-commits).
