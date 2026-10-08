@@ -7,7 +7,6 @@
 
 <p align="center">
   <a href="README.md"><img src="docs/assets/readme-language-en.svg" height="40" alt="Read this README in English"></a>
-  <a href="README.de.md"><img src="docs/assets/readme-language-de.svg" height="40" alt="Diese README auf Deutsch lesen"></a>
 </p>
 
 <h1 align="center">Unerwünschte AI-Co-Author-Credits in der Git-Historie prüfen und sicher bereinigen.</h1>
