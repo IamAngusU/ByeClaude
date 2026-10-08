@@ -16,6 +16,8 @@ type ScanReport struct {
 	MatchedCommits int            `json:"matched_commits"`
 	CommitMatchPct float64        `json:"commit_match_pct"`
 	Matches        []Match        `json:"matches"`
+	MatchingAuthors int `json:"matching_authors,omitempty"`
+	MatchingCommitters int `json:"matching_committers,omitempty"`
 	RuleMatches    map[string]int `json:"rule_matches"`
 	DurationMS     int64          `json:"duration_ms"`
 }

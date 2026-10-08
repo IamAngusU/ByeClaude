@@ -36,10 +36,10 @@ func runVerify(args []string) error {
 		return nil
 	}
 	fmt.Printf("repository    %s\nverified      %s\noverall       %s\n",report.Repository,report.VerifiedAt,report.Overall)
-	fmt.Printf("remote       %s (%d commits, %d matching trailers)\n",report.Remote.Status,report.Remote.Commits,report.Remote.MatchingTrailers)
-	fmt.Printf("pull refs    %s (%d/%d inspected, %d skipped, %d matching trailers)\n",
+	fmt.Printf("remote       %s (%d commits, %d trailers, %d authors, %d committers)\n",report.Remote.Status,report.Remote.Commits,report.Remote.MatchingTrailers,report.Remote.MatchingAuthors,report.Remote.MatchingCommitters)
+	fmt.Printf("pull refs    %s (%d/%d inspected, %d skipped, %d trailers, %d authors, %d committers)\n",
 		report.PullRefs.Status,report.PullRefs.RefsSelected,report.PullRefs.RefsAdvertised,
-		report.PullRefs.RefsSkipped,report.PullRefs.MatchingTrailers)
+		report.PullRefs.RefsSkipped,report.PullRefs.MatchingTrailers,report.PullRefs.MatchingAuthors,report.PullRefs.MatchingCommitters)
 	if report.PullRefs.Error!=""{fmt.Printf("pull issue   %s\n",report.PullRefs.Error)}
 	if report.Contributors.GitHubUser!="" {
 		fmt.Printf("contributor  %s (%s, id=%s)\n",report.Contributors.Status,report.Contributors.GitHubUser,report.Contributors.GitHubID)

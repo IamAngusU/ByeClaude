@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,8 +70,8 @@ func usage() {
 	fmt.Print(`ByeClaude audits and removes matching Co-Authored-By attribution from Git history.
 
 Usage:
-  byeclaude scan [--repo PATH] [--include-remotes] [--rules FILE] [--json]
-  byeclaude check [--repo PATH] [--include-remotes] [--rules FILE] [--json]
+  byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
+  byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude plan [--repo PATH] [--rules FILE] [--json]
   byeclaude identity [--repo PATH|OWNER/NAME] [--github-user LOGIN ...] [--github-id ID ...] [--json]
   byeclaude batch scan --repo OWNER/NAME [--repo ...] [--jobs N] [--json]
@@ -109,6 +110,7 @@ func runScan(args []string) error {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	includeRemotes := fs.Bool("include-remotes", false, "also scan fetched remote-tracking refs")
+	includeIdentities := fs.Bool("include-identities", false, "also report matching author and committer identities")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -125,12 +127,21 @@ func runScan(args []string) error {
 	if err != nil {
 		return err
 	}
+	if *includeIdentities {
+		ns := []string{"refs/heads","refs/tags"}
+		if *includeRemotes {ns=append(ns,"refs/remotes")}
+		headers,err:=clean.ScanMatchingHeadersContext(context.Background(),repo,matcher,ns,true)
+		if err!=nil{return err}
+		report.MatchingAuthors=headers.Authors
+		report.MatchingCommitters=headers.Committers
+	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
 	fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
-	for _, m := range report.Matches {
+	if *includeIdentities && !*jsonOut {fmt.Printf("identities  %d author(s), %d committer(s)\n",report.MatchingAuthors,report.MatchingCommitters)}
+		for _, m := range report.Matches {
 		fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 	}
 	if len(report.Matches) == 0 {
@@ -143,6 +154,7 @@ func runCheck(args []string) error {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	includeRemotes := fs.Bool("include-remotes", false, "also scan fetched remote-tracking refs")
+	includeIdentities := fs.Bool("include-identities", false, "also reject matching author and committer identities")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -159,16 +171,25 @@ func runCheck(args []string) error {
 	if err != nil {
 		return err
 	}
+	if *includeIdentities {
+		ns := []string{"refs/heads","refs/tags"}
+		if *includeRemotes {ns=append(ns,"refs/remotes")}
+		headers,err:=clean.ScanMatchingHeadersContext(context.Background(),repo,matcher,ns,true)
+		if err!=nil{return err}
+		report.MatchingAuthors=headers.Authors
+		report.MatchingCommitters=headers.Committers
+	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 	} else {
 		fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
+		if *includeIdentities && !*jsonOut {fmt.Printf("identities  %d author(s), %d committer(s)\n",report.MatchingAuthors,report.MatchingCommitters)}
 		for _, m := range report.Matches {
 			fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 		}
 	}
-	if len(report.Matches) != 0 {
-		return fmt.Errorf("attribution guard failed: %d matching attribution trailer(s) found", len(report.Matches))
+	if len(report.Matches) != 0 || report.MatchingAuthors+report.MatchingCommitters>0 {
+		return fmt.Errorf("attribution guard failed: %d trailer(s), %d matching author(s), %d matching committer(s)", len(report.Matches),report.MatchingAuthors,report.MatchingCommitters)
 	}
 	if !*jsonOut {
 		fmt.Println("clean       attribution guard passed")

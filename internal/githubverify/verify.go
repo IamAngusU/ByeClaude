@@ -24,6 +24,10 @@ type RemoteHistory struct {
 	Commits int `json:"commits_scanned"`
 	MatchedCommits int `json:"matched_commits"`
 	MatchingTrailers int `json:"matching_trailers"`
+	MatchingAuthors int `json:"matching_authors"`
+	MatchingCommitters int `json:"matching_committers"`
+	MatchingAuthors int `json:"matching_authors"`
+	MatchingCommitters int `json:"matching_committers"`
 }
 type PullHistory struct {
 	Status string `json:"status"`
@@ -89,7 +93,9 @@ func Audit(ctx context.Context,opts Options) (Report,error) {
 	if err!=nil{return r,err}
 	normal,err:=clean.ScanIncludingRemotesContext(ctx,gitRepo,false,opts.Matcher)
 	if err!=nil{return r,err}
-	r.Remote=remoteResult(normal)
+	remoteHeads,err:=clean.ScanMatchingHeadersContext(ctx,gitRepo,opts.Matcher,[]string{"refs/heads","refs/tags"},true)
+	if err!=nil{return r,err}
+	r.Remote=remoteResult(normal,remoteHeads)
 	r.PullRefs=scanPullRefs(ctx,gitRepo,opts.Matcher,opts.MaxPullRefs)
 	if opts.GitHubUser!="" {
 		r.Contributors=checkContributor(ctx,opts)
@@ -97,10 +103,10 @@ func Audit(ctx context.Context,opts Options) (Report,error) {
 	r.Overall=Classify(r)
 	return r,nil
 }
-func remoteResult(scan model.ScanReport) RemoteHistory {
+func remoteResult(scan model.ScanReport,headers clean.HeaderScanReport) RemoteHistory {
 	status:="clean"
-	if scan.MatchedCommits>0{status="matches_found"}
-	return RemoteHistory{Status:status,Commits:scan.Commits,MatchedCommits:scan.MatchedCommits,MatchingTrailers:len(scan.Matches)}
+	if scan.MatchedCommits>0 || headers.MatchedCommits>0 {status="matches_found"}
+	return RemoteHistory{Status:status,Commits:scan.Commits,MatchedCommits:scan.MatchedCommits,MatchingTrailers:len(scan.Matches),MatchingAuthors:headers.Authors,MatchingCommitters:headers.Committers}
 }
 func Classify(r Report) string {
 	if r.Remote.Status=="matches_found" || r.PullRefs.Status=="matches_found" || r.Contributors.Status=="listed" {
@@ -150,15 +156,19 @@ func scanPullRefs(ctx context.Context,repo *gitx.Repo,matcher attribution.Matche
 	}
 	scan,err:=clean.ScanPullRefsContext(ctx,repo,matcher)
 	if err!=nil{out.Error="could not scan fetched PR commits";out.Status="partial";return out}
+	matchingHeaders,err:=clean.ScanMatchingHeadersContext(ctx,repo,matcher,[]string{"refs/pull"},false)
+	if err!=nil{out.Error="could not scan PR author/committer fields";out.Status="partial";return out}
 	out.MatchedCommits=scan.MatchedCommits
 	out.MatchingTrailers=len(scan.Matches)
+	out.MatchingAuthors=matchingHeaders.Authors
+	out.MatchingCommitters=matchingHeaders.Committers
 	for _,m:=range scan.Matches {
 		if len(out.ExampleCommits)>=8{break}
 		out.ExampleCommits=append(out.ExampleCommits,m.Commit)
 	}
 	out.Status="clean"
 	if out.RefsSkipped>0 {out.Status="partial"}
-	if out.MatchedCommits>0 {out.Status="matches_found"}
+	if out.MatchedCommits>0 || out.MatchingAuthors+out.MatchingCommitters>0 {out.Status="matches_found"}
 	return out
 }
 type contributor struct {
