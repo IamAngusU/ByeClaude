@@ -71,6 +71,26 @@ byeclaude push --backup BACKUP_ID
 
 The push uses an atomic force-with-lease expectation and refuses to overwrite a remote ref that moved after your review. [Backups and recovery](docs/safety.md).
 
+## Prevent unwanted attribution before a push
+
+```sh
+byeclaude hook install            # sanitize commit messages before creation
+byeclaude hook pre-push-install   # block matching metadata before a push
+```
+
+For shared branches, [export a GitHub Ruleset](docs/github-rulesets.md) to
+reject matching messages server-side, including pushes that bypass local hooks.
+
+## Verify what GitHub still shows
+
+```sh
+byeclaude verify --repo OWNER/REPO --github-user LOGIN
+```
+
+This independently checks remote history, advertised PR refs and optional
+contributor API results. It distinguishes remaining evidence from partial
+audits and cached data. [Verification semantics](docs/github-verification.md).
+
 ## Other useful commands
 
 | Need | Command |
@@ -80,6 +100,8 @@ The push uses an atomic force-with-lease expectation and refuses to overwrite a 
 | Audit all public repositories for an account | `byeclaude batch scan --owner YOUR_NAME --public` |
 | Audit additional declared tool identities | `byeclaude scan --rules ./rules.json` |
 | Try the local, read-only public-repo web demo | `byeclaude serve` |
+| Preview an explicit author/committer correction | `byeclaude plan --replace-author "Name <email@example.com>"` |
+| Check author/committer matches as well | `byeclaude check --include-identities` |
 
 Batch operations are **read-only** in this alpha. ByeClaude also includes a [read-only GitHub Action](docs/automation.md) for shared branches.
 
@@ -94,7 +116,7 @@ A trailer is evidence of *declared attribution*, **not** a measurement of how mu
 
 ## Documentation
 
-[Full documentation](docs/README.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
+[Full documentation](docs/README.md) · [GitHub verification](docs/github-verification.md) · [GitHub Rulesets](docs/github-rulesets.md) · [Identity correction](docs/identity-correction.md) · [Rewrite model](docs/how-it-works.md) · [Safety and recovery](docs/safety.md) · [Batch scanning](docs/batch.md) · [Rules](docs/rules.md) · [Hooks and CI](docs/automation.md) · [Troubleshooting](docs/troubleshooting.md)
 
 [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [MIT license](LICENSE)
 

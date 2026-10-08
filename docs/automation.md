@@ -8,6 +8,18 @@ ByeClaude separates prevention from remediation.
 
 CI never force-pushes by default.
 
+## Pre-push attribution guard
+
+```sh
+byeclaude hook pre-push-install
+byeclaude hook pre-push-remove
+```
+
+The optional hook rejects a push when commit ancestry still contains
+matching Co-Authored-By trailers **or** matching Git author/committer headers.
+It does not silently rewrite history. Git permits --no-verify, so combine this
+with a [GitHub Ruleset](github-rulesets.md) for branch enforcement.
+
 ## Local `commit-msg` hook
 
 Install:
@@ -54,6 +66,7 @@ jobs:
         with:
           # Optional. Omit this for the built-in Claude/Anthropic rule.
           rules-file: .byeclaude-rules.json
+          include-identities: 'true'
 ```
 
 The example pins the first alpha release. Pin the action to an exact commit SHA for the strongest supply-chain stability.

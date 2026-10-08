@@ -2,6 +2,14 @@
 
 ByeClaude changes commit IDs. Treat that as a repository coordination event, not as a formatting operation.
 
+## Author and committer correction
+
+Normal cleanup leaves actual Git author and committer identities unchanged.
+You can explicitly replace matching identities while preserving their original
+timestamps and timezones using --replace-author and --replace-committer.
+These operations are still complete Git-history rewrites, with new commit IDs
+and signature consequences. [Details](identity-correction.md).
+
 ## Before you rewrite
 
 A good sequence for an important repository is:
