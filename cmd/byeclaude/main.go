@@ -26,6 +26,10 @@ func main() {
 	switch os.Args[1] {
 	case "scan":
 		err = runScan(os.Args[2:])
+	case "setup":
+		err = runSetup(os.Args[2:])
+	case "doctor":
+		err = runDoctor(os.Args[2:])
 	case "check":
 		err = runCheck(os.Args[2:])
 	case "plan":
@@ -70,6 +74,8 @@ func usage() {
 	fmt.Print(`ByeClaude audits and removes matching Co-Authored-By attribution from Git history.
 
 Usage:
+  byeclaude setup [--repo PATH] [--rules FILE] [--apply]
+  byeclaude doctor [--repo PATH]
   byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude check [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
   byeclaude plan [--repo PATH] [--rules FILE] [--replace-author "Name <email>"] [--replace-committer "Name <email>"] [--json]
@@ -452,7 +458,10 @@ func runHook(args []string) error {
 	if action == "pre-push-remove" { action = "remove" }
 	hookName := "commit-msg"
 	if prePush { hookName = "pre-push" }
-	path := filepath.Join(repo.GitDir, "hooks", hookName)
+	path, err := resolvedGitHookPath(repo, hookName)
+	if err != nil {
+		return err
+	}
 	switch action {
 	case "install":
 		matcherPath := strings.TrimSpace(*rulesFile)
@@ -478,17 +487,17 @@ func runHook(args []string) error {
 		}
 		if info, err := os.Lstat(path); err == nil { // #nosec G703 -- resolved Git directory plus hooks/commit-msg
 			if !info.Mode().IsRegular() {
-				return fmt.Errorf("refusing to replace non-regular commit-msg hook at %s", path)
+				return fmt.Errorf("refusing to replace non-regular %s hook at %s", hookName, path)
 			}
 			b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
 			if err != nil {
 				return err
 			}
-			if strings.Contains(string(b), "Installed by ByeClaude") {
+			if ownedByeClaudeHook(hookName, b) {
 				fmt.Println("Already installed", path)
 				return nil
 			}
-			return fmt.Errorf("refusing to overwrite existing commit-msg hook at %s", path)
+			return fmt.Errorf("refusing to overwrite an unrelated or modified %s hook at %s", hookName, path)
 		} else if !os.IsNotExist(err) {
 			return err
 		}
@@ -496,7 +505,13 @@ func runHook(args []string) error {
 		if err != nil {
 			return err
 		}
-		exe, _ = filepath.Abs(exe)
+		exe, err = filepath.Abs(exe)
+		if err != nil {
+			return err
+		}
+		if ephemeralGoExecutable(exe) {
+			return fmt.Errorf("cannot install a hook pointing at temporary Go build %q; first install a persistent binary (go install or release binary), then rerun setup", exe)
+		}
 		// Git for Windows executes hooks through its POSIX shell. Forward slashes
 		// keep the executable path valid there and are harmless on Unix hosts.
 		exe = filepath.ToSlash(exe)
@@ -526,21 +541,21 @@ func runHook(args []string) error {
 	case "remove":
 		info, err := os.Lstat(path) // #nosec G703 -- resolved Git directory plus hooks/commit-msg
 		if os.IsNotExist(err) {
-			fmt.Println("No commit-msg hook installed.")
+			fmt.Printf("No %s hook installed.\n", hookName)
 			return nil
 		}
 		if err != nil {
 			return err
 		}
 		if !info.Mode().IsRegular() {
-			return fmt.Errorf("refusing to remove non-regular commit-msg hook at %s", path)
+			return fmt.Errorf("refusing to remove non-regular %s hook at %s", hookName, path)
 		}
 		b, err := os.ReadFile(path) // #nosec G304,G703 -- path is the resolved Git directory plus hooks/commit-msg
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(string(b), "Installed by ByeClaude") {
-			return fmt.Errorf("refusing to remove a commit-msg hook not owned by ByeClaude")
+		if !ownedByeClaudeHook(hookName, b) {
+			return fmt.Errorf("refusing to remove an unrelated or modified %s hook", hookName)
 		}
 		if err := os.Remove(path); err != nil { // #nosec G703 -- ownership and regular-file checks completed above
 			return err
