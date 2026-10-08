@@ -29,6 +29,9 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: go build -trimpath ./cmd/byeclaude
+      - name: Native Windows hooks and recovery
+        if: runner.os == 'Windows'
+        run: pwsh -NoProfile -File scripts/test-windows-workflow.ps1
 
   quality:
     name: Race, coverage and fixtures

@@ -20,7 +20,7 @@
 
 Claude Code can append `Co-Authored-By: Claude <noreply@anthropic.com>` to Git commits. GitHub recognizes these trailers as additional contributor attribution. **ByeClaude** audits that *declared metadata* and lets repository owners remove matching trailers without changing the committed file trees.
 
-Claude/Anthropic is the built-in rule. [Validated rule sets](docs/rules.md) can match other declared tool identities too.
+Claude/Anthropic is the built-in rule. A [saved blacklist](docs/rules.md) can check several declared tool identities in the same repository.
 
 ## What changes?
 
@@ -32,6 +32,18 @@ Claude/Anthropic is the built-in rule. [Validated rule sets](docs/rules.md) can 
 
 ## Quick start
 
+**Updated source:** Build a persistent binary with Go 1.27+ and Git. From this checkout on Windows:
+
+```powershell
+go build -trimpath -o .\dist\byeclaude.exe ./cmd/byeclaude
+.\dist\byeclaude.exe tui --repo C:\path\to\your\repo
+```
+
+The terminal menu works in cmd and PowerShell: audit, manage the blacklist,
+preview cleanup, install protection, and inspect backups. Enter keeps cleanup
+as a preview; applying requires typing `CLEAN`. No remote push runs from the menu.
+Once installed on PATH, just run `byeclaude` inside a repository.
+
 **Install:** Get a [checksum-verified release for Windows, macOS or Linux](https://github.com/IamAngusU/ByeClaude/releases/tag/v0.1.0-alpha.1), or install the current alpha using Go 1.27+:
 
 ```sh
@@ -39,6 +51,20 @@ go install github.com/IamAngusU/ByeClaude/cmd/byeclaude@v0.1.0-alpha.1
 ```
 
 Git is required. See [installation options and integrity notes](docs/supply-chain.md).
+
+### Manage several identities
+
+```sh
+byeclaude blacklist list
+byeclaude blacklist add --id helper --email helper@example.org
+byeclaude blacklist test --name Helper --email helper@example.org
+byeclaude scan --include-identities
+```
+
+Claude remains selected when you add another identity. The blacklist is saved
+in this clone's local Git configuration. Local scans, cleanup and default hooks
+use it automatically. Use the exact identity from your commits; provider names
+alone are not evidence. [Matching, export and removal](docs/rules.md).
 
 In a **local Git repository**, start with two read-only commands:
 

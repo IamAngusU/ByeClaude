@@ -44,13 +44,21 @@ func TestSetupDifferentRulesCannotBeSilentlyReused(t *testing.T) {
 	runGit(t, dir, "commit", "--allow-empty", "-m", "Clean")
 	for _, name := range []string{"first.json", "second.json"} {
 		data := `{"rules":[{"id":"example","name_contains":["sample"],"email_domains":["example.org"]}]}`
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0600); err != nil { t.Fatal(err) }
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(data), 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := runSetup([]string{"--repo", dir, "--rules", "first.json", "--apply"}); err != nil { t.Fatal(err) }
+	if err := runSetup([]string{"--repo", dir, "--rules", "first.json", "--apply"}); err != nil {
+		t.Fatal(err)
+	}
 	repo, err := gitx.Open(dir)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	h, err := inspectHook(repo, "commit-msg")
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	if h.Status != "installed" || h.RulesFile != filepath.Join(dir, "first.json") {
 		t.Fatalf("unexpected configured rules: %+v", h)
 	}
@@ -62,7 +70,9 @@ func TestSetupDifferentRulesCannotBeSilentlyReused(t *testing.T) {
 	if err != nil || h.RulesFile != filepath.Join(dir, "first.json") {
 		t.Fatalf("mismatch mutated managed hook: %+v %v", h, err)
 	}
-	if err := os.Remove(filepath.Join(dir, "first.json")); err != nil { t.Fatal(err) }
+	if err := os.Remove(filepath.Join(dir, "first.json")); err != nil {
+		t.Fatal(err)
+	}
 	h, err = inspectHook(repo, "commit-msg")
 	if err != nil || h.Status != "stale_rules" {
 		t.Fatalf("missing rules should be detected: %+v %v", h, err)
@@ -76,9 +86,13 @@ func TestDoctorDetectsDirectoryInsteadOfHookBinary(t *testing.T) {
 	script := "#!/bin/sh\n# Installed by ByeClaude.\nexec " +
 		shellQuote(filepath.ToSlash(target)) + " hook-filter \"$1\"\n"
 	hook := filepath.Join(dir, ".git", "hooks", "commit-msg")
-	if err := os.WriteFile(hook, []byte(script), 0755); err != nil { t.Fatal(err) }
+	if err := os.WriteFile(hook, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
 	repo, err := gitx.Open(dir)
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	got, err := inspectHook(repo, "commit-msg")
 	if err != nil || got.Status != "invalid_binary" {
 		t.Fatalf("directory must not be treated as an executable: %+v, %v", got, err)

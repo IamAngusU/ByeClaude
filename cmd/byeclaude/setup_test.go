@@ -111,14 +111,16 @@ func TestHookPathsInLinkedWorktrees(t *testing.T) {
 }
 
 func TestHookBinarySourceParserAndTemporaryExecutables(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "byeclaude")
 	for _, tc := range []struct{ file, name string }{
 		{"#!/bin/sh\n# Installed by ByeClaude.\nexec '/tmp/byeclaude' hook-filter \"$1\"\n", "commit-msg"},
 		{"#!/bin/sh\n# Installed by ByeClaude.\nexec '/tmp/byeclaude' pre-push-filter \"$@\"\n", "pre-push"},
 	} {
+		tc.file = strings.ReplaceAll(tc.file, "/tmp/byeclaude", filepath.ToSlash(executable))
 		if !ownedByeClaudeHook(tc.name, []byte(tc.file)) {
 			t.Fatalf("valid hook rejected: %s", tc.name)
 		}
-		if path, ok := hookBinaryPath(tc.name, tc.file); !ok || path != filepath.FromSlash("/tmp/byeclaude") {
+		if path, ok := hookBinaryPath(tc.name, tc.file); !ok || path != executable {
 			t.Fatalf("invalid extracted binary: %q, %v", path, ok)
 		}
 	}

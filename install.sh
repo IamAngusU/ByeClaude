@@ -8,7 +8,7 @@ case "$os" in linux|darwin) ;; *) echo "Unsupported OS: $os" >&2; exit 1 ;; esac
 case "$arch" in x86_64|amd64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
 
 asset="byeclaude_${os}_${arch}"
-version=${BYECLAUDE_VERSION:-latest}
+version=${BYECLAUDE_VERSION:-v0.1.0-alpha.1}
 if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
   echo "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag" >&2
   exit 1

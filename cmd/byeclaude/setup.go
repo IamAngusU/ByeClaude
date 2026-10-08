@@ -25,9 +25,13 @@ func runSetup(args []string) error {
 		return err
 	}
 	rulesPath, err := resolveRulesFile(repo, *rulesFile)
-	if err != nil { return err }
-	matcher, err := resolveMatcher(rulesPath)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
+	matcher, err := resolveLocalMatcher(repo.Root, rulesPath)
+	if err != nil {
+		return err
+	}
 	override, err := effectiveHooksPath(repo)
 	if err != nil {
 		return err
@@ -74,13 +78,13 @@ func runSetup(args []string) error {
 	for _, state := range states {
 		fmt.Printf("%-12s %s\n", state.Name, state.Status)
 	}
-	if headers.Authors>0 {
+	if headers.Authors > 0 {
 		fmt.Println("option       Misattributed author? Preview: byeclaude plan --author-from-git")
 	}
-	if headers.Committers>0 {
+	if headers.Committers > 0 {
 		fmt.Println("option       Misattributed committer? Preview: byeclaude plan --committer-from-git")
 	}
-	if headers.Authors+headers.Committers>0 {
+	if headers.Authors+headers.Committers > 0 {
 		fmt.Println("note         Git config is only a suggested identity; verify real authorship")
 	}
 	if !*apply {
@@ -162,7 +166,7 @@ func runDoctor(args []string) error {
 		fmt.Printf("%-12s %-18s %s\n", name, status.Status, status.Path)
 		switch status.Status {
 		case "stale_binary", "invalid_binary":
-			fmt.Printf("fix          %s hook points at a missing or unusable executable; run 'byeclaude hook %s --repo %q' then 'byeclaude setup --repo %q --apply'\n",name, map[string]string{"commit-msg":"remove","pre-push":"pre-push-remove"}[name],repo.Root,repo.Root)
+			fmt.Printf("fix          %s hook points at a missing or unusable executable; run 'byeclaude hook %s --repo %q' then 'byeclaude setup --repo %q --apply'\n", name, map[string]string{"commit-msg": "remove", "pre-push": "pre-push-remove"}[name], repo.Root, repo.Root)
 		case "stale_rules":
 			fmt.Println("fix          configured rules file is missing/invalid; restore it or remove and reinstall the managed hook")
 		case "not_executable":
@@ -170,7 +174,9 @@ func runDoctor(args []string) error {
 		case "conflict":
 			fmt.Println("fix          another tool owns this hook; integrate ByeClaude via the existing hook manager")
 		}
-		if status.RulesFile != "" { fmt.Printf("rules        %s\n", status.RulesFile) }
+		if status.RulesFile != "" {
+			fmt.Printf("rules        %s\n", status.RulesFile)
+		}
 	}
 	fmt.Println("note         hooks apply to this Git repository, not GitHub web/API commits")
 	fmt.Println("next         byeclaude setup --apply (if a hook is missing)")

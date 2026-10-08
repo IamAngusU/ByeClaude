@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,11 +19,19 @@ var version = "dev"
 
 func main() {
 	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+		if terminalInput() {
+			os.Args = append(os.Args, "tui")
+		} else {
+			usage()
+			os.Exit(2)
+		}
 	}
 	var err error
 	switch os.Args[1] {
+	case "tui":
+		err = runTUI(os.Args[2:])
+	case "blacklist":
+		err = runBlacklist(os.Args[2:])
 	case "scan":
 		err = runScan(os.Args[2:])
 	case "setup":
@@ -74,6 +82,8 @@ func usage() {
 	fmt.Print(`ByeClaude audits and removes matching Co-Authored-By attribution from Git history.
 
 Usage:
+  byeclaude tui [--repo PATH] [--no-color]
+  byeclaude blacklist list|add|remove|reset|export|test [--repo PATH] [--id ID] [--email ADDRESS] [--name TEXT] [--domain DOMAIN]
   byeclaude setup [--repo PATH] [--rules FILE] [--apply]
   byeclaude doctor [--repo PATH]
   byeclaude scan [--repo PATH] [--include-remotes] [--include-identities] [--rules FILE] [--json]
@@ -99,7 +109,7 @@ Nothing is rewritten unless --apply is present. Remote writes require either --p
 }
 
 func rulesFlag(fs *flag.FlagSet) *string {
-	return fs.String("rules", "", "structured attribution rules JSON; defaults to the built-in Claude/Anthropic rule")
+	return fs.String("rules", "", "explicit rules JSON; local commands otherwise use the saved blacklist or Claude default")
 }
 
 func resolveMatcher(path string) (attribution.Matcher, error) {
@@ -121,7 +131,7 @@ func runScan(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -134,20 +144,26 @@ func runScan(args []string) error {
 		return err
 	}
 	if *includeIdentities {
-		ns := []string{"refs/heads","refs/tags"}
-		if *includeRemotes {ns=append(ns,"refs/remotes")}
-		headers,err:=clean.ScanMatchingHeadersContext(context.Background(),repo,matcher,ns,true)
-		if err!=nil{return err}
-		report.MatchingAuthors=headers.Authors
-		report.MatchingCommitters=headers.Committers
+		ns := []string{"refs/heads", "refs/tags"}
+		if *includeRemotes {
+			ns = append(ns, "refs/remotes")
+		}
+		headers, err := clean.ScanMatchingHeadersContext(context.Background(), repo, matcher, ns, true)
+		if err != nil {
+			return err
+		}
+		report.MatchingAuthors = headers.Authors
+		report.MatchingCommitters = headers.Committers
 	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 		return nil
 	}
 	fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
-	if *includeIdentities && !*jsonOut {fmt.Printf("identities  %d author(s), %d committer(s)\n",report.MatchingAuthors,report.MatchingCommitters)}
-		for _, m := range report.Matches {
+	if *includeIdentities && !*jsonOut {
+		fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
+	}
+	for _, m := range report.Matches {
 		fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 	}
 	if len(report.Matches) == 0 && report.MatchingAuthors+report.MatchingCommitters == 0 {
@@ -165,7 +181,7 @@ func runCheck(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -178,24 +194,30 @@ func runCheck(args []string) error {
 		return err
 	}
 	if *includeIdentities {
-		ns := []string{"refs/heads","refs/tags"}
-		if *includeRemotes {ns=append(ns,"refs/remotes")}
-		headers,err:=clean.ScanMatchingHeadersContext(context.Background(),repo,matcher,ns,true)
-		if err!=nil{return err}
-		report.MatchingAuthors=headers.Authors
-		report.MatchingCommitters=headers.Committers
+		ns := []string{"refs/heads", "refs/tags"}
+		if *includeRemotes {
+			ns = append(ns, "refs/remotes")
+		}
+		headers, err := clean.ScanMatchingHeadersContext(context.Background(), repo, matcher, ns, true)
+		if err != nil {
+			return err
+		}
+		report.MatchingAuthors = headers.Authors
+		report.MatchingCommitters = headers.Committers
 	}
 	if *jsonOut {
 		fmt.Println(clean.JSON(report))
 	} else {
 		fmt.Printf("repository  %s\ncommits     %d\nmatched     %d (%.2f%%)\ntrailers    %d\nduration    %s\n", report.Repository, report.Commits, report.MatchedCommits, report.CommitMatchPct, len(report.Matches), metricDuration(report.DurationMS))
-		if *includeIdentities && !*jsonOut {fmt.Printf("identities  %d author(s), %d committer(s)\n",report.MatchingAuthors,report.MatchingCommitters)}
+		if *includeIdentities && !*jsonOut {
+			fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
+		}
 		for _, m := range report.Matches {
 			fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
 		}
 	}
-	if len(report.Matches) != 0 || report.MatchingAuthors+report.MatchingCommitters>0 {
-		return fmt.Errorf("attribution guard failed: %d trailer(s), %d matching author(s), %d matching committer(s)", len(report.Matches),report.MatchingAuthors,report.MatchingCommitters)
+	if len(report.Matches) != 0 || report.MatchingAuthors+report.MatchingCommitters > 0 {
+		return fmt.Errorf("attribution guard failed: %d trailer(s), %d matching author(s), %d matching committer(s)", len(report.Matches), report.MatchingAuthors, report.MatchingCommitters)
 	}
 	if !*jsonOut {
 		fmt.Println("clean       attribution guard passed")
@@ -211,7 +233,7 @@ func runPlan(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -220,7 +242,9 @@ func runPlan(args []string) error {
 		return err
 	}
 	opts, err := resolveIdentityFlags(repo, identityFlags)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	report, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
@@ -231,7 +255,9 @@ func runPlan(args []string) error {
 	}
 	printIdentityTargets(opts)
 	printPlanReport(report)
-	if opts.Author==nil && opts.Committer==nil { identityAdvice(repo,matcher) }
+	if opts.Author == nil && opts.Committer == nil {
+		identityAdvice(repo, matcher)
+	}
 	return nil
 }
 
@@ -271,13 +297,13 @@ func runClean(args []string) error {
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
 	identityFlags := identityRewriteFlags(fs)
-	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect current GitHub history, PR refs and contributor API")
-	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
+	verifyGithub := fs.Bool("verify-github", false, "after push, inspect current GitHub history, PR refs and contributor API")
+	githubUser := fs.String("github-user", "", "optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -285,28 +311,42 @@ func runClean(args []string) error {
 	if err != nil {
 		return err
 	}
-	opts,err:=resolveIdentityFlags(repo,identityFlags)
-	if err!=nil{return err}
-	if *push && !*apply {return fmt.Errorf("--push requires --apply; first preview with byeclaude plan, then clean --apply and push separately")}
-	if *verifyGithub && !*push{return fmt.Errorf("--verify-github requires --push")}
-	if *githubUser!="" && !*verifyGithub{return fmt.Errorf("--github-user requires --verify-github")}
-	if *verifyGithub && *jsonOut{return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")}
+	opts, err := resolveIdentityFlags(repo, identityFlags)
+	if err != nil {
+		return err
+	}
+	if *push && !*apply {
+		return fmt.Errorf("--push requires --apply; first preview with byeclaude plan, then clean --apply and push separately")
+	}
+	if *verifyGithub && !*push {
+		return fmt.Errorf("--verify-github requires --push")
+	}
+	if *githubUser != "" && !*verifyGithub {
+		return fmt.Errorf("--github-user requires --verify-github")
+	}
+	if *verifyGithub && *jsonOut {
+		return fmt.Errorf("--verify-github cannot be combined with --json; run verify --json separately")
+	}
 	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
 	if err != nil {
 		return err
 	}
 	if plan.MatchedCommits == 0 {
-		if *jsonOut { fmt.Println(clean.JSON(plan)) } else {
+		if *jsonOut {
+			fmt.Println(clean.JSON(plan))
+		} else {
 			fmt.Println("No matching selected attribution metadata found. Nothing to do.")
 			identityAdvice(repo, matcher)
 		}
 		return nil
 	}
-	if plan.AuthorsToReplace+plan.CommittersToReplace>0 && !*jsonOut {
+	if plan.AuthorsToReplace+plan.CommittersToReplace > 0 && !*jsonOut {
 		printIdentityTargets(opts)
 	}
 	if !*apply {
-		if *jsonOut { fmt.Println(clean.JSON(plan)) } else {
+		if *jsonOut {
+			fmt.Println(clean.JSON(plan))
+		} else {
 			printPlanReport(plan)
 			fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
 		}
@@ -320,7 +360,9 @@ func runClean(args []string) error {
 		return err
 	}
 	after, err := clean.PlanWithIdentity(repo, matcher, opts)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if after.MatchedCommits != 0 {
 		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
 	}
@@ -353,9 +395,15 @@ func runClean(args []string) error {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
 	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
-	if opts.Author==nil && opts.Committer==nil {identityAdvice(repo, matcher)}
-	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,*githubUser)}
-	if *push{fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")}
+	if opts.Author == nil && opts.Committer == nil {
+		identityAdvice(repo, matcher)
+	}
+	if *verifyGithub {
+		return verifyGitHubRemoteAfterPush(repo, *remote, matcher, *githubUser)
+	}
+	if *push {
+		fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")
+	}
 	return nil
 }
 
@@ -364,16 +412,16 @@ func runPush(args []string) error {
 	repoPath, _ := common(fs)
 	backup := fs.String("backup", "", "backup ID printed by clean --apply")
 	remote := fs.String("remote", "origin", "remote to update")
-	verifyGithub:=fs.Bool("verify-github",false,"after push, inspect GitHub refs and contributor API")
-	githubUser:=fs.String("github-user","","optional GitHub contributor login for post-push verification")
+	verifyGithub := fs.Bool("verify-github", false, "after push, inspect GitHub refs and contributor API")
+	githubUser := fs.String("github-user", "", "optional GitHub contributor login for post-push verification")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *githubUser!="" && !*verifyGithub {
+	if *githubUser != "" && !*verifyGithub {
 		return fmt.Errorf("--github-user requires --verify-github")
 	}
-	matcher, err := resolveMatcher(*rulesFile)
+	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
 	}
@@ -381,17 +429,19 @@ func runPush(args []string) error {
 	if err != nil {
 		return err
 	}
-	if *backup=="" {
-		ids,err:=clean.BackupRefs(repo)
-		if err!=nil{return err}
+	if *backup == "" {
+		ids, err := clean.BackupRefs(repo)
+		if err != nil {
+			return err
+		}
 		switch len(ids) {
 		case 0:
 			return fmt.Errorf("no ByeClaude backup found; use clean --apply to create a reviewed rewrite first")
 		case 1:
-			*backup=ids[0]
-			fmt.Printf("backup      using sole available backup %s\n",*backup)
+			*backup = ids[0]
+			fmt.Printf("backup      using sole available backup %s\n", *backup)
 		default:
-			return fmt.Errorf("%d backups exist; choose an exact ID with --backup (run byeclaude backups)",len(ids))
+			return fmt.Errorf("%d backups exist; choose an exact ID with --backup (run byeclaude backups)", len(ids))
 		}
 	}
 	report, err := clean.Scan(repo, matcher)
@@ -406,7 +456,9 @@ func runPush(args []string) error {
 		return err
 	}
 	fmt.Printf("push        %s updated from rewrite backup %s using atomic force-with-lease\n", *remote, *backup)
-	if *verifyGithub{return verifyGitHubRemoteAfterPush(repo,*remote,matcher,*githubUser)}
+	if *verifyGithub {
+		return verifyGitHubRemoteAfterPush(repo, *remote, matcher, *githubUser)
+	}
 	fmt.Println("github      not checked; run byeclaude verify --repo OWNER/REPO")
 	return nil
 }
@@ -486,10 +538,16 @@ func runHook(args []string) error {
 		return fmt.Errorf("this hook directory is shared by linked worktrees; pass --shared-worktrees to acknowledge")
 	}
 	prePush := strings.HasPrefix(action, "pre-push-")
-	if action == "pre-push-install" { action = "install" }
-	if action == "pre-push-remove" { action = "remove" }
+	if action == "pre-push-install" {
+		action = "install"
+	}
+	if action == "pre-push-remove" {
+		action = "remove"
+	}
 	hookName := "commit-msg"
-	if prePush { hookName = "pre-push" }
+	if prePush {
+		hookName = "pre-push"
+	}
 	path, err := resolvedGitHookPath(repo, hookName)
 	if err != nil {
 		return err
@@ -497,7 +555,9 @@ func runHook(args []string) error {
 	switch action {
 	case "install":
 		matcherPath, err := resolveRulesFile(repo, *rulesFile)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		matcherPath = filepath.ToSlash(matcherPath)
 		if configured, ok, err := repo.RunOptional("config", "--path", "--get", "core.hooksPath"); err != nil {
 			return err
@@ -523,7 +583,9 @@ func runHook(args []string) error {
 					return fmt.Errorf("%s hook already uses a different rules file (%q vs %q); remove or reconfigure it explicitly instead of silently reusing stale rules", hookName, current.RulesFile, desired)
 				}
 				status, err := inspectHook(repo, hookName)
-				if err != nil { return err }
+				if err != nil {
+					return err
+				}
 				if status.Status != "installed" {
 					return fmt.Errorf("%s hook is %s (%s); repair it before continuing", hookName, status.Status, path)
 				}
@@ -708,7 +770,7 @@ func init() {
 			fmt.Fprintln(os.Stderr, "hook-filter requires a commit message path")
 			os.Exit(1)
 		}
-		matcher, err := resolveMatcher(*rulesFile)
+		matcher, err := resolveLocalMatcher(".", *rulesFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

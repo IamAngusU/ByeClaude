@@ -125,9 +125,9 @@ func ephemeralGoExecutable(path string) bool {
 }
 
 type inspectedHook struct {
-	Name   string
-	Path   string
-	Status string
+	Name      string
+	Path      string
+	Status    string
 	RulesFile string
 }
 
@@ -138,7 +138,15 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 		return result, err
 	}
 	result.Path = path
-	info, err := os.Lstat(path)
+	root, err := os.OpenRoot(filepath.Dir(path))
+	if os.IsNotExist(err) {
+		return result, nil
+	}
+	if err != nil {
+		return result, err
+	}
+	defer root.Close()
+	info, err := root.Lstat(name)
 	if os.IsNotExist(err) {
 		return result, nil
 	}
@@ -149,7 +157,7 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 		result.Status = "conflict"
 		return result, nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := root.ReadFile(name)
 	if err != nil {
 		return result, err
 	}
@@ -164,7 +172,9 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 		result.Status = "stale_binary"
 		return result, nil
 	}
-	if err != nil {return result, err}
+	if err != nil {
+		return result, err
+	}
 	if !binaryInfo.Mode().IsRegular() || (runtime.GOOS != "windows" && binaryInfo.Mode()&0111 == 0) {
 		result.Status = "invalid_binary"
 		return result, nil
@@ -174,6 +184,9 @@ func inspectHook(repo *gitx.Repo, name string) (inspectedHook, error) {
 			result.Status = "stale_rules"
 			return result, nil
 		}
+	} else if _, err := resolveLocalMatcher(repo.Root, ""); err != nil {
+		result.Status = "stale_rules"
+		return result, nil
 	}
 	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 		result.Status = "not_executable"
@@ -196,7 +209,8 @@ func effectiveHooksPath(repo *gitx.Repo) (string, error) {
 
 func resolveRulesFile(repo *gitx.Repo, input string) (string, error) {
 	if strings.TrimSpace(input) == "" {
-		return "", nil
+		_, err := resolveLocalMatcher(repo.Root, "")
+		return "", err
 	}
 	path := input
 	if !filepath.IsAbs(path) {

@@ -56,16 +56,16 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 		if len(fields) != 4 {
 			return report, fmt.Errorf("invalid Git pre-push ref-update line")
 		}
-		localRef, localSHA, oldSHA := fields[0], fields[1], fields[3]
+		localSHA, oldSHA := fields[1], fields[3]
 		if !objectIDRE.MatchString(localSHA) || !objectIDRE.MatchString(fields[3]) {
 			return report, fmt.Errorf("invalid Git object ID in pre-push input")
 		}
 		if isZeroSHA(localSHA) {
 			continue // a deletion has no new commit graph
 		}
-		if !strings.HasPrefix(localRef, "refs/") && localRef != "HEAD" {
-			return report, fmt.Errorf("invalid local ref in pre-push input")
-		}
+		// Git also supplies revision expressions or literal object IDs here
+		// (for example `git push origin HEAD~1:main`). Only the validated object
+		// IDs are used below; the display ref is never executed or resolved.
 		peeled, err := repo.RunContext(context.Background(), "rev-parse", "--verify", localSHA+"^{commit}")
 		if err != nil {
 			typ, typeErr := repo.RunContext(context.Background(), "cat-file", "-t", localSHA)

@@ -6,6 +6,18 @@
 
 ## First 60 seconds
 
+For an interactive terminal, run `byeclaude` or `byeclaude tui --repo PATH`.
+Choose a numbered action and press Enter. It works in cmd, Windows PowerShell,
+PowerShell 7, and ordinary Unix terminals. `--no-color` or `NO_COLOR` disables
+color. Piped input never starts an interactive session implicitly.
+
+The menu shows the current repository, active blacklist and hook status.
+Cleanup previews are read-only until you type `CLEAN`; a change to refs,
+configured identity or rules during review cancels the apply. Hook installation
+requires `y`. Publishing remains the separate `push` command. Ctrl+C or EOF
+at a prompt cancels without applying. To undo an already completed cleanup,
+use its backup ID with `restore --backup ID --apply`.
+
 Run these commands **inside the Git clone you intend to protect**:
 
 ```sh
@@ -44,6 +56,13 @@ collaborators before any rewrite.
 
 | Task | Command |
 | --- | --- |
+| Open the terminal menu | `byeclaude tui` |
+| Inspect the saved blacklist | `byeclaude blacklist list` |
+| Add a declared identity to the blacklist | `byeclaude blacklist add --id helper --email helper@example.org` |
+| Test a name/email against active rules | `byeclaude blacklist test --name Helper --email helper@example.org` |
+| Remove one blacklist entry | `byeclaude blacklist remove --id helper` |
+| Restore the built-in blacklist | `byeclaude blacklist reset` |
+| Export active rules for CI or batch scans | `byeclaude blacklist export` |
 | Read-only local scan | `byeclaude scan` |
 | Include fetched remote-tracking refs | `byeclaude scan --include-remotes` |
 | Include matching Git author/committer identities | `byeclaude scan --include-identities` |

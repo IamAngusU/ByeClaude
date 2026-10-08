@@ -18,7 +18,7 @@ func runPrePushFilter(args []string) error {
 	if fs.NArg() > 2 {
 		return fmt.Errorf("expected Git remote name and URL")
 	}
-	matcher, err := resolveMatcher(*rules)
+	matcher, err := resolveLocalMatcher(".", *rules)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func runPrePushFilter(args []string) error {
 	}
 	if report.CommitsWithMatch > 0 {
 		for _, finding := range report.Findings {
-			fmt.Fprintf(os.Stderr,"  %.12s %s: %s\n",finding.Commit,finding.Field,finding.Identity)
+			fmt.Fprintf(os.Stderr, "  %.12s %s: %s\n", finding.Commit, finding.Field, finding.Identity)
 		}
 		return fmt.Errorf("push blocked: %d commit(s) with matching attribution or Git identities (%d trailer(s), %d author(s), %d committer(s)); use byeclaude plan and clean before retrying", report.CommitsWithMatch, report.Trailers, report.Authors, report.Committers)
 	}

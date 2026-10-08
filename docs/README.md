@@ -7,7 +7,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Command reference](cli.md) | You want one place with all commands, first-run setup and safe cleanup flow. |
 | [How the rewrite works](how-it-works.md) | You want to understand exactly which Git objects change and why descendant commit IDs move. |
 | [Matching architecture](matching.md) | You want to see how the Claude preset is separated from the vendor-neutral rewrite engine. |
-| [Multiple attribution rules](rules.md) | You want Claude plus other declared co-author identities in one validated rule set. |
+| [Blacklist and attribution rules](rules.md) | Save, test and edit several identities from the terminal, or export rules for CI. |
 | [Evidence model](evidence.md) | You want to distinguish factual Git attribution from heuristic AI-involvement signals. |
 | [Service / API integration](service.md) | You want to use ByeClaude JSON as a backend engine for a website or service. |
 | [Public VPS demo](demo-server.md) | You want a one-binary public-repository demo with an embedded UI, bounded work and no mutation endpoints. |

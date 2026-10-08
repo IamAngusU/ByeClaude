@@ -10,19 +10,19 @@ import (
 )
 
 type identitySelection struct {
-	author *string
-	committer *string
-	bothFromGit *bool
-	authorFromGit *bool
+	author           *string
+	committer        *string
+	bothFromGit      *bool
+	authorFromGit    *bool
 	committerFromGit *bool
 }
 
 func identityRewriteFlags(fs *flag.FlagSet) identitySelection {
 	return identitySelection{
-		author: fs.String("replace-author", "", "explicit replacement 'Name <email>' for a matching Git author"),
-		committer: fs.String("replace-committer", "", "explicit replacement 'Name <email>' for a matching Git committer"),
-		bothFromGit: fs.Bool("identity-from-git", false, "use configured Git identity for both matching author and committer fields"),
-		authorFromGit: fs.Bool("author-from-git", false, "use configured Git identity for matching author fields only"),
+		author:           fs.String("replace-author", "", "explicit replacement 'Name <email>' for a matching Git author"),
+		committer:        fs.String("replace-committer", "", "explicit replacement 'Name <email>' for a matching Git committer"),
+		bothFromGit:      fs.Bool("identity-from-git", false, "use configured Git identity for both matching author and committer fields"),
+		authorFromGit:    fs.Bool("author-from-git", false, "use configured Git identity for matching author fields only"),
 		committerFromGit: fs.Bool("committer-from-git", false, "use configured Git identity for matching committer fields only"),
 	}
 }
@@ -31,12 +31,16 @@ func parseIdentityRewriteOptions(author, committer string) (clean.IdentityRewrit
 	opts := clean.IdentityRewriteOptions{}
 	if author != "" {
 		v, err := clean.ParseIdentityReplacement(author)
-		if err != nil { return opts, fmt.Errorf("--replace-author: %w", err) }
+		if err != nil {
+			return opts, fmt.Errorf("--replace-author: %w", err)
+		}
 		opts.Author = &v
 	}
 	if committer != "" {
 		v, err := clean.ParseIdentityReplacement(committer)
-		if err != nil { return opts, fmt.Errorf("--replace-committer: %w", err) }
+		if err != nil {
+			return opts, fmt.Errorf("--replace-committer: %w", err)
+		}
 		opts.Committer = &v
 	}
 	return opts, nil
@@ -44,14 +48,20 @@ func parseIdentityRewriteOptions(author, committer string) (clean.IdentityRewrit
 
 func configuredGitIdentity(repo *gitx.Repo) (clean.IdentityReplacement, error) {
 	nameOut, nameFound, err := repo.RunOptional("config", "--get", "user.name")
-	if err != nil { return clean.IdentityReplacement{}, err }
+	if err != nil {
+		return clean.IdentityReplacement{}, err
+	}
 	emailOut, emailFound, err := repo.RunOptional("config", "--get", "user.email")
-	if err != nil { return clean.IdentityReplacement{}, err }
+	if err != nil {
+		return clean.IdentityReplacement{}, err
+	}
 	if !nameFound || !emailFound {
 		return clean.IdentityReplacement{}, fmt.Errorf("missing Git user.name or user.email; configure both or use an explicit replacement")
 	}
 	identity, err := clean.ParseIdentityReplacement(strings.TrimSpace(string(nameOut)) + " <" + strings.TrimSpace(string(emailOut)) + ">")
-	if err != nil { return clean.IdentityReplacement{}, fmt.Errorf("configured Git identity is invalid: %w", err) }
+	if err != nil {
+		return clean.IdentityReplacement{}, fmt.Errorf("configured Git identity is invalid: %w", err)
+	}
 	return identity, nil
 }
 
@@ -69,12 +79,22 @@ func resolveIdentityFlags(repo *gitx.Repo, flags identitySelection) (clean.Ident
 		return clean.IdentityRewriteOptions{}, fmt.Errorf("--committer-from-git conflicts with --replace-committer")
 	}
 	opts, err := parseIdentityRewriteOptions(author, committer)
-	if err != nil { return opts, err }
-	if !both && !onlyAuthor && !onlyCommitter { return opts, nil }
+	if err != nil {
+		return opts, err
+	}
+	if !both && !onlyAuthor && !onlyCommitter {
+		return opts, nil
+	}
 	identity, err := configuredGitIdentity(repo)
-	if err != nil { return opts, err }
-	if both || onlyAuthor { opts.Author = &identity }
-	if both || onlyCommitter { opts.Committer = &identity }
+	if err != nil {
+		return opts, err
+	}
+	if both || onlyAuthor {
+		opts.Author = &identity
+	}
+	if both || onlyCommitter {
+		opts.Committer = &identity
+	}
 	return opts, nil
 }
 

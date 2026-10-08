@@ -30,7 +30,7 @@ func ParseIdentityReplacement(raw string) (IdentityReplacement, error) {
 		return IdentityReplacement{}, fmt.Errorf("identity must be 'Name <email@example.com>'")
 	}
 	value := IdentityReplacement{
-		Name: strings.TrimSpace(raw[:lt]),
+		Name:  strings.TrimSpace(raw[:lt]),
 		Email: strings.TrimSpace(raw[lt+1 : gt]),
 	}
 	if err := value.validate(); err != nil {

@@ -246,7 +246,7 @@ func TestCleanRepositoryAndCommandValidation(t *testing.T) {
 	if err := runBackups([]string{"--repo", dir}); err != nil {
 		t.Fatal(err)
 	}
-	if err := runPush([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "--backup is required") {
+	if err := runPush([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "no ByeClaude backup") {
 		t.Fatalf("expected missing backup error, got %v", err)
 	}
 	if err := runRestore([]string{"--repo", dir}); err == nil || !strings.Contains(err.Error(), "--backup is required") {
