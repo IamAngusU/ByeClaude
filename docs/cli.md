@@ -72,6 +72,12 @@ reviewed operation with `byeclaude push --backup BACKUP_ID`.
 `byeclaude push` uses guarded remote ref expectations. Coordinate with
 collaborators before any rewrite.
 
+Cleanup streams commit objects instead of retaining the full history in
+memory. Ctrl+C cancels the active Git operation before any remaining ref
+update. A successful rewrite prints a proof count showing that every rewritten
+commit kept the same tree hash. After verifying the remote result, remove an
+individual local recovery set with `byeclaude backups --prune ID --confirm`.
+
 ## Commands by purpose
 
 | Task | Command |
@@ -97,6 +103,8 @@ collaborators before any rewrite.
 | Locally rewrite and back up | `byeclaude clean --apply` |
 | Locally correct a matching Git author/committer | `byeclaude clean --replace-author "Correct Name <correct@example.com>" --apply` |
 | List available backups | `byeclaude backups` |
+| Preview pruning one verified backup | `byeclaude backups --prune ID` |
+| Prune one verified backup | `byeclaude backups --prune ID --confirm` |
 | Restore one backup locally | `byeclaude restore --backup ID --apply` |
 | Publish a reviewed rewrite | `byeclaude push --backup ID` |
 | Verify fresh GitHub history and PR refs | `byeclaude verify` |
@@ -122,6 +130,8 @@ GitHub-managed historical PR refs, caches, or other users' local clones.
 `verify` reports which surfaces were actually checked. GitHub metadata
 rulesets may require Enterprise organization capabilities. A Ruleset blocks
 branch ref updates but does not necessarily prevent upload of Git objects.
+The pre-push hook refuses ByeClaude recovery refs, including mirror-push
+attempts; prune a verified backup explicitly instead of publishing it.
 For full details see [verification](github-verification.md),
 [safety](safety.md), [prevention](automation.md),
 [identity correction](identity-correction.md),

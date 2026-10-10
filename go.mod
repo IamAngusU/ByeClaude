@@ -1,6 +1,6 @@
 module github.com/IamAngusU/ByeClaude
 
-go 1.27.0
+go 1.27.2
 
 require golang.org/x/term v0.46.0
 

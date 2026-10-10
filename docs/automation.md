@@ -37,8 +37,10 @@ byeclaude hook pre-push-install
 byeclaude hook pre-push-remove
 ```
 
-The optional hook rejects a push when commit ancestry still contains
-matching Co-Authored-By trailers **or** matching Git author/committer headers.
+The optional hook rejects a push when commit ancestry still contains matching
+Co-Authored-By trailers, configured exact message markers/trailer keys, **or**
+matching Git author/committer headers. It also refuses to publish local
+`refs/byeclaude/*` recovery refs, including through `git push --mirror`.
 It does not silently rewrite history. Git permits --no-verify, so combine this
 with a [GitHub Ruleset](github-rulesets.md) for branch enforcement.
 
@@ -51,6 +53,25 @@ byeclaude hook install
 ```
 
 The hook calls the installed ByeClaude executable and filters the commit message file before Git finalizes the commit.
+
+Claude Code can also stop adding its current attribution at the source. In
+`~/.claude/settings.json`, use the documented `attribution` setting (or `false`
+on versions that support it), for example:
+
+```json
+{
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  }
+}
+```
+
+Use `claude doctor` to inspect the effective Claude Code installation and
+settings. ByeClaude remains useful for older history and for repositories where
+you do not control every contributor's local settings. See the
+[Claude Code settings reference](https://code.claude.com/docs/en/settings-reference).
 
 The installer refuses to replace an unrelated `commit-msg` hook. It also refuses when `core.hooksPath` is configured because writing to `.git/hooks` would either be ineffective or could interfere with a shared hook directory.
 

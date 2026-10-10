@@ -17,7 +17,7 @@ import (
 
 func newTestServer(t *testing.T, audit AuditFunc) *Server {
 	t.Helper()
-	server, err := New(preset.Claude(), 1, time.Second)
+	server, err := New(preset.Claude(), 1, 1, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,6 +117,70 @@ func TestAuditCapacityReturns429(t *testing.T) {
 	<-firstDone
 }
 
+func TestAuditCapacityIsFairPerClient(t *testing.T) {
+	server, err := New(preset.Claude(), 2, 1, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := make(chan string, 2)
+	release := make(chan struct{})
+	server.audit = func(ctx context.Context, repository string, _ bool) (batch.Report, error) {
+		started <- repository
+		select {
+		case <-release:
+			return batch.Report{}, nil
+		case <-ctx.Done():
+			return batch.Report{}, ctx.Err()
+		}
+	}
+	run := func(remote, repo string) <-chan int {
+		done := make(chan int, 1)
+		go func() {
+			req := httptest.NewRequest(http.MethodPost, "/v1/audits", strings.NewReader(`{"repository":"`+repo+`"}`))
+			req.RemoteAddr = remote
+			res := httptest.NewRecorder()
+			server.Handler().ServeHTTP(res, req)
+			done <- res.Code
+		}()
+		return done
+	}
+	first := run("198.51.100.1:1000", "owner/one")
+	<-started
+	req := httptest.NewRequest(http.MethodPost, "/v1/audits", strings.NewReader(`{"repository":"owner/two"}`))
+	req.RemoteAddr = "198.51.100.1:2000"
+	res := httptest.NewRecorder()
+	server.Handler().ServeHTTP(res, req)
+	if res.Code != http.StatusTooManyRequests {
+		t.Fatalf("same client status=%d", res.Code)
+	}
+	second := run("203.0.113.2:1000", "owner/three")
+	if got := <-started; got != "owner/three" {
+		t.Fatalf("second client did not start: %s", got)
+	}
+	close(release)
+	if code := <-first; code != http.StatusOK {
+		t.Fatalf("first status=%d", code)
+	}
+	if code := <-second; code != http.StatusOK {
+		t.Fatalf("second status=%d", code)
+	}
+}
+
+func TestRequestClientTrustsForwardedIPOnlyFromLoopback(t *testing.T) {
+	local := httptest.NewRequest(http.MethodGet, "/", nil)
+	local.RemoteAddr = "127.0.0.1:9000"
+	local.Header.Set("X-Forwarded-For", "203.0.113.7, 127.0.0.1")
+	if got := requestClient(local); got != "203.0.113.7" {
+		t.Fatalf("local proxy client=%q", got)
+	}
+	direct := httptest.NewRequest(http.MethodGet, "/", nil)
+	direct.RemoteAddr = "198.51.100.9:9000"
+	direct.Header.Set("X-Forwarded-For", "203.0.113.7")
+	if got := requestClient(direct); got != "198.51.100.9" {
+		t.Fatalf("spoofed forwarded client=%q", got)
+	}
+}
+
 func TestAuditRepositoryFailureReturns502(t *testing.T) {
 	server := newTestServer(t, func(context.Context, string, bool) (batch.Report, error) {
 		return batch.Report{}, fmt.Errorf("clone failed")
@@ -130,7 +194,7 @@ func TestAuditRepositoryFailureReturns502(t *testing.T) {
 }
 
 func TestAuditTimeoutReturns504(t *testing.T) {
-	server, err := New(preset.Claude(), 1, 20*time.Millisecond)
+	server, err := New(preset.Claude(), 1, 1, 20*time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}

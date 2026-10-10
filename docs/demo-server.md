@@ -38,6 +38,7 @@ Behind a reverse proxy on the same VPS:
 byeclaude serve \
   --listen 127.0.0.1:8080 \
   --max-inflight 2 \
+  --max-per-client 1 \
   --timeout 60s
 ```
 
@@ -75,7 +76,7 @@ An intentionally small example lives at [`deploy/demo/Caddyfile.example`](../dep
 
 Replace the domain, then point Caddy at the loopback-bound ByeClaude server.
 
-For an internet-facing demo, add rate limiting at the reverse proxy/WAF/provider layer. ByeClaude itself only bounds **concurrent work**, so it returns HTTP `429` when all audit slots are occupied, but it is not a per-IP abuse-prevention system.
+For an internet-facing demo, add request-rate limiting at the reverse proxy/WAF/provider layer. ByeClaude bounds both global concurrent work and concurrent work per client, returning HTTP `429` when either limit is occupied. When the direct peer is loopback, it uses the first valid `X-Forwarded-For` address supplied by the local reverse proxy; a direct remote peer cannot spoof that header. The built-in limit controls concurrency, not sustained request rate or distributed abuse.
 
 ## HTTP API
 

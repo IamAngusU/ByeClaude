@@ -49,6 +49,23 @@ func TestPrePushFailsClosedForMalformedInput(t *testing.T) {
 	}
 }
 
+func TestPrePushRejectsPublishingByeClaudeRecoveryRefs(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Human")
+	git(t, dir, "config", "user.email", "human@example.org")
+	git(t, dir, "commit", "--allow-empty", "-m", "Initial")
+	sha := strings.TrimSpace(git(t, dir, "rev-parse", "HEAD"))
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := fmt.Sprintf("refs/byeclaude/backups/id/heads/main %s refs/byeclaude/backups/id/heads/main %s\n", sha, strings.Repeat("0", 40))
+	if _, err := CheckPushInput(repo, strings.NewReader(input), preset.Claude()); err == nil || !strings.Contains(err.Error(), "must stay local") {
+		t.Fatalf("recovery ref was not blocked: %v", err)
+	}
+}
+
 func TestPrePushAuditsRevisionExpressionsByObjectID(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q")

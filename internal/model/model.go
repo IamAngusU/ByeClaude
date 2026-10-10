@@ -6,6 +6,7 @@ type Match struct {
 	Email            string   `json:"email"`
 	AttributionName  string   `json:"attribution_name"`
 	AttributionEmail string   `json:"attribution_email"`
+	AttributionField string   `json:"attribution_field,omitempty"`
 	Rules            []string `json:"rules"`
 	Line             string   `json:"line"`
 }
@@ -28,6 +29,7 @@ type RewriteReport struct {
 	Backup             string `json:"backup"`
 	CommitsVisited     int    `json:"commits_visited"`
 	CommitsRewritten   int    `json:"commits_rewritten"`
+	TreesVerified      int    `json:"tree_hashes_verified"`
 	RefsUpdated        int    `json:"refs_updated"`
 	TagsRewritten      int    `json:"tags_rewritten"`
 	SignaturesDropped  int    `json:"signatures_dropped"`

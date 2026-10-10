@@ -12,7 +12,7 @@ For the simplest VPS proof of concept, ByeClaude now ships:
 byeclaude serve
 ```
 
-It serves an embedded UI plus `POST /v1/audits` for **public GitHub repositories only**. The demo accepts only a normalized `owner/repository` slug, disables Git credential helpers for those clone jobs, bounds in-flight audits and exposes scan/plan only.
+It serves an embedded UI plus `POST /v1/audits` for **public GitHub repositories only**. The demo accepts only a normalized `owner/repository` slug, disables Git credential helpers for those clone jobs, bounds global and per-client concurrent audits, and exposes scan/plan only.
 
 That server is a useful demonstration boundary, not the eventual authenticated private-repository architecture described below. See [Public VPS demo](demo-server.md).
 

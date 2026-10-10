@@ -81,7 +81,9 @@ The hook stores the absolute path to the validated rules file. If that file late
       "id": "provider-or-policy-id",
       "name_contains": ["display name fragment"],
       "email_domains": ["example.com"],
-      "exact_emails": ["bot@example.com"]
+      "exact_emails": ["bot@example.com"],
+      "message_lines": ["Generated with Example Tool"],
+      "trailer_keys": ["Example-Session"]
     }
   ]
 }
@@ -93,6 +95,8 @@ Within one rule:
 - `email_domains` and `exact_emails` are alternative allowed email conditions;
 - if both a name constraint and an email constraint are present, both sides must match;
 - email-domain matching requires a real `@domain` boundary;
+- `message_lines` are exact, case-sensitive lines at the end of the message or immediately before its final trailer block;
+- `trailer_keys` match a complete Git trailer key, case-insensitively, and also remove its folded continuation lines;
 - rule IDs must be unique, 1-64 letters/digits/dots/underscores/hyphens, starting with a letter or digit;
 - empty constraints, invalid emails/domains, unknown JSON fields and files larger than 1 MiB are rejected.
 
@@ -108,4 +112,4 @@ Without a saved blacklist or explicit rule file, ByeClaude uses the narrower bui
 
 ## Scope
 
-These rules classify **`Co-Authored-By`** trailers and Git author/committer identities. `scan` and `check` include actual identities when `--include-identities` is selected; the menu audit and pre-push guard include them. Cleanup removes matching trailers by default. Actual author/committer replacement always requires [explicit role selection](identity-correction.md). Other metadata such as `Made-with:`, `Assisted-by:`, PR footers, editor telemetry or source-code style is a different evidence surface and is not silently treated as a co-author.
+These rules classify **`Co-Authored-By`** trailers, explicitly listed message lines and trailer keys, and Git author/committer identities. The built-in Claude rule includes exact historical `Generated with Claude Code` variants and `Claude-Session`; it does not use fuzzy prose matching. `scan` and `check` include actual identities when `--include-identities` is selected; the menu audit and pre-push guard include them. Cleanup removes matching message metadata by default. Actual author/committer replacement always requires [explicit role selection](identity-correction.md). Unlisted metadata, PR descriptions, editor telemetry and source-code style are different evidence surfaces and are not silently treated as attribution.

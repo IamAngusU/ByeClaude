@@ -10,5 +10,12 @@ func Claude() attribution.Rule {
 		RuleID:       "claude-anthropic",
 		NameContains: []string{"claude"},
 		EmailDomains: []string{"anthropic.com"},
+		MessageLines: []string{
+			"Generated with Claude Code",
+			"🤖 Generated with Claude Code",
+			"🤖 Generated with [Claude Code](https://claude.ai/code)",
+			"🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+		},
+		TrailerKeys: []string{"Claude-Session"},
 	}
 }

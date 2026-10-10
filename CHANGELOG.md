@@ -4,6 +4,27 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+### Product
+
+- Detect and remove exact historical Claude Code message markers and
+  `Claude-Session` trailers alongside matching `Co-Authored-By` identities.
+- Add guarded, per-backup pruning for local recovery and result refs.
+- Add a compact post-rewrite proof count for unchanged commit tree hashes.
+- Add per-client concurrency limits to the public demo server.
+
+### Safety and correctness
+
+- Stream commit objects through scan, plan and rewrite paths instead of keeping
+  complete repository histories in memory, and propagate Ctrl+C cancellation
+  through the rewrite.
+- Reject attempts to push `refs/byeclaude/*`, including mirror pushes that
+  could expose original history.
+- Attest and verify every release artifact with GitHub artifact attestations
+  before release publication.
+- Build with Go 1.27.2 to include the current standard-library security fixes.
+- Pin gosec's upstream Go 1.27.2 compatibility commit until its next tagged
+  release, keeping the security gate functional with the patched toolchain.
+
 ## v0.1.0-alpha.1 - 2026-09-25
 
 ### Product

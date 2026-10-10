@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -114,11 +115,11 @@ Usage:
   byeclaude batch plan ...
   byeclaude verify [--repo OWNER/REPO] [--github-user LOGIN] [--strict] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
-  byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--timeout 60s] [--rules FILE]
+  byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--max-per-client 1] [--timeout 60s] [--rules FILE]
   byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
   byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE] [--shared-worktrees]
-  byeclaude backups [--repo PATH]
+  byeclaude backups [--repo PATH] [--prune ID --confirm]
   byeclaude restore --backup ID --apply [--repo PATH]
   byeclaude version
   byeclaude licenses
@@ -185,7 +186,11 @@ func runScan(args []string) error {
 		fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
 	}
 	for _, m := range report.Matches {
-		fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
+		if m.AttributionName != "" || m.AttributionEmail != "" {
+			fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
+		} else {
+			fmt.Printf("  %.12s  [%s] %s\n", m.Commit, strings.Join(m.Rules, ","), m.Line)
+		}
 	}
 	if len(report.Matches) == 0 && report.MatchingAuthors+report.MatchingCommitters == 0 {
 		fmt.Println("clean       no matching selected metadata found")
@@ -235,7 +240,11 @@ func runCheck(args []string) error {
 			fmt.Printf("identities  %d author(s), %d committer(s)\n", report.MatchingAuthors, report.MatchingCommitters)
 		}
 		for _, m := range report.Matches {
-			fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
+			if m.AttributionName != "" || m.AttributionEmail != "" {
+				fmt.Printf("  %.12s  [%s] %s <%s>\n", m.Commit, strings.Join(m.Rules, ","), m.AttributionName, m.AttributionEmail)
+			} else {
+				fmt.Printf("  %.12s  [%s] %s\n", m.Commit, strings.Join(m.Rules, ","), m.Line)
+			}
 		}
 	}
 	if len(report.Matches) != 0 || report.MatchingAuthors+report.MatchingCommitters > 0 {
@@ -325,6 +334,8 @@ func runClean(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	matcher, err := resolveLocalMatcher(*repoPath, *rulesFile)
 	if err != nil {
 		return err
@@ -354,7 +365,7 @@ func runClean(args []string) error {
 			return err
 		}
 	}
-	plan, err := clean.PlanWithIdentity(repo, matcher, opts)
+	plan, err := clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
 	if err != nil {
 		return err
 	}
@@ -382,19 +393,19 @@ func runClean(args []string) error {
 	if !plan.RewriteReady {
 		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
 	}
-	report, _, err := clean.RewriteWithIdentity(repo, matcher, opts)
+	report, _, err := clean.RewriteWithIdentityContext(ctx, repo, matcher, opts)
 	if err != nil {
 		return err
 	}
 	metrics.Record(metrics.Counters{Cleanups: 1, CleanupCredits: metricCount(int64(report.CreditsRemoved)), CommitsRewritten: metricCount(int64(report.CommitsRewritten)), IdentityFields: metricCount(int64(report.AuthorsReplaced)) + metricCount(int64(report.CommittersReplaced)), WorkMS: metricCount(report.DurationMS)})
-	after, err := clean.PlanWithIdentity(repo, matcher, opts)
+	after, err := clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
 	if err != nil {
 		return err
 	}
 	if after.MatchedCommits != 0 {
 		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
 	}
-	scan, err := clean.Scan(repo, matcher)
+	scan, err := clean.ScanContext(ctx, repo, matcher)
 	if err != nil {
 		return err
 	}
@@ -411,6 +422,7 @@ func runClean(args []string) error {
 		return nil
 	}
 	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\nduration    %s\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten, metricDuration(report.DurationMS))
+	fmt.Printf("proof       %d/%d rewritten commit tree hashes unchanged\n", report.TreesVerified, report.CommitsRewritten)
 	if report.AuthorsReplaced+report.CommittersReplaced > 0 {
 		fmt.Printf("identity    %d author(s), %d committer(s) replaced\n", report.AuthorsReplaced, report.CommittersReplaced)
 	}
@@ -419,6 +431,7 @@ func runClean(args []string) error {
 	}
 	if *push {
 		fmt.Printf("push        %s updated with force-with-lease\n", *remote)
+		fmt.Printf("recovery    backup refs remain local; after verification run byeclaude backups --prune %s --confirm\n", report.Backup)
 	} else {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
@@ -490,6 +503,7 @@ func runPush(args []string) error {
 		return err
 	}
 	fmt.Printf("push        %s updated from rewrite backup %s using atomic force-with-lease\n", *remote, *backup)
+	fmt.Printf("recovery    backup refs remain local; after verification run byeclaude backups --prune %s --confirm\n", *backup)
 	if *verifyGithub {
 		return verifyGitHubRemoteAfterPush(repo, *remote, matcher, *githubUser)
 	}
@@ -500,12 +514,44 @@ func runPush(args []string) error {
 func runBackups(args []string) error {
 	fs := flag.NewFlagSet("backups", flag.ContinueOnError)
 	repoPath, _ := common(fs)
+	prune := fs.String("prune", "", "remove one exact backup and its rewrite-result refs")
+	confirm := fs.Bool("confirm", false, "confirm permanent removal of the selected recovery refs")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	repo, err := gitx.Open(*repoPath)
 	if err != nil {
 		return err
+	}
+	if *confirm && *prune == "" {
+		return fmt.Errorf("--confirm requires --prune ID")
+	}
+	if *prune != "" {
+		ids, err := clean.BackupRefs(repo)
+		if err != nil {
+			return err
+		}
+		found := false
+		for _, id := range ids {
+			if id == *prune {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("backup %q not found; run 'byeclaude backups' to list exact IDs", *prune)
+		}
+		if !*confirm {
+			fmt.Printf("Backup %s remains recoverable. Re-run with --confirm only after remote verification.\n", *prune)
+			fmt.Println("Warning: never use git push --mirror while refs/byeclaude exists; it can publish the original history.")
+			return nil
+		}
+		count, err := clean.PruneBackup(repo, *prune)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Pruned backup %s (%d local recovery/result refs). Git may retain unreachable objects until normal garbage collection.\n", *prune, count)
+		return nil
 	}
 	ids, err := clean.BackupRefs(repo)
 	if err != nil {
@@ -518,6 +564,7 @@ func runBackups(args []string) error {
 	for _, id := range ids {
 		fmt.Println(id)
 	}
+	fmt.Println("These refs are local recovery data. Never publish them with git push --mirror.")
 	return nil
 }
 

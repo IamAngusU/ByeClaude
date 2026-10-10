@@ -14,6 +14,7 @@ var (
 
 type TrailerEvidence struct {
 	Line    string
+	Field   string
 	Name    string
 	Email   string
 	RuleIDs []string
@@ -22,6 +23,72 @@ type TrailerEvidence struct {
 type explainingMatcher interface {
 	attribution.Matcher
 	MatchIDs(name, email string) []string
+}
+
+func messageRuleIDs(matcher attribution.Matcher, line string, trailer bool) []string {
+	if matcher == nil {
+		return nil
+	}
+	if m, ok := matcher.(attribution.MessageMatcher); ok {
+		return m.MatchMessageLine(line, trailer)
+	}
+	return nil
+}
+
+func evidenceForMessage(message string, matcher attribution.Matcher) ([]TrailerEvidence, []int, []string, int, int) {
+	normalized := strings.ReplaceAll(message, "\r\n", "\n")
+	lines := strings.Split(normalized, "\n")
+	start, end, hasTrailers := trailerBlock(lines)
+	var evidence []TrailerEvidence
+	var indexes []int
+
+	if hasTrailers {
+		for i := start; i < end; i++ {
+			line := lines[i]
+			name, email, parsed := parseCoAuthor(line)
+			var ids []string
+			field := ""
+			if parsed && matcher.Match(name, email) {
+				ids = []string{matcher.ID()}
+				if explaining, ok := matcher.(explainingMatcher); ok {
+					ids = explaining.MatchIDs(name, email)
+				}
+				field = "Co-Authored-By"
+			} else {
+				ids = messageRuleIDs(matcher, line, true)
+				if len(ids) > 0 {
+					field, _, _ = strings.Cut(strings.TrimSpace(line), ":")
+				}
+			}
+			if len(ids) == 0 {
+				continue
+			}
+			evidence = append(evidence, TrailerEvidence{Line: strings.TrimSpace(line), Field: field, Name: name, Email: email, RuleIDs: ids})
+			indexes = append(indexes, i)
+			// A matched trailer owns its folded continuation lines.
+			for i+1 < end && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t")) {
+				i++
+				indexes = append(indexes, i)
+			}
+		}
+	}
+
+	// Historical Claude Code markers are plain text immediately before the
+	// final trailer block (or the last non-empty line when no trailer exists).
+	marker := len(lines) - 1
+	if hasTrailers {
+		marker = start - 1
+	}
+	for marker >= 0 && strings.TrimSpace(lines[marker]) == "" {
+		marker--
+	}
+	if marker >= 0 {
+		if ids := messageRuleIDs(matcher, lines[marker], false); len(ids) > 0 {
+			evidence = append([]TrailerEvidence{{Line: strings.TrimSpace(lines[marker]), Field: "message", RuleIDs: ids}}, evidence...)
+			indexes = append(indexes, marker)
+		}
+	}
+	return evidence, indexes, lines, start, end
 }
 
 func parseCoAuthor(line string) (name, email string, ok bool) {
@@ -69,30 +136,8 @@ func MatchingEvidence(message string, matcher attribution.Matcher) []TrailerEvid
 	if matcher == nil {
 		return nil
 	}
-	normalized := strings.ReplaceAll(message, "\r\n", "\n")
-	lines := strings.Split(normalized, "\n")
-	start, end, ok := trailerBlock(lines)
-	if !ok {
-		return nil
-	}
-	var matches []TrailerEvidence
-	for _, line := range lines[start:end] {
-		name, email, parsed := parseCoAuthor(line)
-		if !parsed || !matcher.Match(name, email) {
-			continue
-		}
-		ids := []string{matcher.ID()}
-		if explaining, ok := matcher.(explainingMatcher); ok {
-			ids = explaining.MatchIDs(name, email)
-		}
-		matches = append(matches, TrailerEvidence{
-			Line:    strings.TrimSpace(line),
-			Name:    name,
-			Email:   email,
-			RuleIDs: ids,
-		})
-	}
-	return matches
+	evidence, _, _, _, _ := evidenceForMessage(message, matcher)
+	return evidence
 }
 
 // MatchingTrailers preserves the simple line-only helper used by rewrite tests
@@ -106,8 +151,8 @@ func MatchingTrailers(message string, matcher attribution.Matcher) []string {
 	return lines
 }
 
-// StripMatchingTrailers removes only identities accepted by matcher from the
-// final Co-Authored-By trailer block. All unrelated trailers are preserved.
+// StripMatchingTrailers removes matching identities, explicit trailer keys and
+// exact end markers. Unrelated trailers and message prose are preserved.
 func StripMatchingTrailers(message string, matcher attribution.Matcher) (string, []string) {
 	if matcher == nil {
 		return message, nil
@@ -116,34 +161,53 @@ func StripMatchingTrailers(message string, matcher attribution.Matcher) (string,
 	if strings.Contains(message, "\r\n") {
 		newline = "\r\n"
 	}
-	normalized := strings.ReplaceAll(message, "\r\n", "\n")
-	lines := strings.Split(normalized, "\n")
-	start, end, ok := trailerBlock(lines)
-	if !ok {
+	evidence, indexes, lines, start, end := evidenceForMessage(message, matcher)
+	if len(evidence) == 0 {
 		return message, nil
 	}
+	remove := make(map[int]bool, len(indexes)+2)
+	removed := make([]string, 0, len(evidence))
+	for _, i := range indexes {
+		remove[i] = true
+	}
+	for _, item := range evidence {
+		removed = append(removed, item.Line)
+	}
 
-	removed := make([]string, 0)
-	keptBlock := make([]string, 0, end-start)
-	for _, line := range lines[start:end] {
-		name, email, parsed := parseCoAuthor(line)
-		if parsed && matcher.Match(name, email) {
-			removed = append(removed, line)
+	// If every line in the trailer block is removed, remove its blank
+	// separator too. Otherwise retain the separator for remaining trailers.
+	if start < end {
+		allRemoved := true
+		for i := start; i < end; i++ {
+			if !remove[i] {
+				allRemoved = false
+				break
+			}
+		}
+		if allRemoved && start > 0 && lines[start-1] == "" {
+			remove[start-1] = true
+		}
+	}
+	// Removing a standalone marker must not leave a new double-blank gap.
+	for _, i := range indexes {
+		if i >= start && i < end {
 			continue
 		}
-		keptBlock = append(keptBlock, line)
+		next := i + 1
+		for next < len(lines) && strings.TrimSpace(lines[next]) == "" {
+			remove[next] = true
+			next++
+		}
+		if next >= len(lines) && i > 0 && lines[i-1] == "" {
+			remove[i-1] = true
+		}
 	}
-	if len(removed) == 0 {
-		return message, nil
+	kept := make([]string, 0, len(lines))
+	for i, line := range lines {
+		if !remove[i] {
+			kept = append(kept, line)
+		}
 	}
-
-	kept := append([]string{}, lines[:start]...)
-	if len(keptBlock) > 0 {
-		kept = append(kept, keptBlock...)
-	} else if len(kept) > 0 && kept[len(kept)-1] == "" {
-		kept = kept[:len(kept)-1]
-	}
-	kept = append(kept, lines[end:]...)
 	for len(kept) > 1 && kept[len(kept)-1] == "" && kept[len(kept)-2] == "" {
 		kept = kept[:len(kept)-1]
 	}

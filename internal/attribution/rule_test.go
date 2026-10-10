@@ -63,3 +63,19 @@ func TestGitHubNoreplyID(t *testing.T) {
 		}
 	}
 }
+
+func TestStructuredMessageRules(t *testing.T) {
+	rule := Rule{RuleID: "agent", MessageLines: []string{"Made by Agent"}, TrailerKeys: []string{"Agent-Session"}}
+	if got := rule.MatchMessageLine(" Made by Agent ", false); len(got) != 1 || got[0] != "agent" {
+		t.Fatalf("message ids=%v", got)
+	}
+	if got := rule.MatchMessageLine("made by agent", false); len(got) != 0 {
+		t.Fatalf("case-changed message matched: %v", got)
+	}
+	if got := rule.MatchMessageLine("agent-session: https://example.invalid", true); len(got) != 1 {
+		t.Fatalf("trailer ids=%v", got)
+	}
+	if got := rule.MatchMessageLine("Agent-Session: value", false); len(got) != 0 {
+		t.Fatalf("trailer key matched prose: %v", got)
+	}
+}
