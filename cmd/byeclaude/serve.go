@@ -13,6 +13,7 @@ func runServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	listen := fs.String("listen", "127.0.0.1:8080", "listen address; keep loopback when using a reverse proxy")
 	maxInFlight := fs.Int("max-inflight", 2, "maximum concurrent repository audits (1-32)")
+	maxPerClient := fs.Int("max-per-client", 1, "maximum concurrent audits from one client")
 	timeout := fs.Duration("timeout", 60*time.Second, "timeout for one repository audit")
 	rulesFile := rulesFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -23,7 +24,7 @@ func runServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	app, err := demo.New(matcher, *maxInFlight, *timeout)
+	app, err := demo.New(matcher, *maxInFlight, *maxPerClient, *timeout)
 	if err != nil {
 		return err
 	}

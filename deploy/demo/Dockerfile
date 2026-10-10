@@ -10,4 +10,4 @@ COPY --from=build /out/byeclaude /usr/local/bin/byeclaude
 USER byeclaude
 EXPOSE 8080
 ENTRYPOINT ["byeclaude"]
-CMD ["serve", "--listen", "0.0.0.0:8080", "--max-inflight", "2", "--timeout", "60s"]
+CMD ["serve", "--listen", "0.0.0.0:8080", "--max-inflight", "2", "--max-per-client", "1", "--timeout", "60s"]

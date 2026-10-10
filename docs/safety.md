@@ -61,6 +61,22 @@ List available backups:
 byeclaude backups
 ```
 
+Keep the backup until the remote rewrite has been verified. Then preview and
+remove exactly that recovery set:
+
+```sh
+byeclaude backups --prune BACKUP_ID
+byeclaude backups --prune BACKUP_ID --confirm
+```
+
+Pruning deletes only `refs/byeclaude/backups/BACKUP_ID/*` and the paired
+`refs/byeclaude/results/BACKUP_ID/*`, in one guarded ref transaction. It does
+not run garbage collection; ordinary Git maintenance decides when unreachable
+objects are removed. An invalid or unknown ID is rejected. ByeClaude's
+pre-push guard also blocks attempts to publish any `refs/byeclaude/*` ref, so
+`git push --mirror` cannot silently expose the original history while recovery
+refs remain.
+
 Restore one locally:
 
 ```sh

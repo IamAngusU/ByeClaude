@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -128,21 +129,16 @@ func ScanIncludingRemotesContext(ctx context.Context, repo *gitx.Repo, includeRe
 	if err != nil {
 		return model.ScanReport{}, err
 	}
-	rawCommits, err := repo.CatFileBatch(ctx, commits, "commit")
-	if err != nil {
-		return model.ScanReport{}, err
-	}
-
 	report := model.ScanReport{
 		Repository:  repo.Root,
 		Commits:     len(commits),
 		RuleMatches: map[string]int{},
 	}
 	matchedCommits := map[string]bool{}
-	for i, sha := range commits {
-		obj, err := parseCommit(rawCommits[i])
+	err = repo.CatFileBatchEach(ctx, commits, "commit", func(i int, sha string, raw []byte) error {
+		obj, err := parseCommit(raw)
 		if err != nil {
-			return report, err
+			return err
 		}
 		author, email := obj.author()
 		for _, evidence := range MatchingEvidence(obj.Message, matcher) {
@@ -156,10 +152,15 @@ func ScanIncludingRemotesContext(ctx context.Context, repo *gitx.Repo, includeRe
 				Email:            email,
 				AttributionName:  evidence.Name,
 				AttributionEmail: evidence.Email,
+				AttributionField: evidence.Field,
 				Rules:            append([]string(nil), evidence.RuleIDs...),
 				Line:             evidence.Line,
 			})
 		}
+		return nil
+	})
+	if err != nil {
+		return report, err
 	}
 	report.MatchedCommits = len(matchedCommits)
 	if report.Commits > 0 {
@@ -260,7 +261,13 @@ func backupID() (string, error) {
 	return time.Now().UTC().Format("20060102T150405Z") + "-" + hex.EncodeToString(nonce[:]), nil
 }
 
+var backupIDPattern = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$`)
+
 func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
+	return createBackupsContext(context.Background(), repo, refs, id)
+}
+
+func createBackupsContext(ctx context.Context, repo *gitx.Repo, refs []Ref, id string) error {
 	var b strings.Builder
 	b.WriteString("start\n")
 	for _, r := range refs {
@@ -268,7 +275,7 @@ func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
 		fmt.Fprintf(&b, "create refs/byeclaude/backups/%s/%s %s\n", id, suffix, r.SHA)
 	}
 	b.WriteString("prepare\ncommit\n")
-	_, err := repo.RunInput([]byte(b.String()), "update-ref", "--stdin")
+	_, err := repo.RunInputContext(ctx, []byte(b.String()), "update-ref", "--stdin")
 	return err
 }
 
@@ -277,6 +284,10 @@ func Rewrite(repo *gitx.Repo, matcher attribution.Matcher) (model.RewriteReport,
 }
 
 func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
+	return RewriteWithIdentityContext(context.Background(), repo, matcher, opts)
+}
+
+func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
 	started := time.Now()
 	if err := opts.Validate(matcher); err != nil {
 		return model.RewriteReport{}, nil, err
@@ -284,14 +295,14 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 	if matcher == nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
 	}
-	if err := Preflight(repo); err != nil {
+	if err := PreflightContext(ctx, repo); err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	refs, err := LocalRefs(repo)
+	refs, err := LocalRefsContext(ctx, repo)
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	commits, err := commitsForRefs(repo, refs)
+	commits, err := commitsForRefsContext(ctx, repo, refs)
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
@@ -299,25 +310,21 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	if err := createBackups(repo, refs, id); err != nil {
+	if err := createBackupsContext(ctx, repo, refs, id); err != nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("create backup refs: %w", err)
 	}
 
 	report := model.RewriteReport{Repository: repo.Root, Backup: id, CommitsVisited: len(commits)}
 	mapping := make(map[string]string, len(commits))
-	rawCommits, err := repo.CatFileBatch(context.Background(), commits, "commit")
-	if err != nil {
-		return report, mapping, err
-	}
-	for i, sha := range commits {
-		obj, err := parseCommit(rawCommits[i])
+	err = repo.CatFileBatchEach(ctx, commits, "commit", func(_ int, sha string, raw []byte) error {
+		obj, err := parseCommit(raw)
 		if err != nil {
-			return report, mapping, err
+			return err
 		}
 		newMsg, removed := StripMatchingTrailers(obj.Message, matcher)
 		rewrittenObj, authors, committers, err := ReplaceMatchingCommitIdentities(obj, matcher, opts)
 		if err != nil {
-			return report, mapping, err
+			return err
 		}
 		parentChanged := false
 		for _, p := range obj.parents() {
@@ -328,12 +335,16 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 		}
 		if len(removed) == 0 && authors == 0 && committers == 0 && !parentChanged {
 			mapping[sha] = sha
-			continue
+			return nil
 		}
 		newRaw, dropped := rebuildCommit(rewrittenObj, mapping, newMsg)
-		newSHAOut, err := repo.RunInput(newRaw, "hash-object", "-t", "commit", "-w", "--stdin")
+		newObject, err := parseCommit(newRaw)
+		if err != nil || obj.tree() == "" || newObject.tree() != obj.tree() {
+			return fmt.Errorf("tree verification failed before writing rewritten commit %s", sha)
+		}
+		newSHAOut, err := repo.RunInputContext(ctx, newRaw, "hash-object", "-t", "commit", "-w", "--stdin")
 		if err != nil {
-			return report, mapping, err
+			return err
 		}
 		newSHA := strings.TrimSpace(string(newSHAOut))
 		mapping[sha] = newSHA
@@ -342,6 +353,11 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 		report.SignaturesDropped += dropped
 		report.AuthorsReplaced += authors
 		report.CommittersReplaced += committers
+		report.TreesVerified++
+		return nil
+	})
+	if err != nil {
+		return report, mapping, err
 	}
 
 	newRefs := make(map[string]string, len(refs))
@@ -353,7 +369,7 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 				newSHA = m
 			}
 		} else if r.Type == "tag" {
-			newSHA, err = rewriteTag(repo, r.SHA, mapping, tagMemo, &report)
+			newSHA, err = rewriteTagContext(ctx, repo, r.SHA, mapping, tagMemo, &report)
 			if err != nil {
 				return report, mapping, err
 			}
@@ -374,18 +390,18 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 		report.RefsUpdated++
 	}
 	tx.WriteString("prepare\ncommit\n")
-	if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {
+	if _, err := repo.RunInputContext(ctx, []byte(tx.String()), "update-ref", "--stdin"); err != nil {
 		return report, mapping, fmt.Errorf("update refs: %w", err)
 	}
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, mapping, nil
 }
 
-func rewriteTag(repo *gitx.Repo, sha string, commits map[string]string, memo map[string]string, report *model.RewriteReport) (string, error) {
+func rewriteTagContext(ctx context.Context, repo *gitx.Repo, sha string, commits map[string]string, memo map[string]string, report *model.RewriteReport) (string, error) {
 	if v, ok := memo[sha]; ok {
 		return v, nil
 	}
-	raw, err := repo.Run("cat-file", "tag", sha)
+	raw, err := repo.RunContext(ctx, "cat-file", "tag", sha)
 	if err != nil {
 		return "", err
 	}
@@ -411,7 +427,7 @@ func rewriteTag(repo *gitx.Repo, sha string, commits map[string]string, memo map
 			newTarget = m
 		}
 	} else if typ == "tag" {
-		newTarget, err = rewriteTag(repo, target, commits, memo, report)
+		newTarget, err = rewriteTagContext(ctx, repo, target, commits, memo, report)
 		if err != nil {
 			return "", err
 		}
@@ -431,7 +447,7 @@ func rewriteTag(repo *gitx.Repo, sha string, commits map[string]string, memo map
 		report.SignaturesDropped++
 	}
 	newRaw := []byte(strings.Join(lines, "\n") + "\n\n" + msg)
-	out, err := repo.RunInput(newRaw, "hash-object", "-t", "tag", "-w", "--stdin")
+	out, err := repo.RunInputContext(ctx, newRaw, "hash-object", "-t", "tag", "-w", "--stdin")
 	if err != nil {
 		return "", err
 	}
@@ -618,6 +634,46 @@ func BackupRefs(repo *gitx.Repo) ([]string, error) {
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(ids)))
 	return ids, s.Err()
+}
+
+// PruneBackup removes both the recovery refs and the recorded rewrite-result
+// refs for exactly one backup. Object collection remains Git's responsibility.
+func PruneBackup(repo *gitx.Repo, id string) (int, error) {
+	if !backupIDPattern.MatchString(id) {
+		return 0, fmt.Errorf("invalid backup ID %q", id)
+	}
+	var refs []Ref
+	for _, namespace := range []string{"backups", "results"} {
+		prefix := "refs/byeclaude/" + namespace + "/" + id + "/"
+		out, err := repo.Run("for-each-ref", "--format=%(refname)%00%(objectname)", prefix)
+		if err != nil {
+			return 0, err
+		}
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			if line == "" {
+				continue
+			}
+			parts := strings.Split(line, "\x00")
+			if len(parts) != 2 || !strings.HasPrefix(parts[0], prefix) {
+				return 0, fmt.Errorf("unexpected backup ref while pruning %q", id)
+			}
+			refs = append(refs, Ref{Name: parts[0], SHA: parts[1]})
+		}
+	}
+	if len(refs) == 0 {
+		return 0, fmt.Errorf("backup %q not found", id)
+	}
+	sort.Slice(refs, func(i, j int) bool { return refs[i].Name < refs[j].Name })
+	var tx strings.Builder
+	tx.WriteString("start\n")
+	for _, ref := range refs {
+		fmt.Fprintf(&tx, "delete %s %s\n", ref.Name, ref.SHA)
+	}
+	tx.WriteString("prepare\ncommit\n")
+	if _, err := repo.RunInput([]byte(tx.String()), "update-ref", "--stdin"); err != nil {
+		return 0, fmt.Errorf("prune backup refs: %w", err)
+	}
+	return len(refs), nil
 }
 
 func Restore(repo *gitx.Repo, id string) (int, error) {

@@ -52,6 +52,15 @@ func (c commitObject) parents() []string {
 	return out
 }
 
+func (c commitObject) tree() string {
+	for _, h := range c.Headers {
+		if h.Key == "tree" && len(h.Lines) == 1 {
+			return strings.TrimSpace(strings.TrimPrefix(h.Lines[0], "tree "))
+		}
+	}
+	return ""
+}
+
 func (c commitObject) author() (string, string) {
 	for _, h := range c.Headers {
 		if h.Key != "author" || len(h.Lines) == 0 {

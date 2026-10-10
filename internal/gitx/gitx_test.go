@@ -74,6 +74,33 @@ func TestCatFileBatchHonorsCanceledContext(t *testing.T) {
 	}
 }
 
+func TestCatFileBatchEachStreamsAndStopsOnVisitorError(t *testing.T) {
+	dir := t.TempDir()
+	runGit(t, dir, "init", "-q")
+	runGit(t, dir, "config", "user.name", "Batch Reader")
+	runGit(t, dir, "config", "user.email", "batch@example.invalid")
+	var shas []string
+	for _, message := range []string{"one", "two"} {
+		runGit(t, dir, "commit", "--allow-empty", "-q", "-m", message)
+		shas = append(shas, runGit(t, dir, "rev-parse", "HEAD"))
+	}
+	repo, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	err = repo.CatFileBatchEach(context.Background(), shas, "commit", func(index int, name string, data []byte) error {
+		seen++
+		if index != 0 || name != shas[0] || !strings.Contains(string(data), "\n\none\n") {
+			t.Fatalf("unexpected first object: index=%d name=%s", index, name)
+		}
+		return context.Canceled
+	})
+	if err != context.Canceled || seen != 1 {
+		t.Fatalf("err=%v seen=%d", err, seen)
+	}
+}
+
 func TestOpenAndCommandWrappers(t *testing.T) {
 	dir := t.TempDir()
 	runGit(t, dir, "init", "-q")

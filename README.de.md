@@ -25,7 +25,7 @@
 
 <p align="center"><sub>Öffentliche CI über einen separaten Account desselben Maintainers. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Getesteter Commit und einzelne Schritte</a>. Badge-Design: IamAngusU/Badges.</sub></p>
 
-Einige AI-Tools hängen Zeilen wie `Co-authored-by: Claude <noreply@anthropic.com>` an Git-Commit-Messages. ByeClaude gibt dir die Kontrolle über diese deklarierte Git-Metadaten: bestehende Historie prüfen, ausgewählte Credits entfernen und verhindern, dass sie erneut auftauchen. Claude/Anthropic ist standardmäßig ausgewählt; eine gespeicherte Blacklist kann mehrere Tool-Identitäten abdecken.
+Einige AI-Tools hängen Zeilen wie `Co-authored-by: Claude <noreply@anthropic.com>` an Git-Commit-Messages. Ältere Claude-Code-Versionen haben außerdem einen abschließenden `Generated with Claude Code`-Hinweis geschrieben; manche Umgebungen ergänzen einen `Claude-Session`-Trailer. ByeClaude gibt dir die Kontrolle über diese deklarierten Git-Metadaten: bestehende Historie prüfen, ausgewählte Credits entfernen und verhindern, dass sie erneut auftauchen. Claude/Anthropic ist standardmäßig ausgewählt; eine gespeicherte Blacklist kann mehrere Tool-Identitäten abdecken.
 
 Trotz des Namens ist ByeClaude kein Anti-AI-Projekt und kein AI-Detector. Es versucht nicht zu erraten, wer Code geschrieben hat. Es arbeitet ausschließlich mit deklarierter Git-Metadaten.
 
@@ -53,7 +53,7 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install
 
 </details>
 
-Das Installationsskript erkennt die Plattform, lädt das passende Release, prüft SHA-256, installiert in deinem Benutzerordner, richtet den Benutzer-PATH ein und öffnet das geführte Setup in einem interaktiven Terminal. Git selbst bleibt Voraussetzung. [Windows-Skript prüfen](install.ps1) · [Unix-Skript prüfen](install.sh) · [Manueller Download und Supply-Chain-Details](docs/supply-chain.md).
+Das Installationsskript erkennt die Plattform, lädt das passende Release, prüft SHA-256, installiert in deinem Benutzerordner, richtet den Benutzer-PATH ein und öffnet das geführte Setup in einem interaktiven Terminal. Der eine eingefügte Befehl ist die vollständige Installation; Entpacken, Bauen und ein manueller PATH-Schritt entfallen. Git selbst bleibt Voraussetzung. [Windows-Skript prüfen](install.ps1) · [Unix-Skript prüfen](install.sh) · [Manueller Download und Supply-Chain-Details](docs/supply-chain.md).
 
 ### Repository einrichten
 
@@ -82,7 +82,7 @@ byeclaude
 
 ## Was ändert sich?
 
-Standardmäßig entfernt ByeClaude nur passende `Co-authored-by`-Zeilen. Menschliche Credits, die nicht zur Blacklist passen, bleiben erhalten. **Die Inhalte der committed Dateien bleiben identisch.** Eine Änderung von Author/Committer ist eine separate, erweiterte Option.
+Standardmäßig entfernt ByeClaude passende `Co-authored-by`-Zeilen, exakt bekannte Claude-Code-Hinweise am Message-Ende und den `Claude-Session`-Trailer. Zitate derselben Wörter im normalen Nachrichtentext werden nicht entfernt. Menschliche Credits und andere Trailer bleiben erhalten. **Die Inhalte der committed Dateien bleiben identisch.** Eine Änderung von Author/Committer ist eine separate, erweiterte Option.
 
 <p align="center"><img src="docs/assets/readme/attribution-before-after.svg" width="1040" alt="Ein passender Claude-Co-Author-Eintrag wird entfernt; Dateiinhalte bleiben gleich, Commit-IDs ändern sich."></p>
 
@@ -118,11 +118,14 @@ byeclaude metrics off
 - Audits und Previews sind read-only. Cleanup und Hook-Installation brauchen eigene Bestätigungen.
 - Ändert sich Repository oder Policy während der Prüfung, wird der anstehende Vorgang abgebrochen.
 - Backup-Refs halten den vorherigen lokalen Zustand erreichbar.
+- Backup-Refs bleiben lokal, bis du das Remote-Ergebnis geprüft und genau ein Backup explizit bereinigt hast. `git push --mirror` wird blockiert, solange ByeClaude-Recovery-Refs vorhanden sind.
 - Der eingebaute Push schützt neuere Remote-Arbeit mit atomarem Force-with-Lease.
 - Hooks gelten nur für diesen Clone; Web/API-Commits, andere Clones oder absichtlich umgangene Hooks brauchen eigene Absicherung.
 - GitHub-Caches, historische PR-Objekte, Forks und andere Clones können alte Commits weiterhin enthalten. Kein Tool kann aus diesem Workflow vollständige Löschung versprechen.
 
 ByeClaude prüft **deklarierte Git-Metadaten**. Es erkennt keinen AI-generierten Code und beweist nicht, wer eine Datei geschrieben hat. Es ist weiterhin Prerelease-Software.
+
+Die GitHub Action prüft die gesamte erreichbare, ausgecheckte Historie. Dadurch kann auch ein Monate alter Treffer einen Workflow für eine neue, nicht damit zusammenhängende Änderung blockieren. Führe vor einem verpflichtenden Check lokal `byeclaude check --include-remotes` aus und prüfe bestehende Treffer.
 
 ## Weitere Optionen
 

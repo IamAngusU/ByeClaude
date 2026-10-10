@@ -54,19 +54,14 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 	}
 	impacted := make(map[string]bool, len(commits))
 	matched := make(map[string]bool)
-	rawCommits, err := repo.CatFileBatch(ctx, commits, "commit")
-	if err != nil {
-		return report, err
-	}
-
 	progress.Report(ctx, "Reviewing commits", 0, len(commits))
-	for i, sha := range commits {
+	err = repo.CatFileBatchEach(ctx, commits, "commit", func(i int, sha string, raw []byte) error {
 		if err := ctx.Err(); err != nil {
-			return report, err
+			return err
 		}
-		obj, err := parseCommit(rawCommits[i])
+		obj, err := parseCommit(raw)
 		if err != nil {
-			return report, err
+			return err
 		}
 
 		commitMatched := false
@@ -83,6 +78,7 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 				Email:            email,
 				AttributionName:  evidence.Name,
 				AttributionEmail: evidence.Email,
+				AttributionField: evidence.Field,
 				Rules:            append([]string(nil), evidence.RuleIDs...),
 				Line:             evidence.Line,
 			})
@@ -90,7 +86,7 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 
 		_, authorMatches, committerMatches, err := ReplaceMatchingCommitIdentities(obj, matcher, opts)
 		if err != nil {
-			return report, err
+			return err
 		}
 		report.AuthorsToReplace += authorMatches
 		report.CommittersToReplace += committerMatches
@@ -112,6 +108,10 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 			report.SignaturesAtRisk += commitSignatureFields(obj)
 		}
 		progress.Report(ctx, "Reviewing commits", i+1, len(commits))
+		return nil
+	})
+	if err != nil {
+		return report, err
 	}
 
 	report.MatchedCommits = len(matched)

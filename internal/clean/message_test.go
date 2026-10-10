@@ -115,3 +115,44 @@ func TestMatchingEvidenceIncludesRuleAndIdentity(t *testing.T) {
 		t.Fatalf("rules=%v", got[0].RuleIDs)
 	}
 }
+
+func TestClaudePresetRemovesHistoricalMarkerAndSessionTrailer(t *testing.T) {
+	in := "feat: ship it\n\nBody stays.\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude Sonnet <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_123\nSigned-off-by: Human <human@example.com>\n"
+	got, removed := StripMatchingTrailers(in, preset.Claude())
+	want := "feat: ship it\n\nBody stays.\n\nSigned-off-by: Human <human@example.com>\n"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+	if len(removed) != 3 {
+		t.Fatalf("removed=%#v", removed)
+	}
+	evidence := MatchingEvidence(in, preset.Claude())
+	if len(evidence) != 3 || evidence[0].Field != "message" || evidence[2].Field != "Claude-Session" {
+		t.Fatalf("evidence=%#v", evidence)
+	}
+}
+
+func TestClaudeMarkerMustBeAtMessageEnd(t *testing.T) {
+	in := "docs: show an example\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nThe line above is quoted documentation, not attribution.\n"
+	got, removed := StripMatchingTrailers(in, preset.Claude())
+	if got != in || len(removed) != 0 {
+		t.Fatalf("body marker changed: %q %#v", got, removed)
+	}
+}
+
+func TestCustomMessageRulesAreExact(t *testing.T) {
+	rule := attribution.Rule{RuleID: "agent", MessageLines: []string{"Made by Agent"}, TrailerKeys: []string{"Agent-Session"}}
+	in := "subject\n\nMade by Agent\n\nAgent-Session: https://example.invalid/1\n"
+	got, removed := StripMatchingTrailers(in, rule)
+	if got != "subject\n" || len(removed) != 2 {
+		t.Fatalf("got %q removed=%#v", got, removed)
+	}
+	prose := "subject\n\nMade by Agent with edits\n"
+	if got, removed := StripMatchingTrailers(prose, rule); got != prose || len(removed) != 0 {
+		t.Fatalf("non-exact marker changed: %q %#v", got, removed)
+	}
+	caseChanged := "subject\n\nMade By Agent\n"
+	if got, removed := StripMatchingTrailers(caseChanged, rule); got != caseChanged || len(removed) != 0 {
+		t.Fatalf("case-changed marker matched: %q %#v", got, removed)
+	}
+}

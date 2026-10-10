@@ -10,6 +10,13 @@ type Matcher interface {
 	Match(name, email string) bool
 }
 
+// MessageMatcher optionally classifies non-identity attribution lines. Exact
+// message lines and trailer keys keep this deliberately narrower than a
+// caller-supplied regular expression.
+type MessageMatcher interface {
+	MatchMessageLine(line string, trailer bool) []string
+}
+
 // Rule is a conservative identity matcher for Co-Authored-By trailers.
 //
 // NameContains terms are matched case-insensitively against the display name.
@@ -23,6 +30,8 @@ type Rule struct {
 	NameContains []string `json:"name_contains,omitempty"`
 	EmailDomains []string `json:"email_domains,omitempty"`
 	ExactEmails  []string `json:"exact_emails,omitempty"`
+	MessageLines []string `json:"message_lines,omitempty"`
+	TrailerKeys  []string `json:"trailer_keys,omitempty"`
 }
 
 func (r Rule) ID() string {
@@ -78,6 +87,27 @@ func (r Rule) MatchIDs(name, email string) []string {
 	return []string{r.ID()}
 }
 
+func (r Rule) MatchMessageLine(line string, trailer bool) []string {
+	line = strings.TrimSpace(line)
+	for _, exact := range r.MessageLines {
+		if line == strings.TrimSpace(exact) {
+			return []string{r.ID()}
+		}
+	}
+	if trailer {
+		key, _, ok := strings.Cut(line, ":")
+		if ok {
+			key = strings.TrimSpace(key)
+			for _, expected := range r.TrailerKeys {
+				if strings.EqualFold(key, strings.TrimSpace(expected)) {
+					return []string{r.ID()}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // RuleSet lets one scan classify the same declared co-author against several
 // structured attribution rules without widening the matcher into arbitrary
 // regular-expression execution.
@@ -102,6 +132,14 @@ func (s RuleSet) MatchIDs(name, email string) []string {
 		if rule.Match(name, email) {
 			ids = append(ids, rule.ID())
 		}
+	}
+	return ids
+}
+
+func (s RuleSet) MatchMessageLine(line string, trailer bool) []string {
+	var ids []string
+	for _, rule := range s.Rules {
+		ids = append(ids, rule.MatchMessageLine(line, trailer)...)
 	}
 	return ids
 }

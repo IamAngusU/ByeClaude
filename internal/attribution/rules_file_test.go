@@ -39,12 +39,16 @@ func TestRuleSetRejectsAmbiguousAndInvalidConstraints(t *testing.T) {
 		`{"rules":[{"id":"bad","email_domains":["example.org/"]}]}`,
 		`{"rules":[{"id":"bad","exact_emails":["bot"]}]}`,
 		`{"rules":[{"id":"bad","exact_emails":["bot@@example.org"]}]}`,
+		`{"rules":[{"id":"bad","trailer_keys":["bad key"]}]}`,
 		`{"rules":[{"id":"bad","exact_emails":["bot@example.org"]}]} {}`,
 		strings.Repeat(" ", MaxRulesBytes+1),
 	} {
 		if _, err := ParseRuleSet([]byte(data)); err == nil {
 			t.Fatal("invalid rules accepted")
 		}
+	}
+	if _, err := ParseRuleSet([]byte(`{"rules":[{"id":"marker","message_lines":["Made by Agent"],"trailer_keys":["Agent-Session"]}]}`)); err != nil {
+		t.Fatalf("structured message rule rejected: %v", err)
 	}
 	set, err := ParseRuleSet([]byte(`{"rules":[{"id":"valid","name_contains":["Bot"],"email_domains":[" @EXAMPLE.ORG "],"exact_emails":[" BOT@EXAMPLE.COM "]}]}`))
 	if err != nil {

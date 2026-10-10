@@ -72,6 +72,16 @@ The release set also contains:
 - `BUILD-PROVENANCE.json`, binding artifact hashes to the repository, exact
   source commit, source timestamp, release version and Go toolchain.
 
+The release workflow also creates a GitHub artifact attestation for every file
+in that set, using GitHub's OIDC identity and Sigstore-backed transparency log,
+and verifies every attestation before publishing the release. Because release
+artifacts are built on the public mirror and promoted unchanged, verify the
+builder identity against that repository:
+
+```sh
+gh attestation verify byeclaude_windows_amd64.exe --repo angusu-de/ByeClaude
+```
+
 The installers download a binary and the checksum file, require an exact
 matching asset entry, verify SHA-256 before installation, execute the staged
 binary, and replace an existing installation only after those checks pass.
@@ -91,12 +101,13 @@ pwsh -NoProfile -File scripts/test-release-reproducibility.ps1
 
 ## Trust boundary
 
-`BUILD-PROVENANCE.json` deliberately states `"signature_status": "unsigned"`.
-Checksums detect corruption after a trusted download, and the SBOM exposes the
-linked dependency inventory, but neither one authenticates a compromised
-GitHub account. The project does not claim signed releases or SLSA provenance
-until an independently verifiable signing identity and transparency-log flow
-are actually configured.
+`BUILD-PROVENANCE.json` deliberately remains a deterministic, unsigned local
+build record so the complete release set can be reproduced byte-for-byte.
+The separate GitHub artifact attestation cryptographically binds each released
+file to the release workflow identity and records that statement in Sigstore's
+transparency log. Checksums protect the installer download; the attestation is
+the independently verifiable provenance layer. Both ultimately trust the
+GitHub repository and its protected workflow definition.
 
 Run 'byeclaude licenses' to read the BSD license notices embedded for the Go terminal support packages. The release SBOM lists their pinned versions.
 

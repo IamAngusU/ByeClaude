@@ -154,5 +154,11 @@ func printBlacklist(out io.Writer, set attribution.RuleSet) {
 		if len(rule.EmailDomains) > 0 {
 			fmt.Fprintf(out, "    email domains: %q\n", rule.EmailDomains)
 		}
+		if len(rule.MessageLines) > 0 {
+			fmt.Fprintf(out, "    exact markers: %q\n", rule.MessageLines)
+		}
+		if len(rule.TrailerKeys) > 0 {
+			fmt.Fprintf(out, "    trailer keys:  %q\n", rule.TrailerKeys)
+		}
 	}
 }

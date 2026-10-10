@@ -56,12 +56,15 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 		if len(fields) != 4 {
 			return report, fmt.Errorf("invalid Git pre-push ref-update line")
 		}
-		localSHA, oldSHA := fields[1], fields[3]
+		localRef, localSHA, remoteRef, oldSHA := fields[0], fields[1], fields[2], fields[3]
 		if !objectIDRE.MatchString(localSHA) || !objectIDRE.MatchString(fields[3]) {
 			return report, fmt.Errorf("invalid Git object ID in pre-push input")
 		}
 		if isZeroSHA(localSHA) {
 			continue // a deletion has no new commit graph
+		}
+		if strings.HasPrefix(localRef, "refs/byeclaude/") || strings.HasPrefix(remoteRef, "refs/byeclaude/") {
+			return report, fmt.Errorf("push blocked: ByeClaude recovery refs must stay local; use a normal branch/tag push, never git push --mirror")
 		}
 		// Git also supplies revision expressions or literal object IDs here
 		// (for example `git push origin HEAD~1:main`). Only the validated object
@@ -80,7 +83,7 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 			if err != nil {
 				// Remote-tracking refs can be stale or missing. We must not
 				// optimistically ignore an unknown remote history.
-				return report, fmt.Errorf("remote ref %s points at %s which is not locally available; fetch the remote before pushing (or use --no-verify if you explicitly accept bypassing the local guard)", fields[2], oldSHA)
+				return report, fmt.Errorf("remote ref %s points at %s which is not locally available; fetch the remote before pushing (or use --no-verify if you explicitly accept bypassing the local guard)", remoteRef, oldSHA)
 			}
 			next.previous = strings.TrimSpace(string(remote))
 		}
@@ -114,32 +117,32 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 			}
 		}
 	}
-	raw, err := repo.CatFileBatch(context.Background(), commits, "commit")
-	if err != nil {
-		return report, err
-	}
 	report.Commits = len(commits)
-	for i, sha := range commits {
-		obj, err := parseCommit(raw[i])
+	err := repo.CatFileBatchEach(context.Background(), commits, "commit", func(_ int, sha string, raw []byte) error {
+		obj, err := parseCommit(raw)
 		if err != nil {
-			return report, err
+			return err
 		}
 		matched := false
 		for _, trailer := range MatchingEvidence(obj.Message, matcher) {
 			report.Trailers++
 			matched = true
-			addPushFinding(&report, PushFinding{Commit: sha, Field: "Co-Authored-By", Identity: trailer.Name + " <" + trailer.Email + ">"})
+			identity := trailer.Line
+			if trailer.Name != "" || trailer.Email != "" {
+				identity = trailer.Name + " <" + trailer.Email + ">"
+			}
+			addPushFinding(&report, PushFinding{Commit: sha, Field: trailer.Field, Identity: identity})
 		}
 		for _, h := range obj.Headers {
 			if h.Key != "author" && h.Key != "committer" {
 				continue
 			}
 			if len(h.Lines) != 1 {
-				return report, fmt.Errorf("invalid %s header in commit %s", h.Key, sha)
+				return fmt.Errorf("invalid %s header in commit %s", h.Key, sha)
 			}
 			parts := gitIdentityHeader.FindStringSubmatch(h.Lines[0])
 			if len(parts) != 6 {
-				return report, fmt.Errorf("invalid %s header in commit %s", h.Key, sha)
+				return fmt.Errorf("invalid %s header in commit %s", h.Key, sha)
 			}
 			if !matcher.Match(strings.TrimSpace(parts[2]), parts[3]) {
 				continue
@@ -155,6 +158,10 @@ func CheckPushInput(repo *gitx.Repo, input io.Reader, matcher attribution.Matche
 		if matched {
 			report.CommitsWithMatch++
 		}
+		return nil
+	})
+	if err != nil {
+		return report, err
 	}
 	return report, nil
 }

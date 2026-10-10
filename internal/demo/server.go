@@ -5,8 +5,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/IamAngusU/ByeClaude/internal/attribution"
@@ -21,12 +23,15 @@ var indexHTML string
 type AuditFunc func(ctx context.Context, repository string, plan bool) (batch.Report, error)
 
 type Server struct {
-	matcher     attribution.Matcher
-	maxInFlight int
-	timeout     time.Duration
-	sem         chan struct{}
-	audit       AuditFunc
-	mux         *http.ServeMux
+	matcher      attribution.Matcher
+	maxInFlight  int
+	maxPerClient int
+	timeout      time.Duration
+	sem          chan struct{}
+	clientMu     sync.Mutex
+	clients      map[string]int
+	audit        AuditFunc
+	mux          *http.ServeMux
 }
 
 type auditRequest struct {
@@ -38,22 +43,27 @@ type errorResponse struct {
 	Error string `json:"error"`
 }
 
-func New(matcher attribution.Matcher, maxInFlight int, timeout time.Duration) (*Server, error) {
+func New(matcher attribution.Matcher, maxInFlight, maxPerClient int, timeout time.Duration) (*Server, error) {
 	if matcher == nil {
 		return nil, fmt.Errorf("attribution matcher is required")
 	}
 	if maxInFlight < 1 || maxInFlight > 32 {
 		return nil, fmt.Errorf("max in-flight audits must be between 1 and 32")
 	}
+	if maxPerClient < 1 || maxPerClient > maxInFlight {
+		return nil, fmt.Errorf("max audits per client must be between 1 and max in-flight")
+	}
 	if timeout <= 0 {
 		return nil, fmt.Errorf("audit timeout must be positive")
 	}
 
 	s := &Server{
-		matcher:     matcher,
-		maxInFlight: maxInFlight,
-		timeout:     timeout,
-		sem:         make(chan struct{}, maxInFlight),
+		matcher:      matcher,
+		maxInFlight:  maxInFlight,
+		maxPerClient: maxPerClient,
+		timeout:      timeout,
+		sem:          make(chan struct{}, maxInFlight),
+		clients:      make(map[string]int),
 	}
 	s.audit = s.runAudit
 	s.mux = http.NewServeMux()
@@ -104,14 +114,13 @@ func (s *Server) handleAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	select {
-	case s.sem <- struct{}{}:
-		defer func() { <-s.sem }()
-	default:
+	client := requestClient(r)
+	if !s.acquire(client) {
 		w.Header().Set("Retry-After", "2")
-		writeJSON(w, http.StatusTooManyRequests, errorResponse{Error: "audit capacity is currently full"})
+		writeJSON(w, http.StatusTooManyRequests, errorResponse{Error: "audit capacity for this client or service is currently full"})
 		return
 	}
+	defer s.release(client)
 
 	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
 	defer cancel()
@@ -125,6 +134,58 @@ func (s *Server) handleAudit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, report)
+}
+
+func (s *Server) acquire(client string) bool {
+	s.clientMu.Lock()
+	if s.clients[client] >= s.maxPerClient {
+		s.clientMu.Unlock()
+		return false
+	}
+	s.clients[client]++
+	s.clientMu.Unlock()
+	select {
+	case s.sem <- struct{}{}:
+		return true
+	default:
+		s.clientMu.Lock()
+		s.clients[client]--
+		if s.clients[client] == 0 {
+			delete(s.clients, client)
+		}
+		s.clientMu.Unlock()
+		return false
+	}
+}
+
+func (s *Server) release(client string) {
+	<-s.sem
+	s.clientMu.Lock()
+	s.clients[client]--
+	if s.clients[client] == 0 {
+		delete(s.clients, client)
+	}
+	s.clientMu.Unlock()
+}
+
+func requestClient(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	peer := net.ParseIP(strings.Trim(host, "[]"))
+	// The documented deployment binds ByeClaude to loopback behind a reverse
+	// proxy. Only that trusted local hop may supply the original client IP.
+	if peer != nil && peer.IsLoopback() {
+		forwarded, _, _ := strings.Cut(r.Header.Get("X-Forwarded-For"), ",")
+		if ip := net.ParseIP(strings.TrimSpace(forwarded)); ip != nil {
+			return ip.String()
+		}
+	}
+	if peer != nil {
+		return peer.String()
+	}
+	return host
 }
 
 func (s *Server) runAudit(ctx context.Context, repository string, plan bool) (batch.Report, error) {

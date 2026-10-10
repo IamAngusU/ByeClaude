@@ -77,6 +77,27 @@ func TestPolicyFailsClosedForCorruptionAndConflictingValues(t *testing.T) {
 	}
 }
 
+func TestLoadHydratesOnlyLegacyBuiltInClaudeRule(t *testing.T) {
+	repo := policyRepo(t)
+	legacy := `{"rules":[{"id":"claude-anthropic","name_contains":["claude"],"email_domains":["anthropic.com"]}]}`
+	if _, err := repo.Run("config", "--local", configKey, legacy); err != nil {
+		t.Fatal(err)
+	}
+	set, _, err := Load(repo)
+	if err != nil || len(set.Rules[0].MessageLines) == 0 || len(set.Rules[0].TrailerKeys) == 0 {
+		t.Fatalf("legacy built-in was not hydrated: %+v, %v", set, err)
+	}
+
+	custom := `{"rules":[{"id":"claude-anthropic","exact_emails":["custom@example.org"]}]}`
+	if _, err := repo.Run("config", "--local", "--replace-all", configKey, custom); err != nil {
+		t.Fatal(err)
+	}
+	set, _, err = Load(repo)
+	if err != nil || len(set.Rules[0].MessageLines) != 0 || len(set.Rules[0].TrailerKeys) != 0 {
+		t.Fatalf("custom same-ID rule was widened: %+v, %v", set, err)
+	}
+}
+
 func TestConfigLockAndInvalidEditsPreservePolicy(t *testing.T) {
 	repo := policyRepo(t)
 	if err := Save(repo, Default(), false); err != nil {

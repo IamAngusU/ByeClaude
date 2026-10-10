@@ -1,6 +1,7 @@
 package clean
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,6 +75,9 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 	if report.CommitsRewritten != 2 {
 		t.Fatalf("rewritten commits = %d, want 2", report.CommitsRewritten)
 	}
+	if report.TreesVerified != report.CommitsRewritten {
+		t.Fatalf("tree proof = %d/%d", report.TreesVerified, report.CommitsRewritten)
+	}
 	if report.CreditsRemoved != 1 {
 		t.Fatalf("removed credit count includes descendants: %d", report.CreditsRemoved)
 	}
@@ -121,6 +125,26 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 	}
 	if got := git(t, dir, "rev-parse", "refs/tags/v0.1.0"); got != oldTag {
 		t.Fatalf("restore tag = %s, want %s", got, oldTag)
+	}
+}
+
+func TestRewriteHonorsCanceledContextBeforeCreatingBackup(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	git(t, dir, "config", "user.name", "Human")
+	git(t, dir, "config", "user.email", "human@example.org")
+	git(t, dir, "commit", "--allow-empty", "-m", "Work\n\nCo-authored-by: Claude <noreply@anthropic.com>")
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, _, err := RewriteWithIdentityContext(ctx, repo, preset.Claude(), IdentityRewriteOptions{}); err == nil {
+		t.Fatal("canceled rewrite succeeded")
+	}
+	if ids, err := BackupRefs(repo); err != nil || len(ids) != 0 {
+		t.Fatalf("canceled rewrite created recovery refs: %v %v", ids, err)
 	}
 }
 

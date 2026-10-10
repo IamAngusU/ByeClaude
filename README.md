@@ -24,7 +24,7 @@
 <p align="center"><sub>Public CI on a separate account, same maintainer. <a href="https://github.com/angusu-de/ByeClaude/blob/ci-proof/proof/README.md">Tested commit and individual steps</a>. Badge design: IamAngusU/Badges.</sub></p>
 <p align="center"><a href="#quick-start">Get started</a> · <a href="#what-changes">What changes?</a> · <a href="#publish-when-ready">Publish</a> · <a href="docs/README.md">Documentation</a> · <a href="https://github.com/IamAngusU/ByeClaude/releases">Releases</a></p>
 
-Some AI tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` to a Git commit message. ByeClaude gives you control over that declared Git metadata: audit existing history, remove selected credits and prevent them from coming back. Claude/Anthropic is selected by default; a saved blacklist can cover several tool identities.
+Some AI tools add a line such as `Co-authored-by: Claude <noreply@anthropic.com>` to a Git commit message. Older Claude Code versions also emitted a final `Generated with Claude Code` marker, and some environments add a `Claude-Session` trailer. ByeClaude gives you control over that declared Git metadata: audit existing history, remove selected credits and prevent them from coming back. Claude/Anthropic is selected by default; a saved blacklist can cover several tool identities.
 
 Despite the name, this is not an anti-AI project and it is not an AI detector. ByeClaude does not guess who wrote code. It only works with declared Git metadata.
 
@@ -52,7 +52,7 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install
 
 </details>
 
-The script detects your platform, downloads the release, checks SHA-256, installs in your user folder, configures your user PATH and **opens guided setup in an interactive terminal**. No UAC or sudo is needed. Git itself is a prerequisite; the installer does not install a package manager or Git for you. [Inspect the Windows script](install.ps1) · [Inspect the Unix script](install.sh) · [Manual download and advanced options](docs/supply-chain.md).
+The script detects your platform, downloads the release, checks SHA-256, installs in your user folder, configures your user PATH and **opens guided setup in an interactive terminal**. That one pasted command is the complete installation; there is no separate archive, build or PATH step. No UAC or sudo is needed. Git itself is a prerequisite; the installer does not install a package manager or Git for you. [Inspect the Windows script](install.ps1) · [Inspect the Unix script](install.sh) · [Manual download and advanced options](docs/supply-chain.md).
 
 ### Set up your repository
 
@@ -120,7 +120,7 @@ Repeated scans count as activity, not additional credits removed. Later-undone c
 
 ## What changes?
 
-By default, cleanup removes only matching `Co-authored-by` lines. Human credits that do not match the blacklist remain. **Committed file contents stay identical.** Actual author/committer correction is an advanced, separate choice.
+By default, cleanup removes matching `Co-authored-by` lines, exact known Claude Code end markers and the `Claude-Session` trailer. It does not remove the same words when they are quoted in the normal message body. Human credits and unrelated trailers remain. **Committed file contents stay identical.** Actual author/committer correction is an advanced, separate choice.
 
 <p align="center"><img src="docs/assets/readme/attribution-before-after.svg" width="1040" alt="A matching Claude co-author line is removed; file contents stay the same, while commit IDs change."></p>
 
@@ -149,6 +149,7 @@ To undo a local cleanup, choose **6** for backup IDs and instructions, or run `b
 | Cleanup says the working tree is not clean | Commit or stash your work, then preview again. ByeClaude does not discard it for you. |
 | Protection conflicts with another hook | Choose **5**. Existing hooks are preserved; integrate with that hook manager instead of overwriting it. |
 | A push is blocked after installing protection | Existing history can still contain matches. Choose **1**, then **3** to review them. Installing hooks alone does not clean old commits. |
+| CI fails on an unrelated new change | The full-history Action checks older reachable commits too. Run `byeclaude check --include-remotes` locally before making it required, then review `plan` if it finds historical attribution. |
 | The blacklist needs repair | Choose **2**, then **reset**. Review the warning and type `RESET` to restore the Claude default. |
 | I want to block several identities | Choose **2** to add each exact email. Existing rules stay selected; default hooks use the updated policy immediately. |
 
@@ -156,6 +157,7 @@ To undo a local cleanup, choose **6** for backup IDs and instructions, or run `b
 
 - Audits and previews are read-only. Cleanup and hook installation need separate confirmation.
 - A changed repository or policy during review cancels the pending operation. Recovery and publishing protect newer work.
+- Backup refs remain local until you verify the remote result and prune one explicitly. `git push --mirror` is blocked while ByeClaude recovery refs are present.
 - Hooks apply to this clone. GitHub web/API commits, other clones and deliberately bypassed hooks need separate protection.
 - GitHub caches, historical PR objects, forks and other clones may retain old commits. No tool can promise their erasure from this workflow.
 

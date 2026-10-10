@@ -241,6 +241,18 @@ func TestAuditAndRewriteCommandFlow(t *testing.T) {
 	if err := runRestore([]string{"--repo", dir, "--backup", backups[0], "--apply"}); err != nil {
 		t.Fatal(err)
 	}
+	if err := runBackups([]string{"--repo", dir, "--prune", backups[0]}); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err := clean.BackupRefs(repo); err != nil || len(ids) != 1 {
+		t.Fatalf("preview pruned backup: %v %v", ids, err)
+	}
+	if err := runBackups([]string{"--repo", dir, "--prune", backups[0], "--confirm"}); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err := clean.BackupRefs(repo); err != nil || len(ids) != 0 {
+		t.Fatalf("confirmed prune left backup: %v %v", ids, err)
+	}
 	if err := runCheck([]string{"--repo", dir}); err == nil {
 		t.Fatal("restored history should contain matching trailer")
 	}
