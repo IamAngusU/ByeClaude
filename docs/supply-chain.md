@@ -2,7 +2,7 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.9` tag. This is explicit
+The installers default to the `v0.1.0-alpha.10` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
 stable release exists. Go is only needed to build from source;
