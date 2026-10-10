@@ -4,6 +4,15 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+## v0.1.0-alpha.10 - 2026-10-10
+
+### Project
+
+- Pin the prebuilt Action to the reviewed alpha.9 audit engine and its six
+  attested release digests.
+- Make alpha.10 the explicit default for the one-line installers and the
+  copy-ready GitHub Actions examples.
+
 ## v0.1.0-alpha.9 - 2026-10-10
 
 ### Product
