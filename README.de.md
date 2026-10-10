@@ -39,7 +39,7 @@ Ich nutze Claude Code selbst nicht in meinem täglichen Workflow. Die Claude-Att
 <summary><strong>Windows · in PowerShell einfügen</strong></summary>
 
 ```powershell
-irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.ps1 | iex
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.9/install.ps1 | iex
 ```
 
 </details>
@@ -48,12 +48,12 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install
 <summary><strong>macOS / Linux · in Bash, Zsh oder sh einfügen</strong></summary>
 
 ```sh
-(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.sh -o "$f" && sh "$f")
+(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.9/install.sh -o "$f" && sh "$f")
 ```
 
 </details>
 
-Das Installationsskript erkennt die Plattform, lädt das passende Release, prüft SHA-256, installiert in deinem Benutzerordner, richtet den Benutzer-PATH ein und öffnet das geführte Setup in einem interaktiven Terminal. Der eine eingefügte Befehl ist die vollständige Installation; Entpacken, Bauen und ein manueller PATH-Schritt entfallen. Git selbst bleibt Voraussetzung. [Windows-Skript prüfen](install.ps1) · [Unix-Skript prüfen](install.sh) · [Manueller Download und Supply-Chain-Details](docs/supply-chain.md).
+Das Installationsskript erkennt die Plattform, lädt das passende Release, prüft SHA-256 und mit vorhandenem `gh` zusätzlich automatisch die GitHub-Attestation, installiert in deinem Benutzerordner, richtet den Benutzer-PATH ein und öffnet das geführte Setup in einem interaktiven Terminal. Der eine eingefügte Befehl ist die vollständige Installation; Entpacken, Bauen und ein manueller PATH-Schritt entfallen. Git selbst bleibt Voraussetzung. [Windows-Skript prüfen](install.ps1) · [Unix-Skript prüfen](install.sh) · [Manueller Download und Supply-Chain-Details](docs/supply-chain.md).
 
 ### Repository einrichten
 
@@ -76,6 +76,7 @@ byeclaude
 | --- | --- |
 | Geführtes Setup erneut öffnen | `byeclaude guide` |
 | Nur prüfen, nichts ändern | `byeclaude scan` |
+| Nur noch nicht veröffentlichte Commits bereinigen | `byeclaude clean --unpushed`, danach mit `--apply` |
 | Lokale Aktivität live ansehen | `byeclaude metrics --watch` |
 
 ![Aufgezeichneter geführter Terminal-Ablauf](docs/assets/readme/terminal-flow.gif)
@@ -98,6 +99,16 @@ byeclaude verify
 ```
 
 `push` verwendet einen atomaren Force-with-Lease-Workflow und verweigert die Veröffentlichung, wenn sich lokale oder entfernte Refs unerwartet geändert haben. `verify` prüft anschließend frisch geladene GitHub-Historie und veröffentlichte PR-Refs in den tatsächlich erreichbaren Bereichen.
+
+Wenn die betroffenen Commits noch nie gepusht wurden, ist dieser kleinere Weg besser:
+
+```sh
+byeclaude clean --unpushed          # read-only Vorschau
+byeclaude clean --unpushed --apply  # nur dieser Branch oberhalb des live geprüften Upstreams
+git push
+```
+
+Ein veralteter Tracking-Stand, fehlender Upstream oder divergierter Branch wird vor jeder Änderung abgelehnt. Veröffentlichte Commits, andere Branches und Tags bleiben unverändert; der anschließende Push ist deshalb normalerweise ein Fast-Forward.
 
 Ein lokaler Rewrite lässt sich über `byeclaude restore --backup ID --apply` zurücksetzen. Restore überschreibt keine späteren lokalen Änderungen. [Sicherheit und Recovery](docs/safety.md).
 

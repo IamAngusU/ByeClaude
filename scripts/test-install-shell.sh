@@ -2,6 +2,7 @@
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+grep -Fq 'gh attestation verify "$tmp/byeclaude" --repo angusu-de/ByeClaude' "$repo_root/install.sh"
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/byeclaude-installer-test.XXXXXX")
 cleanup() {
   case "$tmp" in "${TMPDIR:-/tmp}"/byeclaude-installer-test.*) rm -rf -- "$tmp" ;; *) echo "Refusing unexpected test directory: $tmp" >&2 ;; esac

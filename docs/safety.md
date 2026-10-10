@@ -55,6 +55,10 @@ refs/byeclaude/backups/<UTC timestamp>-<random suffix>/heads/...
 refs/byeclaude/backups/<UTC timestamp>-<random suffix>/tags/...
 ```
 
+For `--unpushed`, the same recovery set includes an
+`refs/byeclaude/upstreams/<ID>/heads/...` marker for the exact remote boundary
+that was verified before the rewrite. It authorizes no other remote SHA.
+
 List available backups:
 
 ```sh
@@ -69,8 +73,9 @@ byeclaude backups --prune BACKUP_ID
 byeclaude backups --prune BACKUP_ID --confirm
 ```
 
-Pruning deletes only `refs/byeclaude/backups/BACKUP_ID/*` and the paired
-`refs/byeclaude/results/BACKUP_ID/*`, in one guarded ref transaction. It does
+Pruning deletes only `refs/byeclaude/backups/BACKUP_ID/*`, the paired
+`refs/byeclaude/results/BACKUP_ID/*` and any recorded
+`refs/byeclaude/upstreams/BACKUP_ID/*`, in one guarded ref transaction. It does
 not run garbage collection; ordinary Git maintenance decides when unreachable
 objects are removed. An invalid or unknown ID is rejected. ByeClaude's
 pre-push guard also blocks attempts to publish any `refs/byeclaude/*` ref, so
@@ -84,6 +89,21 @@ byeclaude restore --backup 20260922T183653Z --apply
 ```
 
 A restore only moves local refs. It does not force-push the old history to a remote.
+
+## Unpublished commits
+
+`byeclaude clean --unpushed` is the preferred path before the first push. It
+only considers commits on the checked-out branch above its configured remote
+upstream. Before preview and again immediately before apply, ByeClaude checks
+the tracking SHA against the live remote and proves the upstream is an
+ancestor of `HEAD`. Other local branches, tags and already published commits
+are outside the rewrite selection.
+
+The mode refuses detached HEAD, missing or local-only upstreams, stale tracking
+refs, divergence and differently named local/upstream branches. Run the
+suggested fetch or upstream command, inspect the result, and retry. A normal
+`git push` after this rewrite is usually a fast-forward because the published
+boundary stays unchanged.
 
 ## Remote update model
 

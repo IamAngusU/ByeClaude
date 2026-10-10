@@ -14,6 +14,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Public VPS demo](demo-server.md) | You want a one-binary public-repository demo with an embedded UI, bounded work and no mutation endpoints. |
 | [Rewrite planning](planning.md) | You want to know how much of the DAG, refs and signatures a cleanup would affect before changing anything. |
 | [GitHub verification](github-verification.md) | Recheck remote history, pull refs and contributor API results. |
+| [GitHub Support request](github-support.md) | Copy a precise request when PR refs or contributor caches retain old evidence. |
 | [GitHub Rulesets](github-rulesets.md) | Reject matching commit metadata on protected branches. |
 | [Author/committer correction](identity-correction.md) | Review and correct actual Git object identity headers. |
 | [GitHub identity enrichment](identity.md) | You want account-level metrics or need to trace a stale GitHub user through numeric noreply IDs and pull refs. |
@@ -25,7 +26,15 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Fixture repository suite](fixtures.md) | You want disposable real Git repositories that exercise the product safely. |
 | [Release integrity](supply-chain.md) | You want to verify checksums, SBOM contents, build provenance or reproducibility claims. |
 
-The shortest safe workflow is still:
+The shortest safe workflow for commits that have not reached the upstream is:
+
+```sh
+byeclaude clean --unpushed          # preview only this branch's unpublished commits
+byeclaude clean --unpushed --apply  # apply locally after live-upstream verification
+git push
+```
+
+Use the full-history flow when matching metadata has already been published:
 
 ```sh
 byeclaude scan

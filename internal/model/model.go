@@ -27,6 +27,11 @@ type RewriteReport struct {
 	CreditsRemoved     int    `json:"credits_removed"`
 	Repository         string `json:"repository"`
 	Backup             string `json:"backup"`
+	Scope              string `json:"scope"`
+	Upstream           string `json:"upstream,omitempty"`
+	UpstreamCommit     string `json:"upstream_commit,omitempty"`
+	Remote             string `json:"remote,omitempty"`
+	RemoteVerified     bool   `json:"remote_verified,omitempty"`
 	CommitsVisited     int    `json:"commits_visited"`
 	CommitsRewritten   int    `json:"commits_rewritten"`
 	TreesVerified      int    `json:"tree_hashes_verified"`
@@ -40,6 +45,11 @@ type RewriteReport struct {
 
 type PlanReport struct {
 	Repository             string         `json:"repository"`
+	Scope                  string         `json:"scope"`
+	Upstream               string         `json:"upstream,omitempty"`
+	UpstreamCommit         string         `json:"upstream_commit,omitempty"`
+	Remote                 string         `json:"remote,omitempty"`
+	RemoteVerified         bool           `json:"remote_verified,omitempty"`
 	Commits                int            `json:"commits_scanned"`
 	MatchedCommits         int            `json:"matched_commits"`
 	CommitMatchPct         float64        `json:"commit_match_pct"`

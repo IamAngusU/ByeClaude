@@ -55,6 +55,23 @@ but clients with their own disabled/custom hook settings will not. GitHub Deskto
 
 ## Clean existing history
 
+For the common case where the affected commits have never been pushed, start
+with the smallest scope:
+
+```sh
+byeclaude clean --unpushed          # read-only preview
+byeclaude clean --unpushed --apply  # only the current branch above its upstream
+git push
+```
+
+This mode resolves the checked-out branch's configured upstream, compares the
+local tracking SHA with `git ls-remote`, requires that upstream to be an
+ancestor of `HEAD`, and touches no other branch or tag. It refuses a stale
+tracking ref, a missing upstream, divergence or differently named local and
+remote branches before creating a backup.
+
+For attribution that is already in published history, use the full flow:
+
 Always check before publishing a rewritten graph:
 
 ```sh
@@ -74,9 +91,11 @@ collaborators before any rewrite.
 
 Cleanup streams commit objects instead of retaining the full history in
 memory. Ctrl+C cancels the active Git operation before any remaining ref
-update. A successful rewrite prints a proof count showing that every rewritten
-commit kept the same tree hash. After verifying the remote result, remove an
-individual local recovery set with `byeclaude backups --prune ID --confirm`.
+update. A successful rewrite reads each updated ref back from Git and prints a
+proof count showing that its old and new tip resolve to the same tree. Each
+rewritten commit also passes a tree-header guard before it is stored. After
+verifying the remote result, remove an individual local recovery set with
+`byeclaude backups --prune ID --confirm`.
 
 ## Commands by purpose
 
@@ -94,6 +113,8 @@ individual local recovery set with `byeclaude backups --prune ID --confirm`.
 | Include fetched remote-tracking refs | `byeclaude scan --include-remotes` |
 | Include matching Git author/committer identities | `byeclaude scan --include-identities` |
 | Preview rewrite impact | `byeclaude plan` |
+| Preview only unpublished commits on the current branch | `byeclaude clean --unpushed` |
+| Rewrite only unpublished commits on the current branch | `byeclaude clean --unpushed --apply` |
 | Preview author-only correction from configured Git identity | `byeclaude plan --author-from-git` |
 | Apply author-only correction with opt-in | `byeclaude clean --author-from-git --apply` |
 | Preview committer-only correction | `byeclaude plan --committer-from-git` |

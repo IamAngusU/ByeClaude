@@ -116,7 +116,7 @@ Usage:
   byeclaude verify [--repo OWNER/REPO] [--github-user LOGIN] [--strict] [--max-pull-refs 200] [--rules FILE] [--json]
   byeclaude ruleset export|install|status --repo OWNER/REPO [--rules FILE] [--include-identities] [--confirm]
   byeclaude serve [--listen 127.0.0.1:8080] [--max-inflight 2] [--max-per-client 1] [--timeout 60s] [--rules FILE]
-  byeclaude clean [--apply] [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
+  byeclaude clean [--unpushed] [--apply] [--repo PATH] [--rules FILE] [--identity-from-git | --replace-author "Name <email>" --replace-committer "Name <email>"] [--push] [--verify-github] [--github-user LOGIN] [--json]
   byeclaude push [--backup ID] [--repo PATH] [--rules FILE] [--remote origin] [--verify-github] [--github-user LOGIN]
   byeclaude hook install|remove|pre-push-install|pre-push-remove [--repo PATH] [--rules FILE] [--shared-worktrees]
   byeclaude backups [--repo PATH] [--prune ID --confirm]
@@ -294,6 +294,10 @@ func runPlan(args []string) error {
 
 func printPlanReport(report model.PlanReport) {
 	fmt.Printf("repository   %s\n", report.Repository)
+	fmt.Printf("scope        %s\n", report.Scope)
+	if report.Upstream != "" {
+		fmt.Printf("upstream     %s (live remote verified: %t)\n", report.Upstream, report.RemoteVerified)
+	}
 	fmt.Printf("commits      %d\n", report.Commits)
 	fmt.Printf("matched      %d (%.2f%%)\n", report.MatchedCommits, report.CommitMatchPct)
 	fmt.Printf("trailers     %d\n", len(report.Matches))
@@ -325,6 +329,7 @@ func runClean(args []string) error {
 	fs := flag.NewFlagSet("clean", flag.ContinueOnError)
 	repoPath, jsonOut := common(fs)
 	apply := fs.Bool("apply", false, "rewrite local history")
+	unpushed := fs.Bool("unpushed", false, "only rewrite commits ahead of the checked-out branch's live upstream")
 	push := fs.Bool("push", false, "push rewritten refs using explicit force-with-lease")
 	remote := fs.String("remote", "origin", "remote to push")
 	identityFlags := identityRewriteFlags(fs)
@@ -365,15 +370,27 @@ func runClean(args []string) error {
 			return err
 		}
 	}
-	plan, err := clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+	var plan model.PlanReport
+	if *unpushed {
+		plan, err = clean.PlanUnpushedWithIdentityContext(ctx, repo, matcher, opts)
+	} else {
+		plan, err = clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+	}
 	if err != nil {
 		return err
+	}
+	if *unpushed && *push && *remote != plan.Remote {
+		return fmt.Errorf("--unpushed verified upstream remote %q; use --remote %s or omit --push", plan.Remote, plan.Remote)
 	}
 	if plan.MatchedCommits == 0 {
 		if *jsonOut {
 			fmt.Println(clean.JSON(plan))
 		} else {
-			fmt.Println("No matching selected attribution metadata found. Nothing to do.")
+			if *unpushed {
+				fmt.Printf("No matching selected attribution metadata found in commits ahead of %s. Nothing to do.\n", plan.Upstream)
+			} else {
+				fmt.Println("No matching selected attribution metadata found. Nothing to do.")
+			}
 			identityAdvice(repo, matcher)
 		}
 		return nil
@@ -393,24 +410,36 @@ func runClean(args []string) error {
 	if !plan.RewriteReady {
 		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
 	}
-	report, _, err := clean.RewriteWithIdentityContext(ctx, repo, matcher, opts)
+	var report model.RewriteReport
+	if *unpushed {
+		report, _, err = clean.RewriteUnpushedWithIdentityContext(ctx, repo, matcher, opts)
+	} else {
+		report, _, err = clean.RewriteWithIdentityContext(ctx, repo, matcher, opts)
+	}
 	if err != nil {
 		return err
 	}
 	metrics.Record(metrics.Counters{Cleanups: 1, CleanupCredits: metricCount(int64(report.CreditsRemoved)), CommitsRewritten: metricCount(int64(report.CommitsRewritten)), IdentityFields: metricCount(int64(report.AuthorsReplaced)) + metricCount(int64(report.CommittersReplaced)), WorkMS: metricCount(report.DurationMS)})
-	after, err := clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+	var after model.PlanReport
+	if *unpushed {
+		after, err = clean.PlanUnpushedWithIdentityContext(ctx, repo, matcher, opts)
+	} else {
+		after, err = clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("local rewrite succeeded (backup %s), but post-rewrite verification could not finish: %w", report.Backup, err)
 	}
 	if after.MatchedCommits != 0 {
 		return fmt.Errorf("verification failed: %d matching selected metadata commit(s) remain", after.MatchedCommits)
 	}
-	scan, err := clean.ScanContext(ctx, repo, matcher)
-	if err != nil {
-		return err
-	}
-	if len(scan.Matches) != 0 {
-		return fmt.Errorf("verification failed: %d matching trailers remain", len(scan.Matches))
+	if !*unpushed {
+		scan, err := clean.ScanContext(ctx, repo, matcher)
+		if err != nil {
+			return err
+		}
+		if len(scan.Matches) != 0 {
+			return fmt.Errorf("verification failed: %d matching trailers remain", len(scan.Matches))
+		}
 	}
 	if *push {
 		if err := clean.PushBackup(repo, *remote, report.Backup); err != nil {
@@ -422,7 +451,7 @@ func runClean(args []string) error {
 		return nil
 	}
 	fmt.Printf("backup      %s\nrewritten   %d commit(s)\nrefs        %d updated\ntags        %d rewritten\nduration    %s\n", report.Backup, report.CommitsRewritten, report.RefsUpdated, report.TagsRewritten, metricDuration(report.DurationMS))
-	fmt.Printf("proof       %d/%d rewritten commit tree hashes unchanged\n", report.TreesVerified, report.CommitsRewritten)
+	fmt.Printf("proof       %d/%d updated ref tree tips unchanged (read back from Git)\n", report.TreesVerified, report.RefsUpdated)
 	if report.AuthorsReplaced+report.CommittersReplaced > 0 {
 		fmt.Printf("identity    %d author(s), %d committer(s) replaced\n", report.AuthorsReplaced, report.CommittersReplaced)
 	}
@@ -435,7 +464,11 @@ func runClean(args []string) error {
 	} else {
 		fmt.Println("push        not requested; GitHub is unchanged")
 	}
-	fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
+	if *unpushed {
+		fmt.Printf("verify      selected metadata absent from commits ahead of %s; other refs unchanged\n", report.Upstream)
+	} else {
+		fmt.Println("verify      selected metadata absent from local heads/tags; external references not checked")
+	}
 	if opts.Author == nil && opts.Committer == nil {
 		identityAdvice(repo, matcher)
 	}

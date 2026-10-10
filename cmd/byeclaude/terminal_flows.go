@@ -236,6 +236,21 @@ func (ui *terminalUI) protect(repo *gitx.Repo) error {
 
 func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 	ui.heading("Preview cleanup / Choose what changes")
+	useUnpushed := false
+	if _, upstreamErr := repo.Run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"); upstreamErr == nil {
+		ui.option("u", "Only unpublished commits on this branch (recommended)", "Verifies the live upstream first; other branches and tags stay unchanged.")
+		ui.option("a", "All local branches and tags", "Use when matching metadata was already published or lives elsewhere.")
+		scope, err := ui.choice("History scope [Enter: u, q: back]", "u", "u", "a", "q")
+		if err != nil {
+			return err
+		}
+		if scope == "q" {
+			return errMenuBack
+		}
+		useUnpushed = scope == "u"
+	} else {
+		ui.hint("No configured upstream was found, so this preview covers all local branches and tags.")
+	}
 	ui.option("1", "Remove matching co-author credit lines (recommended)", "Keeps actual author and committer fields unchanged.")
 	ui.option("2", "Also correct matching authors", "Advanced: use your Git identity only if it is the actual author.")
 	ui.option("3", "Also correct matching committers", "Advanced: use your Git identity only if it is the actual committer.")
@@ -248,6 +263,9 @@ func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 		return errMenuBack
 	}
 	args := []string{"--repo", ui.repo}
+	if useUnpushed {
+		args = append(args, "--unpushed")
+	}
 	opts := clean.IdentityRewriteOptions{}
 	if mode != "1" {
 		identity, err := configuredGitIdentity(repo)
@@ -276,13 +294,21 @@ func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 	var plan model.PlanReport
 	err = ui.working("Review cleanup impact", func(ctx context.Context) error {
 		var planErr error
-		plan, planErr = clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+		if useUnpushed {
+			plan, planErr = clean.PlanUnpushedWithIdentityContext(ctx, repo, matcher, opts)
+		} else {
+			plan, planErr = clean.PlanWithIdentityContext(ctx, repo, matcher, opts)
+		}
 		return planErr
 	})
 	if err != nil {
 		return err
 	}
 	ui.rule()
+	fmt.Fprintf(ui.out, "  %-27s %s\n", "Scope", terminalText(plan.Scope))
+	if plan.Upstream != "" {
+		fmt.Fprintf(ui.out, "  %-27s %s\n", "Upstream", terminalText(plan.Upstream)+" (live verified)")
+	}
 	ui.stat("Commits checked", plan.Commits)
 	ui.stat("Matching commits", plan.MatchedCommits)
 	ui.stat("Credit lines to remove", len(plan.Matches))
@@ -291,7 +317,11 @@ func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 	ui.stat("Tags to move", plan.TagRefsToMove)
 	ui.stat("Signatures lost", plan.SignaturesAtRisk)
 	ui.rule()
-	ui.hint("Rewritten commits include descendants of matching commits.")
+	if useUnpushed {
+		ui.hint("Only commits above the verified upstream can change in this preview.")
+	} else {
+		ui.hint("Rewritten commits include descendants of matching commits.")
+	}
 	if plan.AuthorsToReplace+plan.CommittersToReplace > 0 {
 		fmt.Fprintf(ui.out, "  Identity changes  %d author(s), %d committer(s)\n", plan.AuthorsToReplace, plan.CommittersToReplace)
 	}
@@ -328,7 +358,11 @@ func (ui *terminalUI) cleanup(repo *gitx.Repo) error {
 		return err
 	}
 	ui.hint("Local cleanup finished. Keep the backup ID; choose 6 for recovery instructions.")
-	ui.hint("To publish later, open a terminal in this repository and run byeclaude push.")
-	ui.hint("Coordinate with collaborators before publishing rewritten history.")
+	if useUnpushed {
+		ui.hint("Published history stayed unchanged. A normal git push is usually enough.")
+	} else {
+		ui.hint("To publish later, open a terminal in this repository and run byeclaude push.")
+		ui.hint("Coordinate with collaborators before publishing rewritten history.")
+	}
 	return nil
 }

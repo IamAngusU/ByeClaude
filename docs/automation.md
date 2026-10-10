@@ -114,7 +114,7 @@ jobs:
 
 The example is ready to copy and uses the built-in Claude/Anthropic rule; no extra rules file is required. Add `rules-file` only after committing your own reviewed JSON file.
 
-This action revision pins the **alpha.7 audit engine** ([version and six digests](../action-release/README.md)); the CLI installer supplies alpha.8. Action revisions pin an already published engine so the checksums can be reviewed before consumption. For an immutable action and digest manifest, replace the action tag with its [full commit SHA](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
+This action revision pins the **alpha.7 audit engine** ([version and six digests](../action-release/README.md)); the CLI installer supplies alpha.9. Action revisions pin an already published engine so the checksums can be reviewed before consumption. For an immutable action and digest manifest, replace the action tag with its [full commit SHA](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
 
 The action runs the equivalent of:
 

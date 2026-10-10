@@ -10,22 +10,25 @@ $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitect
     default { throw "Unsupported architecture: $_" }
 }
 $asset = "byeclaude_windows_${arch}.exe"
-$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.8' }
+$version = if ($env:BYECLAUDE_VERSION) { $env:BYECLAUDE_VERSION.Trim() } else { 'v0.1.0-alpha.9' }
 
 if ($version -ne 'latest' -and $version -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
     throw "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag"
 }
 
 if ($env:BYECLAUDE_DOWNLOAD_BASE) {
+    $officialDownload = $false
     $base = $env:BYECLAUDE_DOWNLOAD_BASE.TrimEnd('/')
     if ($base -notmatch '^(https|file)://') {
         throw 'BYECLAUDE_DOWNLOAD_BASE must use https:// or file://'
     }
 }
 elseif ($version -eq 'latest') {
+    $officialDownload = $true
     $base = "https://github.com/$repo/releases/latest/download"
 }
 else {
+    $officialDownload = $true
     $base = "https://github.com/$repo/releases/download/$version"
 }
 
@@ -55,6 +58,15 @@ try {
     $expected = ($line -split '\s+')[0].ToLowerInvariant()
     $actual = (Get-FileHash -LiteralPath $bin -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actual -ne $expected) { throw "Checksum mismatch for $asset" }
+
+    $gh = Get-Command gh -ErrorAction SilentlyContinue
+    if ($officialDownload -and $env:BYECLAUDE_SKIP_ATTESTATION -ne '1' -and $gh) {
+        Write-Host 'Verifying GitHub artifact attestation from angusu-de/ByeClaude...'
+        & $gh.Source attestation verify $bin --repo angusu-de/ByeClaude
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Artifact attestation verification failed. Retry, or set BYECLAUDE_SKIP_ATTESTATION=1 only if you deliberately want checksum-only verification.'
+        }
+    }
 
     $destinations = @()
     if ($env:BYECLAUDE_INSTALL_DIR) { $destinations += [IO.Path]::GetFullPath($env:BYECLAUDE_INSTALL_DIR) }

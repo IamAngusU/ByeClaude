@@ -4,6 +4,29 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+## v0.1.0-alpha.9 - 2026-10-10
+
+### Product
+
+- Add `clean --unpushed` for the common pre-push case, scoped to the current
+  branch above a live-verified remote upstream.
+- Recognize exact Claude attribution suffixes preserved on both sides of a
+  GitHub squash/merge separator, backed by a source-linked message corpus.
+- Add a copy-ready GitHub Support request for residual pull refs and caches.
+
+### Safety and correctness
+
+- Read updated refs back through Git and compare old/new tip trees after the
+  atomic update, rolling refs back automatically if the proof fails.
+- Allow reviewed unpublished results to publish with an exact live-remote
+  lease only when that remote is an ancestor of both original and rewritten
+  local tips.
+- Make the one-line installers verify GitHub artifact attestations
+  automatically when `gh` is available.
+- Extend regression and integration coverage for remote boundaries, proof
+  rollback and real message shapes; the release branch measures 74.3% locally
+  against the existing 71% CI floor.
+
 ## v0.1.0-alpha.8 - 2026-10-10
 
 ### Project

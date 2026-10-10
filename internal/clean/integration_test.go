@@ -75,8 +75,8 @@ func TestRewritePreservesTreesAndHumanTrailer(t *testing.T) {
 	if report.CommitsRewritten != 2 {
 		t.Fatalf("rewritten commits = %d, want 2", report.CommitsRewritten)
 	}
-	if report.TreesVerified != report.CommitsRewritten {
-		t.Fatalf("tree proof = %d/%d", report.TreesVerified, report.CommitsRewritten)
+	if report.TreesVerified != report.RefsUpdated {
+		t.Fatalf("tree proof = %d/%d updated refs", report.TreesVerified, report.RefsUpdated)
 	}
 	if report.CreditsRemoved != 1 {
 		t.Fatalf("removed credit count includes descendants: %d", report.CreditsRemoved)
@@ -145,6 +145,41 @@ func TestRewriteHonorsCanceledContextBeforeCreatingBackup(t *testing.T) {
 	}
 	if ids, err := BackupRefs(repo); err != nil || len(ids) != 0 {
 		t.Fatalf("canceled rewrite created recovery refs: %v %v", ids, err)
+	}
+}
+
+func TestPostUpdateTreeProofDetectsMismatchAndGuardedRollbackRestoresRef(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	git(t, dir, "config", "user.name", "Human")
+	git(t, dir, "config", "user.email", "human@example.org")
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "file.txt")
+	git(t, dir, "commit", "-q", "-m", "old")
+	oldSHA := git(t, dir, "rev-parse", "HEAD")
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("new tree\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(t, dir, "add", "file.txt")
+	git(t, dir, "commit", "-q", "-m", "new")
+	newSHA := git(t, dir, "rev-parse", "HEAD")
+
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldRefs := []Ref{{Name: "refs/heads/main", SHA: oldSHA, Type: "commit"}}
+	newRefs := map[string]string{"refs/heads/main": newSHA}
+	if verified, err := verifyUpdatedRefTreesContext(context.Background(), repo, oldRefs, newRefs); err == nil || verified != 0 {
+		t.Fatalf("mismatched tree proof succeeded: verified=%d err=%v", verified, err)
+	}
+	if err := rollbackUpdatedRefs(repo, oldRefs, newRefs); err != nil {
+		t.Fatal(err)
+	}
+	if got := git(t, dir, "rev-parse", "refs/heads/main"); got != oldSHA {
+		t.Fatalf("rollback restored %s, want %s", got, oldSHA)
 	}
 }
 

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -30,6 +32,39 @@ func TestMenuPreviewNeverAppliesOnDefaultOrEOF(t *testing.T) {
 				t.Fatal(output.String())
 			}
 		})
+	}
+}
+
+func TestMenuDefaultsToLiveVerifiedUnpushedScopeWhenAvailable(t *testing.T) {
+	dir := createCLIRepository(t, false)
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	runGit(t, t.TempDir(), "init", "--bare", "-q", remote)
+	branch := runGit(t, dir, "branch", "--show-current")
+	runGit(t, dir, "remote", "add", "origin", remote)
+	runGit(t, dir, "push", "-q", "-u", "origin", branch)
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, dir, "add", "a.txt")
+	runGit(t, dir, "commit", "-q", "-m", "local\n\nCo-authored-by: Claude <noreply@anthropic.com>")
+
+	applied := false
+	var output bytes.Buffer
+	ui := terminalUI{repo: dir, in: bufio.NewReader(strings.NewReader("3\n\n1\nCLEAN\nq\n")), out: &output, invoke: func(command string, args []string) error {
+		if command == "clean" {
+			applied = true
+			joined := strings.Join(args, " ")
+			if !strings.Contains(joined, "--unpushed") || !strings.Contains(joined, "--apply") {
+				t.Fatalf("cleanup args: %s", joined)
+			}
+		}
+		return nil
+	}}
+	if err := ui.run(); err != nil {
+		t.Fatal(err)
+	}
+	if !applied || !strings.Contains(output.String(), "live verified") || !strings.Contains(output.String(), "Published history stayed unchanged") {
+		t.Fatal(output.String())
 	}
 }
 
