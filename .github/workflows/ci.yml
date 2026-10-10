@@ -83,7 +83,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       - run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
-      - run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.0 -exclude-generated ./...
+      - run: go run github.com/securego/gosec/v2/cmd/gosec@7b1b5cebe007d62fb58eacb90fc571112939ec30 -exclude-generated ./... # Go 1.27.2 support
 
   installer-shell:
     name: Shell installer

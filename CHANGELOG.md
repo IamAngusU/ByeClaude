@@ -22,6 +22,8 @@ All notable changes to ByeClaude are documented here.
 - Attest and verify every release artifact with GitHub artifact attestations
   before release publication.
 - Build with Go 1.27.2 to include the current standard-library security fixes.
+- Pin gosec's upstream Go 1.27.2 compatibility commit until its next tagged
+  release, keeping the security gate functional with the patched toolchain.
 
 ## v0.1.0-alpha.1 - 2026-09-25
 
