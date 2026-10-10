@@ -25,6 +25,11 @@ type explainingMatcher interface {
 	MatchIDs(name, email string) []string
 }
 
+type lineRange struct {
+	start int
+	end   int
+}
+
 func messageRuleIDs(matcher attribution.Matcher, line string, trailer bool) []string {
 	if matcher == nil {
 		return nil
@@ -35,60 +40,142 @@ func messageRuleIDs(matcher attribution.Matcher, line string, trailer bool) []st
 	return nil
 }
 
-func evidenceForMessage(message string, matcher attribution.Matcher) ([]TrailerEvidence, []int, []string, int, int) {
+func evidenceForMessage(message string, matcher attribution.Matcher) ([]TrailerEvidence, []int, []string, []lineRange, int) {
 	normalized := strings.ReplaceAll(message, "\r\n", "\n")
 	lines := strings.Split(normalized, "\n")
 	start, end, hasTrailers := trailerBlock(lines)
-	var evidence []TrailerEvidence
-	var indexes []int
-
+	var blocks []lineRange
 	if hasTrailers {
-		for i := start; i < end; i++ {
-			line := lines[i]
-			name, email, parsed := parseCoAuthor(line)
-			var ids []string
-			field := ""
-			if parsed && matcher.Match(name, email) {
-				ids = []string{matcher.ID()}
-				if explaining, ok := matcher.(explainingMatcher); ok {
-					ids = explaining.MatchIDs(name, email)
-				}
-				field = "Co-Authored-By"
-			} else {
-				ids = messageRuleIDs(matcher, line, true)
-				if len(ids) > 0 {
-					field, _, _ = strings.Cut(strings.TrimSpace(line), ":")
-				}
-			}
-			if len(ids) == 0 {
-				continue
-			}
-			evidence = append(evidence, TrailerEvidence{Line: strings.TrimSpace(line), Field: field, Name: name, Email: email, RuleIDs: ids})
-			indexes = append(indexes, i)
-			// A matched trailer owns its folded continuation lines.
-			for i+1 < end && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t")) {
-				i++
-				indexes = append(indexes, i)
-			}
+		blocks = append(blocks, lineRange{start: start, end: end})
+	}
+	finalEvidence, finalIndexes := evidenceForTrailerBlock(lines, start, end, hasTrailers, matcher)
+	evidence := finalEvidence
+	indexes := finalIndexes
+	separator := -1
+
+	// GitHub merge/squash messages can preserve an earlier generated footer,
+	// then append an exact separator and a second co-author block. Only inspect
+	// that earlier suffix when the final block already contains selected
+	// attribution, which keeps quoted body examples out of scope.
+	if hasTrailers && len(finalEvidence) > 0 {
+		candidate := start - 1
+		for candidate >= 0 && strings.TrimSpace(lines[candidate]) == "" {
+			candidate--
+		}
+		if candidate >= 0 && lines[candidate] == "---------" {
+			bodyEvidence, bodyIndexes, bodyBlocks := evidenceForGitHubSquashBody(lines, candidate, matcher)
+			evidence = append(bodyEvidence, finalEvidence...)
+			indexes = append(bodyIndexes, finalIndexes...)
+			blocks = append(bodyBlocks, blocks...)
+			separator = candidate
 		}
 	}
+	if separator < 0 {
+		markerEvidence, markerIndexes := evidenceForEndMarker(lines, start, hasTrailers, len(lines), matcher)
+		evidence = append(markerEvidence, evidence...)
+		indexes = append(markerIndexes, indexes...)
+	}
+	return evidence, indexes, lines, blocks, separator
+}
 
-	// Historical Claude Code markers are plain text immediately before the
-	// final trailer block (or the last non-empty line when no trailer exists).
-	marker := len(lines) - 1
+func evidenceForGitHubSquashBody(lines []string, limit int, matcher attribution.Matcher) ([]TrailerEvidence, []int, []lineRange) {
+	var evidence []TrailerEvidence
+	var indexes []int
+	var blocks []lineRange
+	for marker := 0; marker < limit; marker++ {
+		markerIDs := messageRuleIDs(matcher, lines[marker], false)
+		if len(markerIDs) == 0 {
+			continue
+		}
+		start := marker + 1
+		for start < limit && strings.TrimSpace(lines[start]) == "" {
+			start++
+		}
+		end := start
+		for end < limit {
+			line := lines[end]
+			if trailerRE.MatchString(line) || strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
+				end++
+				continue
+			}
+			break
+		}
+		if start == end {
+			continue
+		}
+		after := end
+		for after < limit && strings.TrimSpace(lines[after]) == "" {
+			after++
+		}
+		if after < limit && !strings.HasPrefix(lines[after], "* ") {
+			continue
+		}
+		trailerEvidence, trailerIndexes := evidenceForTrailerBlock(lines, start, end, true, matcher)
+		if len(trailerEvidence) == 0 {
+			continue
+		}
+		evidence = append(evidence, TrailerEvidence{Line: strings.TrimSpace(lines[marker]), Field: "message", RuleIDs: markerIDs})
+		evidence = append(evidence, trailerEvidence...)
+		indexes = append(indexes, marker)
+		indexes = append(indexes, trailerIndexes...)
+		blocks = append(blocks, lineRange{start: start, end: end})
+		marker = end - 1
+	}
+	return evidence, indexes, blocks
+}
+
+func evidenceForTrailerBlock(lines []string, start, end int, present bool, matcher attribution.Matcher) ([]TrailerEvidence, []int) {
+	if !present {
+		return nil, nil
+	}
+	var evidence []TrailerEvidence
+	var indexes []int
+	for i := start; i < end; i++ {
+		line := lines[i]
+		name, email, parsed := parseCoAuthor(line)
+		var ids []string
+		field := ""
+		if parsed && matcher.Match(name, email) {
+			ids = []string{matcher.ID()}
+			if explaining, ok := matcher.(explainingMatcher); ok {
+				ids = explaining.MatchIDs(name, email)
+			}
+			field = "Co-Authored-By"
+		} else {
+			ids = messageRuleIDs(matcher, line, true)
+			if len(ids) > 0 {
+				field, _, _ = strings.Cut(strings.TrimSpace(line), ":")
+			}
+		}
+		if len(ids) == 0 {
+			continue
+		}
+		evidence = append(evidence, TrailerEvidence{Line: strings.TrimSpace(line), Field: field, Name: name, Email: email, RuleIDs: ids})
+		indexes = append(indexes, i)
+		for i+1 < end && (strings.HasPrefix(lines[i+1], " ") || strings.HasPrefix(lines[i+1], "\t")) {
+			i++
+			indexes = append(indexes, i)
+		}
+	}
+	return evidence, indexes
+}
+
+func evidenceForEndMarker(lines []string, trailerStart int, hasTrailers bool, limit int, matcher attribution.Matcher) ([]TrailerEvidence, []int) {
+	marker := limit - 1
 	if hasTrailers {
-		marker = start - 1
+		marker = trailerStart - 1
 	}
 	for marker >= 0 && strings.TrimSpace(lines[marker]) == "" {
 		marker--
 	}
-	if marker >= 0 {
-		if ids := messageRuleIDs(matcher, lines[marker], false); len(ids) > 0 {
-			evidence = append([]TrailerEvidence{{Line: strings.TrimSpace(lines[marker]), Field: "message", RuleIDs: ids}}, evidence...)
-			indexes = append(indexes, marker)
-		}
+	if marker < 0 {
+		return nil, nil
 	}
-	return evidence, indexes, lines, start, end
+	ids := messageRuleIDs(matcher, lines[marker], false)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return []TrailerEvidence{{Line: strings.TrimSpace(lines[marker]), Field: "message", RuleIDs: ids}}, []int{marker}
 }
 
 func parseCoAuthor(line string) (name, email string, ok bool) {
@@ -129,9 +216,9 @@ func trailerBlock(lines []string) (int, int, bool) {
 	return start, end, true
 }
 
-// MatchingEvidence returns parsed Co-Authored-By evidence from the final Git
-// trailer block whose identity is accepted by matcher. Prose elsewhere in the
-// commit message is never considered.
+// MatchingEvidence returns selected evidence from the final attribution
+// suffix, including an exact GitHub-separated predecessor when the final
+// trailer block already matches. Prose elsewhere is never considered.
 func MatchingEvidence(message string, matcher attribution.Matcher) []TrailerEvidence {
 	if matcher == nil {
 		return nil
@@ -161,7 +248,7 @@ func StripMatchingTrailers(message string, matcher attribution.Matcher) (string,
 	if strings.Contains(message, "\r\n") {
 		newline = "\r\n"
 	}
-	evidence, indexes, lines, start, end := evidenceForMessage(message, matcher)
+	evidence, indexes, lines, blocks, separator := evidenceForMessage(message, matcher)
 	if len(evidence) == 0 {
 		return message, nil
 	}
@@ -176,21 +263,51 @@ func StripMatchingTrailers(message string, matcher attribution.Matcher) (string,
 
 	// If every line in the trailer block is removed, remove its blank
 	// separator too. Otherwise retain the separator for remaining trailers.
-	if start < end {
+	for _, block := range blocks {
 		allRemoved := true
-		for i := start; i < end; i++ {
+		for i := block.start; i < block.end; i++ {
 			if !remove[i] {
 				allRemoved = false
 				break
 			}
 		}
-		if allRemoved && start > 0 && lines[start-1] == "" {
-			remove[start-1] = true
+		if allRemoved && block.start > 0 && lines[block.start-1] == "" {
+			remove[block.start-1] = true
+		}
+		if allRemoved && separator >= 0 && block.end <= separator {
+			for i := block.end; i < separator && strings.TrimSpace(lines[i]) == ""; i++ {
+				remove[i] = true
+			}
+		}
+	}
+	if separator >= 0 {
+		allAttribution := true
+		for i := separator; allAttribution && i < len(lines); i++ {
+			if i == separator || strings.TrimSpace(lines[i]) == "" || remove[i] {
+				continue
+			}
+			allAttribution = false
+		}
+		if allAttribution {
+			remove[separator] = true
+			for i := separator - 1; i >= 0 && strings.TrimSpace(lines[i]) == ""; i-- {
+				remove[i] = true
+			}
+			for i := separator + 1; i < len(lines) && strings.TrimSpace(lines[i]) == ""; i++ {
+				remove[i] = true
+			}
 		}
 	}
 	// Removing a standalone marker must not leave a new double-blank gap.
 	for _, i := range indexes {
-		if i >= start && i < end {
+		inTrailer := false
+		for _, block := range blocks {
+			if i >= block.start && i < block.end {
+				inTrailer = true
+				break
+			}
+		}
+		if inTrailer {
 			continue
 		}
 		next := i + 1

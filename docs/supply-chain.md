@@ -2,11 +2,10 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.8` tag. This is explicit
+The installers default to the `v0.1.0-alpha.9` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
-stable release exists. Alpha.4 adds local metrics and optional, recoverable
-user PATH setup. Go is only needed to build from source;
+stable release exists. Go is only needed to build from source;
 release binaries need Git, with no admin rights or runtime installation.
 
 On Windows, download and inspect `install.ps1`, then run:
@@ -84,7 +83,14 @@ gh attestation verify byeclaude_windows_amd64.exe --repo angusu-de/ByeClaude
 
 The installers download a binary and the checksum file, require an exact
 matching asset entry, verify SHA-256 before installation, execute the staged
-binary, and replace an existing installation only after those checks pass.
+binary, and replace an existing installation only after those checks pass. For
+official GitHub downloads, an installed `gh` CLI also verifies the binary's
+attestation against the hard-coded `angusu-de/ByeClaude` builder repository.
+This removes the need to copy that repository name manually. A failed
+attestation stops installation before replacing an existing binary. Set
+`BYECLAUDE_SKIP_ATTESTATION=1` only for an intentional checksum-only install;
+custom `BYECLAUDE_DOWNLOAD_BASE` mirrors use their explicitly selected trust
+boundary and skip the GitHub-builder check.
 
 ## Reproducibility
 

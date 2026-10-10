@@ -1,0 +1,30 @@
+[
+  {
+    "name": "github squash footer with session",
+    "source": "https://github.com/YunosukeYoshino/skill-loom/commit/c577b4cd7a0067a6de53ec9dcbc939022bde3c50",
+    "message": "feat: add orchestration\n\n* docs: record the decision\n\nGenerated with Claude Code\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_example\n\n* feat: pin the source\n\nGenerated with Claude Code\n\nCo-Authored-By: Claude Code <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_example\n\n---------\n\nCo-authored-by: Claude Code <noreply@anthropic.com>\n",
+    "removed": 7,
+    "want": "feat: add orchestration\n\n* docs: record the decision\n\n* feat: pin the source\n"
+  },
+  {
+    "name": "claude dot com linked footer",
+    "source": "https://github.com/SeanOC/stuff/commit/1c4735072c5c0bc5b5920a1abee4b385aade82e0",
+    "message": "fix: preserve rendering\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>\n",
+    "removed": 3,
+    "want": "fix: preserve rendering\n"
+  },
+  {
+    "name": "linked marker and final coauthor",
+    "source": "https://github.com/SethRobertsonq/stagewise/commit/9eff5c395db3eac16dae1863f6223d5337467e68",
+    "message": "fix: prevent port conflicts\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n",
+    "removed": 2,
+    "want": "fix: prevent port conflicts\n"
+  },
+  {
+    "name": "quoted marker remains body prose",
+    "source": "regression fixture derived from GitHub squash messages",
+    "message": "docs: describe attribution\n\nExample output:\nGenerated with Claude Code\n\nThis sentence explains the example.\n",
+    "removed": 0,
+    "want": "docs: describe attribution\n\nExample output:\nGenerated with Claude Code\n\nThis sentence explains the example.\n"
+  }
+]

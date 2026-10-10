@@ -1,5 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$installerSource = [IO.File]::ReadAllText((Join-Path $repoRoot 'install.ps1'))
+if ($installerSource -notmatch '(?m)attestation verify \$bin --repo angusu-de/ByeClaude\r?$') {
+    throw 'Windows installer does not pin attestation verification to angusu-de/ByeClaude.'
+}
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('byeclaude-installer-test-' + [guid]::NewGuid().ToString('N'))
 $assets = Join-Path $temporary 'assets'
 $install = Join-Path $temporary 'install'

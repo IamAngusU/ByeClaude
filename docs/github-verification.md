@@ -56,6 +56,12 @@ The scan does not erase PR descriptions, comments, external forks, cached
 views or unreachable objects. GitHub Support may be necessary when contributor
 data remains stale after its refresh window.
 
+When advertised pull refs or stale contributor data remain, use the
+[copy-ready GitHub Support request](github-support.md). Fill it with the exact
+repository, backup ID, old/new tip IDs and `byeclaude verify --json` result;
+the template asks for inspection without promising that GitHub can purge every
+retained object.
+
 See [safety](safety.md), [identity enrichment](identity.md),
 [GitHub contributor guidance](https://docs.github.com/en/repositories/viewing-activity-and-data-for-your-repository/viewing-a-projects-contributors),
 and [REST contributor semantics](https://docs.github.com/en/rest/repos/repos#list-repository-contributors).

@@ -47,9 +47,18 @@ The same rewrite engine is integration-tested with a non-Claude synthetic bot ru
 8. Create backup refs for the original local heads/tags.
 9. Record the exact rewritten heads/tags under a private result-ref namespace.
 10. Update normal branch/tag refs in one ref transaction.
-11. Rescan rewritten history and require zero matches.
+11. Read each changed ref back through Git and compare its old and new
+    `^{tree}` values. A mismatch or read failure triggers an automatic guarded
+    ref rollback.
+12. Rescan rewritten history and require zero matches.
 
 The tree line is never changed, so the checked-in file snapshot for each logical commit stays the same.
+
+`clean --unpushed` applies the same object and proof logic to one narrower
+selection: the checked-out branch and only the commits in
+`<verified-upstream>..HEAD`. The tracking SHA must equal the live remote SHA,
+and the upstream must be an ancestor of `HEAD`. The backup/result snapshots
+contain only that branch.
 
 ## Why descendants change
 
@@ -93,11 +102,16 @@ refs/byeclaude/results/<UTC timestamp>-<random suffix>/heads/...
 refs/byeclaude/results/<UTC timestamp>-<random suffix>/tags/...
 ```
 
-Both private namespaces are excluded from normal scans and remote publication. The paired snapshots are what make `byeclaude push --backup ID` able to prove which reviewed rewrite it is about to publish.
+An `--unpushed` rewrite additionally records the exact live-verified boundary
+under `refs/byeclaude/upstreams/<backup ID>/heads/...`. A later guarded
+`byeclaude push` accepts an older remote tip only when it equals that recorded
+boundary and remains an ancestor of both snapshots.
+
+These private namespaces are excluded from normal scans and remote publication. The paired snapshots are what make `byeclaude push --backup ID` able to prove which reviewed rewrite it is about to publish.
 
 ## Remote update
 
-A remote history rewrite is a coordination event. The recommended flow is `clean --apply`, review the local graph, then `push --backup ID`. Before publishing, ByeClaude verifies that the current local heads/tags still match the recorded rewrite result. It then inspects the remote and only targets branch/tag refs that already exist there, using an atomic push with explicit force-with-lease expectations based on the pre-rewrite backup refs.
+A remote history rewrite is a coordination event. The recommended flow is `clean --apply`, review the local graph, then `push --backup ID`. Before publishing, ByeClaude verifies that the current local heads/tags still match the recorded rewrite result. It then inspects the remote and only targets branch/tag refs that already exist there, using an atomic push with explicit force-with-lease expectations based on the pre-rewrite backup refs. For `--unpushed`, the remote tip may be an older verified ancestor of both the original local tip and the rewrite result; that exact live SHA becomes the lease, allowing an ordinary unpublished fast-forward without weakening concurrent-update protection.
 
 A changed remote tip causes the whole push to fail instead of being overwritten, and local-only refs are not published as a side effect.
 

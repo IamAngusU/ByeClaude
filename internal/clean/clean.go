@@ -264,15 +264,18 @@ func backupID() (string, error) {
 var backupIDPattern = regexp.MustCompile(`^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$`)
 
 func createBackups(repo *gitx.Repo, refs []Ref, id string) error {
-	return createBackupsContext(context.Background(), repo, refs, id)
+	return createBackupsContext(context.Background(), repo, refs, id, "")
 }
 
-func createBackupsContext(ctx context.Context, repo *gitx.Repo, refs []Ref, id string) error {
+func createBackupsContext(ctx context.Context, repo *gitx.Repo, refs []Ref, id, upstreamSHA string) error {
 	var b strings.Builder
 	b.WriteString("start\n")
 	for _, r := range refs {
 		suffix := strings.TrimPrefix(r.Name, "refs/")
 		fmt.Fprintf(&b, "create refs/byeclaude/backups/%s/%s %s\n", id, suffix, r.SHA)
+		if upstreamSHA != "" {
+			fmt.Fprintf(&b, "create refs/byeclaude/upstreams/%s/%s %s\n", id, suffix, upstreamSHA)
+		}
 	}
 	b.WriteString("prepare\ncommit\n")
 	_, err := repo.RunInputContext(ctx, []byte(b.String()), "update-ref", "--stdin")
@@ -288,7 +291,6 @@ func RewriteWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Iden
 }
 
 func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
-	started := time.Now()
 	if err := opts.Validate(matcher); err != nil {
 		return model.RewriteReport{}, nil, err
 	}
@@ -298,23 +300,58 @@ func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher at
 	if err := PreflightContext(ctx, repo); err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	refs, err := LocalRefsContext(ctx, repo)
+	selection, err := allRewriteSelectionContext(ctx, repo)
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	commits, err := commitsForRefsContext(ctx, repo, refs)
+	return rewriteWithSelectionContext(ctx, repo, matcher, opts, selection)
+}
+
+func RewriteUnpushedWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.RewriteReport, map[string]string, error) {
+	if err := opts.Validate(matcher); err != nil {
+		return model.RewriteReport{}, nil, err
+	}
+	if matcher == nil {
+		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
+	}
+	if err := PreflightContext(ctx, repo); err != nil {
+		return model.RewriteReport{}, nil, err
+	}
+	selection, err := unpushedRewriteSelectionContext(ctx, repo)
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
+	return rewriteWithSelectionContext(ctx, repo, matcher, opts, selection)
+}
+
+func rewriteWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions, selection rewriteSelection) (model.RewriteReport, map[string]string, error) {
+	started := time.Now()
+	if err := opts.Validate(matcher); err != nil {
+		return model.RewriteReport{}, nil, err
+	}
+	if matcher == nil {
+		return model.RewriteReport{}, nil, fmt.Errorf("attribution matcher is required")
+	}
+	refs := selection.refs
+	commits := selection.commits
 	id, err := backupID()
 	if err != nil {
 		return model.RewriteReport{}, nil, err
 	}
-	if err := createBackupsContext(ctx, repo, refs, id); err != nil {
+	if err := createBackupsContext(ctx, repo, refs, id, selection.upstreamSHA); err != nil {
 		return model.RewriteReport{}, nil, fmt.Errorf("create backup refs: %w", err)
 	}
 
-	report := model.RewriteReport{Repository: repo.Root, Backup: id, CommitsVisited: len(commits)}
+	report := model.RewriteReport{
+		Repository:     repo.Root,
+		Backup:         id,
+		Scope:          selection.scope,
+		Upstream:       selection.upstream,
+		UpstreamCommit: selection.upstreamSHA,
+		Remote:         selection.remote,
+		RemoteVerified: selection.remoteVerified,
+		CommitsVisited: len(commits),
+	}
 	mapping := make(map[string]string, len(commits))
 	err = repo.CatFileBatchEach(ctx, commits, "commit", func(_ int, sha string, raw []byte) error {
 		obj, err := parseCommit(raw)
@@ -353,7 +390,6 @@ func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher at
 		report.SignaturesDropped += dropped
 		report.AuthorsReplaced += authors
 		report.CommittersReplaced += committers
-		report.TreesVerified++
 		return nil
 	})
 	if err != nil {
@@ -379,6 +415,7 @@ func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher at
 
 	var tx strings.Builder
 	tx.WriteString("start\n")
+	var updatedRefs []Ref
 	for _, r := range refs {
 		newSHA := newRefs[r.Name]
 		suffix := strings.TrimPrefix(r.Name, "refs/")
@@ -388,13 +425,59 @@ func RewriteWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher at
 		}
 		fmt.Fprintf(&tx, "update %s %s %s\n", r.Name, newSHA, r.SHA)
 		report.RefsUpdated++
+		updatedRefs = append(updatedRefs, r)
 	}
 	tx.WriteString("prepare\ncommit\n")
 	if _, err := repo.RunInputContext(ctx, []byte(tx.String()), "update-ref", "--stdin"); err != nil {
 		return report, mapping, fmt.Errorf("update refs: %w", err)
 	}
+	verified, err := verifyUpdatedRefTreesContext(ctx, repo, updatedRefs, newRefs)
+	if err != nil {
+		rollbackErr := rollbackUpdatedRefs(repo, updatedRefs, newRefs)
+		if rollbackErr != nil {
+			return report, mapping, fmt.Errorf("post-update tree proof failed: %w; automatic rollback also failed: %v (backup %s remains available)", err, rollbackErr, id)
+		}
+		return report, mapping, fmt.Errorf("post-update tree proof failed: %w; updated refs were rolled back (backup %s remains available)", err, id)
+	}
+	report.TreesVerified = verified
 	report.DurationMS = time.Since(started).Milliseconds()
 	return report, mapping, nil
+}
+
+func verifyUpdatedRefTreesContext(ctx context.Context, repo *gitx.Repo, oldRefs []Ref, newRefs map[string]string) (int, error) {
+	verified := 0
+	for _, ref := range oldRefs {
+		newSHA := newRefs[ref.Name]
+		out, err := repo.RunContext(ctx, "rev-parse", ref.SHA+"^{tree}", ref.Name+"^{tree}")
+		if err != nil {
+			return verified, fmt.Errorf("read tree tips for %s: %w", ref.Name, err)
+		}
+		trees := strings.Fields(string(out))
+		if len(trees) != 2 {
+			return verified, fmt.Errorf("read tree tips for %s: expected two object IDs, got %q", ref.Name, strings.TrimSpace(string(out)))
+		}
+		if trees[0] != trees[1] {
+			return verified, fmt.Errorf("%s changed tree %s -> %s (new object %s)", ref.Name, trees[0], trees[1], newSHA)
+		}
+		verified++
+	}
+	return verified, nil
+}
+
+func rollbackUpdatedRefs(repo *gitx.Repo, oldRefs []Ref, newRefs map[string]string) error {
+	if len(oldRefs) == 0 {
+		return nil
+	}
+	var tx strings.Builder
+	tx.WriteString("start\n")
+	for _, ref := range oldRefs {
+		fmt.Fprintf(&tx, "update %s %s %s\n", ref.Name, ref.SHA, newRefs[ref.Name])
+	}
+	tx.WriteString("prepare\ncommit\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err := repo.RunInputContext(ctx, []byte(tx.String()), "update-ref", "--stdin")
+	return err
 }
 
 func rewriteTagContext(ctx context.Context, repo *gitx.Repo, sha string, commits map[string]string, memo map[string]string, report *model.RewriteReport) (string, error) {
@@ -481,7 +564,7 @@ func Push(repo *gitx.Repo, remote string, oldRefs []Ref) error {
 	if err != nil {
 		return err
 	}
-	return pushRefs(repo, remote, oldRefs, current)
+	return pushRefs(repo, remote, oldRefs, current, nil)
 }
 
 // PushBackup publishes exactly the rewrite result recorded for one backup ID.
@@ -502,6 +585,14 @@ func PushBackup(repo *gitx.Repo, remote, id string) error {
 	if len(desiredRefs) == 0 {
 		return fmt.Errorf("rewrite result for backup %q not found; this backup predates review-then-push support", id)
 	}
+	upstreamRefs, err := UpstreamLocalRefs(repo, id)
+	if err != nil {
+		return err
+	}
+	verifiedUpstreams := make(map[string]string, len(upstreamRefs))
+	for _, ref := range upstreamRefs {
+		verifiedUpstreams[ref.Name] = ref.SHA
+	}
 
 	current, err := LocalRefs(repo)
 	if err != nil {
@@ -520,10 +611,10 @@ func PushBackup(repo *gitx.Repo, remote, id string) error {
 			return fmt.Errorf("local ref %s moved since rewrite %s; expected %s, now %s", desired.Name, id, desired.SHA, got)
 		}
 	}
-	return pushRefs(repo, remote, oldRefs, desiredRefs)
+	return pushRefs(repo, remote, oldRefs, desiredRefs, verifiedUpstreams)
 }
 
-func pushRefs(repo *gitx.Repo, remote string, oldRefs, desiredRefs []Ref) error {
+func pushRefs(repo *gitx.Repo, remote string, oldRefs, desiredRefs []Ref, verifiedUpstreams map[string]string) error {
 	remoteRefs, err := remoteHeadsAndTags(repo, remote)
 	if err != nil {
 		return err
@@ -545,7 +636,29 @@ func pushRefs(repo *gitx.Repo, remote string, oldRefs, desiredRefs []Ref) error 
 		if !ok || expected == r.SHA || !existsRemote || remoteSHA == r.SHA {
 			continue
 		}
-		updates = append(updates, update{ref: r, expected: expected})
+		lease := expected
+		if remoteSHA != expected {
+			verifiedUpstream, scoped := verifiedUpstreams[r.Name]
+			if !scoped || remoteSHA != verifiedUpstream {
+				return fmt.Errorf("remote ref %s is %s, expected pre-rewrite tip %s; refusing to overwrite it", r.Name, remoteSHA, expected)
+			}
+			if !strings.HasPrefix(r.Name, "refs/heads/") {
+				return fmt.Errorf("remote ref %s is %s, expected pre-rewrite tip %s; refusing to overwrite it", r.Name, remoteSHA, expected)
+			}
+			remoteBeforeOld, err := isAncestorContext(context.Background(), repo, remoteSHA, expected)
+			if err != nil {
+				return fmt.Errorf("prove remote ancestry for %s against pre-rewrite tip: %w", r.Name, err)
+			}
+			remoteBeforeNew, err := isAncestorContext(context.Background(), repo, remoteSHA, r.SHA)
+			if err != nil {
+				return fmt.Errorf("prove remote ancestry for %s against rewrite result: %w", r.Name, err)
+			}
+			if !remoteBeforeOld || !remoteBeforeNew {
+				return fmt.Errorf("remote ref %s moved outside the verified local lineage (%s); fetch and review before publishing", r.Name, remoteSHA)
+			}
+			lease = remoteSHA
+		}
+		updates = append(updates, update{ref: r, expected: lease})
 	}
 	if len(updates) == 0 {
 		return nil
@@ -617,6 +730,10 @@ func ResultLocalRefs(repo *gitx.Repo, id string) ([]Ref, error) {
 	return snapshotLocalRefs(repo, "results", id)
 }
 
+func UpstreamLocalRefs(repo *gitx.Repo, id string) ([]Ref, error) {
+	return snapshotLocalRefs(repo, "upstreams", id)
+}
+
 func BackupRefs(repo *gitx.Repo) ([]string, error) {
 	out, err := repo.Run("for-each-ref", "--format=%(refname)", "refs/byeclaude/backups")
 	if err != nil {
@@ -643,7 +760,7 @@ func PruneBackup(repo *gitx.Repo, id string) (int, error) {
 		return 0, fmt.Errorf("invalid backup ID %q", id)
 	}
 	var refs []Ref
-	for _, namespace := range []string{"backups", "results"} {
+	for _, namespace := range []string{"backups", "results", "upstreams"} {
 		prefix := "refs/byeclaude/" + namespace + "/" + id + "/"
 		out, err := repo.Run("for-each-ref", "--format=%(refname)%00%(objectname)", prefix)
 		if err != nil {

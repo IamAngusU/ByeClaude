@@ -29,6 +29,22 @@ func PlanWithIdentity(repo *gitx.Repo, matcher attribution.Matcher, opts Identit
 }
 
 func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.PlanReport, error) {
+	selection, err := allRewriteSelectionContext(ctx, repo)
+	if err != nil {
+		return model.PlanReport{}, err
+	}
+	return planWithSelectionContext(ctx, repo, matcher, opts, selection)
+}
+
+func PlanUnpushedWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions) (model.PlanReport, error) {
+	selection, err := unpushedRewriteSelectionContext(ctx, repo)
+	if err != nil {
+		return model.PlanReport{}, err
+	}
+	return planWithSelectionContext(ctx, repo, matcher, opts, selection)
+}
+
+func planWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher attribution.Matcher, opts IdentityRewriteOptions, selection rewriteSelection) (model.PlanReport, error) {
 	started := time.Now()
 	if err := opts.Validate(matcher); err != nil {
 		return model.PlanReport{}, err
@@ -38,24 +54,23 @@ func PlanWithIdentityContext(ctx context.Context, repo *gitx.Repo, matcher attri
 	}
 
 	progress.Report(ctx, "Reading local history", 0, 0)
-	refs, err := LocalRefsContext(ctx, repo)
-	if err != nil {
-		return model.PlanReport{}, err
-	}
-	commits, err := commitsForRefsContext(ctx, repo, refs)
-	if err != nil {
-		return model.PlanReport{}, err
-	}
+	refs := selection.refs
+	commits := selection.commits
 
 	report := model.PlanReport{
-		Repository:  repo.Root,
-		Commits:     len(commits),
-		RuleMatches: map[string]int{},
+		Repository:     repo.Root,
+		Scope:          selection.scope,
+		Upstream:       selection.upstream,
+		UpstreamCommit: selection.upstreamSHA,
+		Remote:         selection.remote,
+		RemoteVerified: selection.remoteVerified,
+		Commits:        len(commits),
+		RuleMatches:    map[string]int{},
 	}
 	impacted := make(map[string]bool, len(commits))
 	matched := make(map[string]bool)
 	progress.Report(ctx, "Reviewing commits", 0, len(commits))
-	err = repo.CatFileBatchEach(ctx, commits, "commit", func(i int, sha string, raw []byte) error {
+	err := repo.CatFileBatchEach(ctx, commits, "commit", func(i int, sha string, raw []byte) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

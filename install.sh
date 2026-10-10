@@ -13,15 +13,17 @@ case "$os" in linux|darwin) ;; *) echo "Unsupported OS: $os" >&2; exit 1 ;; esac
 case "$arch" in x86_64|amd64) arch=amd64 ;; aarch64|arm64) arch=arm64 ;; *) echo "Unsupported architecture: $arch" >&2; exit 1 ;; esac
 
 asset="byeclaude_${os}_${arch}"
-version=${BYECLAUDE_VERSION:-v0.1.0-alpha.8}
+version=${BYECLAUDE_VERSION:-v0.1.0-alpha.9}
 if [ "$version" != latest ] && ! printf '%s\n' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
   echo "BYECLAUDE_VERSION must be 'latest' or a semantic v-prefixed tag" >&2
   exit 1
 fi
 if [ -n "${BYECLAUDE_DOWNLOAD_BASE:-}" ]; then
-  base=${BYECLAUDE_DOWNLOAD_BASE%/}
+  official_download=false
+	base=${BYECLAUDE_DOWNLOAD_BASE%/}
   case "$base" in https://*|file://*) ;; *) echo "BYECLAUDE_DOWNLOAD_BASE must use https:// or file://" >&2; exit 1 ;; esac
 else
+  official_download=true
   case "$version" in
     latest) base="https://github.com/${repo}/releases/latest/download" ;;
     *) base="https://github.com/${repo}/releases/download/${version}" ;;
@@ -44,6 +46,13 @@ else
   actual=$(shasum -a 256 "$tmp/byeclaude" | awk '{print $1}')
 fi
 [ "$actual" = "$expected" ] || { echo "Checksum mismatch for $asset" >&2; exit 1; }
+if [ "$official_download" = true ] && [ "${BYECLAUDE_SKIP_ATTESTATION:-}" != 1 ] && command -v gh >/dev/null 2>&1; then
+  echo 'Verifying GitHub artifact attestation from angusu-de/ByeClaude...'
+  if ! gh attestation verify "$tmp/byeclaude" --repo angusu-de/ByeClaude; then
+    echo 'Artifact attestation verification failed. Retry, or set BYECLAUDE_SKIP_ATTESTATION=1 only if you deliberately want checksum-only verification.' >&2
+    exit 1
+  fi
+fi
 chmod 0755 "$tmp/byeclaude"
 "$tmp/byeclaude" version >/dev/null
 

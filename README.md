@@ -38,7 +38,7 @@ I do not use Claude Code in my own day-to-day workflow, so the Claude attributio
 <summary><strong>Windows · paste into PowerShell</strong></summary>
 
 ```powershell
-irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.ps1 | iex
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.9/install.ps1 | iex
 ```
 
 </details>
@@ -47,12 +47,12 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install
 <summary><strong>macOS / Linux · paste into Bash, Zsh or sh</strong></summary>
 
 ```sh
-(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.sh -o "$f" && sh "$f")
+(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.9/install.sh -o "$f" && sh "$f")
 ```
 
 </details>
 
-The script detects your platform, downloads the release, checks SHA-256, installs in your user folder, configures your user PATH and **opens guided setup in an interactive terminal**. That one pasted command is the complete installation; there is no separate archive, build or PATH step. No UAC or sudo is needed. Git itself is a prerequisite; the installer does not install a package manager or Git for you. [Inspect the Windows script](install.ps1) · [Inspect the Unix script](install.sh) · [Manual download and advanced options](docs/supply-chain.md).
+The script detects your platform, downloads the release, checks SHA-256, automatically verifies the GitHub artifact attestation when `gh` is available, installs in your user folder, configures your user PATH and **opens guided setup in an interactive terminal**. That one pasted command is the complete installation; there is no separate archive, build or PATH step. No UAC or sudo is needed. Git itself is a prerequisite; the installer does not install a package manager or Git for you. [Inspect the Windows script](install.ps1) · [Inspect the Unix script](install.sh) · [Manual download and advanced options](docs/supply-chain.md).
 
 ### Set up your repository
 
@@ -79,6 +79,7 @@ byeclaude
 | --- | --- |
 | Repeat guided setup | `byeclaude guide` |
 | Check without changing anything | `byeclaude scan` |
+| Clean only work that has never reached the upstream branch | `byeclaude clean --unpushed`, then add `--apply` |
 | Watch your local activity | `byeclaude metrics --watch` |
 
 Scripts and CI never open the guide. Use `-NoStart` on the downloaded PowerShell installer, `--no-start` on the shell installer, or `BYECLAUDE_NO_START=1` to install without opening it. [PATH options and recovery](docs/supply-chain.md).
@@ -136,6 +137,16 @@ byeclaude verify
 ```
 
 `push` selects a backup automatically when exactly one exists. With several backups, use `byeclaude backups`, then `byeclaude push --backup ID`. It refuses changed local refs and uses an atomic force-with-lease to protect newer remote work. `verify` checks current GitHub history and advertised PR refs; it reports incomplete checks explicitly.
+
+If the matching commits have **not been pushed yet**, use the narrower path first:
+
+```sh
+byeclaude clean --unpushed          # read-only preview
+byeclaude clean --unpushed --apply  # rewrites only this branch above its live upstream
+git push
+```
+
+ByeClaude checks the configured tracking ref against the live remote before changing anything. A stale fetch, missing upstream, diverged branch or differently named upstream branch stops with a specific recovery instruction. Published commits, other branches and tags stay unchanged, so the resulting push is normally a fast-forward.
 
 To undo a local cleanup, choose **6** for backup IDs and instructions, or run `byeclaude restore --backup ID --apply`. Restore refuses to overwrite later local work. [Safety and recovery](docs/safety.md).
 
