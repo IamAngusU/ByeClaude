@@ -2,7 +2,7 @@
 
 ## Installation
 
-The installers default to the `v0.1.0-alpha.6` tag. This is explicit
+The installers default to the `v0.1.0-alpha.8` tag. This is explicit
 because GitHub's `latest` download endpoint excludes prereleases. Override
 `BYECLAUDE_VERSION` to select another published tag; use `latest` only when a
 stable release exists. Alpha.4 adds local metrics and optional, recoverable

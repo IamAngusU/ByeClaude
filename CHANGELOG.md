@@ -4,6 +4,16 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+## v0.1.0-alpha.8 - 2026-10-10
+
+### Project
+
+- Pin the prebuilt Action to the reviewed alpha.7 audit engine and its six
+  release digests.
+- Make alpha.8 the explicit default for both one-line installers and examples.
+
+## v0.1.0-alpha.7 - 2026-10-10
+
 ### Product
 
 - Detect and remove exact historical Claude Code message markers and

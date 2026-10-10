@@ -108,13 +108,13 @@ jobs:
         with:
           fetch-depth: 0  # Required: old history is part of the check.
           persist-credentials: false
-      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.6
+      - uses: IamAngusU/ByeClaude@v0.1.0-alpha.8
         # Optional: with: { include-identities: 'true' } also checks authors/committers.
 ```
 
 The example is ready to copy and uses the built-in Claude/Anthropic rule; no extra rules file is required. Add `rules-file` only after committing your own reviewed JSON file.
 
-This action revision pins the **alpha.5 audit engine** ([version and six digests](../action-release/README.md)); the CLI installer now supplies alpha.6. Action revisions pin an already published engine so the checksums can be reviewed before consumption. For an immutable action and digest manifest, replace the action tag with its [full commit SHA](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
+This action revision pins the **alpha.7 audit engine** ([version and six digests](../action-release/README.md)); the CLI installer supplies alpha.8. Action revisions pin an already published engine so the checksums can be reviewed before consumption. For an immutable action and digest manifest, replace the action tag with its [full commit SHA](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
 
 The action runs the equivalent of:
 
@@ -149,7 +149,7 @@ Commit a reviewed structured rules file to the repository, for example `.byeclau
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
   with:
     fetch-depth: 0
-- uses: IamAngusU/ByeClaude@v0.1.0-alpha.6
+- uses: IamAngusU/ByeClaude@v0.1.0-alpha.8
   with:
     rules-file: .byeclaude-rules.json
 ```
