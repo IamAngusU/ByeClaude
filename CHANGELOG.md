@@ -21,6 +21,7 @@ All notable changes to ByeClaude are documented here.
   could expose original history.
 - Attest and verify every release artifact with GitHub artifact attestations
   before release publication.
+- Build with Go 1.27.2 to include the current standard-library security fixes.
 
 ## v0.1.0-alpha.1 - 2026-09-25
 
