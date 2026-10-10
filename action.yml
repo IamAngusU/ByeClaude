@@ -1,5 +1,5 @@
 name: ByeClaude attribution guard
-description: Fail CI when reachable fetched history contains Co-Authored-By attribution matching the active rule set.
+description: Fail CI when reachable fetched history contains declared attribution matching the active rule set.
 author: Angus Uelsmann
 
 inputs:

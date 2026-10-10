@@ -38,7 +38,7 @@ I do not use Claude Code in my own day-to-day workflow, so the Claude attributio
 <summary><strong>Windows · paste into PowerShell</strong></summary>
 
 ```powershell
-irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install.ps1 | iex
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.ps1 | iex
 ```
 
 </details>
@@ -47,7 +47,7 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install
 <summary><strong>macOS / Linux · paste into Bash, Zsh or sh</strong></summary>
 
 ```sh
-(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.6/install.sh -o "$f" && sh "$f")
+(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.8/install.sh -o "$f" && sh "$f")
 ```
 
 </details>
