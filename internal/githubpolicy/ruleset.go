@@ -94,11 +94,21 @@ func GenerateRuleset(matcher attribution.Matcher, includeIdentityEmails bool) (R
 }
 
 func patternsForRule(r attribution.Rule) (message, email string, err error) {
-	var names, emails []string
+	var namePatterns, emails []string
 	for _, n := range r.NameContains {
 		n = strings.TrimSpace(n)
 		if n != "" {
-			names = append(names, regexp.QuoteMeta(n))
+			namePatterns = append(namePatterns, `[^<\r\n]*`+regexp.QuoteMeta(n)+`[^<\r\n]*`)
+		}
+	}
+	for _, n := range r.NameWords {
+		n = strings.TrimSpace(n)
+		if n != "" {
+			// GitHub's commit-message regex is an approximation of the CLI
+			// parser. Consume optional text only when it ends/starts at the
+			// same Unicode letter/number boundary used by the local matcher.
+			namePatterns = append(namePatterns,
+				`(?:[^<\r\n]*[^\p{L}\p{N}<\r\n])?`+regexp.QuoteMeta(n)+`(?:[^\p{L}\p{N}<\r\n][^<\r\n]*)?`)
 		}
 	}
 	for _, exact := range r.ExactEmails {
@@ -113,12 +123,12 @@ func patternsForRule(r attribution.Rule) (message, email string, err error) {
 			emails = append(emails, "[^<>@ \t\r\n]+@"+regexp.QuoteMeta(domain))
 		}
 	}
-	if len(names) == 0 && len(emails) == 0 {
+	if len(namePatterns) == 0 && len(emails) == 0 {
 		return "", "", fmt.Errorf("empty identity rule cannot be exported")
 	}
 	namePattern := "[^<\r\n]*"
-	if len(names) > 0 {
-		namePattern = "[^<\r\n]*(?:" + strings.Join(names, "|") + ")[^<\r\n]*"
+	if len(namePatterns) > 0 {
+		namePattern = "(?:" + strings.Join(namePatterns, "|") + ")"
 	}
 	emailPattern := "[^<> \t\r\n]+"
 	if len(emails) > 0 {

@@ -65,7 +65,9 @@ func planWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher attr
 		Remote:         selection.remote,
 		RemoteVerified: selection.remoteVerified,
 		Commits:        len(commits),
+		Matches:        []model.Match{},
 		RuleMatches:    map[string]int{},
+		AffectedRefs:   []string{},
 	}
 	impacted := make(map[string]bool, len(commits))
 	matched := make(map[string]bool)

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/IamAngusU/ByeClaude/internal/attribution"
+	"github.com/IamAngusU/ByeClaude/internal/preset"
 )
 
 func TestGeneratedRulesetMatchesClaudeTrailerOnly(t *testing.T) {
@@ -38,6 +39,29 @@ func TestGeneratedRulesetMatchesClaudeTrailerOnly(t *testing.T) {
 	}
 	if regexp.MustCompile(r.Rules[1].Parameters.Pattern).MatchString("agent@notanthropic.com") {
 		t.Fatal("domain not anchored")
+	}
+}
+
+func TestGeneratedRulesetKeepsBuiltInClaudeWordBoundary(t *testing.T) {
+	ruleset, err := GenerateRuleset(preset.Claude(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(ruleset.Rules[0].Parameters.Pattern)
+	for _, text := range []string{
+		"Co-Authored-By: Claude Code <noreply@anthropic.com>",
+		"Co-Authored-By: Claude_Opus <noreply@anthropic.com>",
+		"Co-Authored-By: Assistant-Claude <noreply@anthropic.com>",
+	} {
+		if !pattern.MatchString(text) {
+			t.Errorf("missed built-in identity %q", text)
+		}
+	}
+	if pattern.MatchString("Co-Authored-By: Claudette Example <claudette@anthropic.com>") {
+		t.Fatal("generated ruleset widened the built-in word matcher")
+	}
+	if pattern.MatchString("Co-Authored-By: ÄClaude <bot@anthropic.com>") {
+		t.Fatal("generated ruleset ignored a Unicode name boundary")
 	}
 }
 func TestInstallFailsClosedOnExistingPolicy(t *testing.T) {

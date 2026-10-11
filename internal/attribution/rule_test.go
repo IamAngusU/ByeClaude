@@ -13,6 +13,24 @@ func TestRuleMatchesNameAndDomainCaseInsensitively(t *testing.T) {
 	}
 }
 
+func TestRuleMatchesCompleteNameWordsWithoutPersonPrefixCollisions(t *testing.T) {
+	rule := Rule{
+		RuleID:       "assistant",
+		NameWords:    []string{"claude"},
+		EmailDomains: []string{"anthropic.com"},
+	}
+	for _, name := range []string{"Claude", "Claude Code", "Assistant-Claude", "CLAUDE_Opus"} {
+		if !rule.Match(name, "bot@anthropic.com") {
+			t.Errorf("complete word did not match %q", name)
+		}
+	}
+	for _, name := range []string{"Claudette Example", "NotClaude", "Claude2"} {
+		if rule.Match(name, "person@anthropic.com") {
+			t.Errorf("partial word unexpectedly matched %q", name)
+		}
+	}
+}
+
 func TestRuleRequiresRealEmailDomainBoundary(t *testing.T) {
 	rule := Rule{EmailDomains: []string{"anthropic.com"}}
 	if rule.Match("Claude", "bot@notanthropic.com") {

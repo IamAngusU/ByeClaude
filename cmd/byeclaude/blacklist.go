@@ -148,6 +148,9 @@ func printBlacklist(out io.Writer, set attribution.RuleSet) {
 		if len(rule.NameContains) > 0 {
 			fmt.Fprintf(out, "    name contains: %q\n", rule.NameContains)
 		}
+		if len(rule.NameWords) > 0 {
+			fmt.Fprintf(out, "    name words:    %q\n", rule.NameWords)
+		}
 		if len(rule.ExactEmails) > 0 {
 			fmt.Fprintf(out, "    exact emails:  %q\n", rule.ExactEmails)
 		}

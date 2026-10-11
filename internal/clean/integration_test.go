@@ -265,6 +265,28 @@ func TestScanIgnoresClaudeLookingBodyText(t *testing.T) {
 	}
 }
 
+func TestCleanScanJSONUsesEmptyArrays(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q")
+	git(t, dir, "config", "user.name", "Human")
+	git(t, dir, "config", "user.email", "human@example.org")
+	git(t, dir, "commit", "--allow-empty", "-q", "-m", "clean")
+	repo, err := gitx.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := Scan(repo, preset.Claude())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Matches == nil {
+		t.Fatal("empty matches must be a JSON array, not null")
+	}
+	if got := JSON(report); !strings.Contains(got, `"matches": []`) {
+		t.Fatalf("empty matches encoded unstably: %s", got)
+	}
+}
+
 func TestRewriteRefusesShallowRepository(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")

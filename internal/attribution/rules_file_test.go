@@ -11,7 +11,8 @@ func TestLoadRuleSet(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "rules.json")
 	data := []byte(`{"rules":[
 		{"id":"a","name_contains":["Claude"],"email_domains":["anthropic.com"]},
-		{"id":"b","exact_emails":["bot@example.dev"]}
+		{"id":"b","exact_emails":["bot@example.dev"]},
+		{"id":"c","name_words":["agent"],"email_domains":["tools.example"]}
 	]}`)
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		t.Fatal(err)
@@ -28,6 +29,9 @@ func TestLoadRuleSet(t *testing.T) {
 	if len(ids) != 1 || ids[0] != "b" {
 		t.Fatalf("ids=%v", ids)
 	}
+	if !set.Match("Build Agent", "bot@tools.example") || set.Match("Agentry", "bot@tools.example") {
+		t.Fatal("complete-word rule did not survive JSON parsing")
+	}
 }
 
 func TestRuleSetRejectsAmbiguousAndInvalidConstraints(t *testing.T) {
@@ -35,6 +39,7 @@ func TestRuleSetRejectsAmbiguousAndInvalidConstraints(t *testing.T) {
 		`{"rules":[{"id":"bad","name_contain":["bot"],"email_domains":["example.org"]}]}`,
 		`{"rules":[{"id":"bad","name_contains":[" "]}]}`,
 		`{"rules":[{"id":"bad","name_contains":["bot\u001b[2J"]}]}`,
+		`{"rules":[{"id":"bad","name_words":[" "]}]}`,
 		`{"rules":[{"id":"bad","email_domains":["*"]}]}`,
 		`{"rules":[{"id":"bad","email_domains":["example.org/"]}]}`,
 		`{"rules":[{"id":"bad","exact_emails":["bot"]}]}`,

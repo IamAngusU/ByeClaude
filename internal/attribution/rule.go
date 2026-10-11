@@ -1,6 +1,9 @@
 package attribution
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // Matcher decides whether one parsed Co-Authored-By identity is in scope for
 // removal. The Git rewrite engine depends only on this interface, not on a
@@ -20,6 +23,8 @@ type MessageMatcher interface {
 // Rule is a conservative identity matcher for Co-Authored-By trailers.
 //
 // NameContains terms are matched case-insensitively against the display name.
+// NameWords require complete case-insensitive words, so a rule for "claude"
+// does not also select a person named "Claudette".
 // EmailDomains require a real @domain suffix, so "notanthropic.com" cannot
 // accidentally match "anthropic.com". ExactEmails are also case-insensitive.
 //
@@ -28,6 +33,7 @@ type MessageMatcher interface {
 type Rule struct {
 	RuleID       string   `json:"id"`
 	NameContains []string `json:"name_contains,omitempty"`
+	NameWords    []string `json:"name_words,omitempty"`
 	EmailDomains []string `json:"email_domains,omitempty"`
 	ExactEmails  []string `json:"exact_emails,omitempty"`
 	MessageLines []string `json:"message_lines,omitempty"`
@@ -42,19 +48,28 @@ func (r Rule) ID() string {
 }
 
 func (r Rule) Match(name, email string) bool {
-	if len(r.NameContains) == 0 && len(r.EmailDomains) == 0 && len(r.ExactEmails) == 0 {
+	if len(r.NameContains) == 0 && len(r.NameWords) == 0 && len(r.EmailDomains) == 0 && len(r.ExactEmails) == 0 {
 		return false
 	}
 
 	nameLower := strings.ToLower(strings.TrimSpace(name))
 	emailLower := strings.ToLower(strings.TrimSpace(email))
 
-	nameOK := len(r.NameContains) == 0
+	nameOK := len(r.NameContains) == 0 && len(r.NameWords) == 0
 	for _, needle := range r.NameContains {
 		needle = strings.ToLower(strings.TrimSpace(needle))
 		if needle != "" && strings.Contains(nameLower, needle) {
 			nameOK = true
 			break
+		}
+	}
+	if !nameOK {
+		for _, word := range r.NameWords {
+			word = strings.ToLower(strings.TrimSpace(word))
+			if word != "" && containsCompleteNameWord(nameLower, word) {
+				nameOK = true
+				break
+			}
 		}
 	}
 
@@ -78,6 +93,33 @@ func (r Rule) Match(name, email string) bool {
 	}
 
 	return nameOK && emailOK
+}
+
+func containsCompleteNameWord(name, word string) bool {
+	nameRunes := []rune(name)
+	wordRunes := []rune(word)
+	if len(wordRunes) == 0 || len(wordRunes) > len(nameRunes) {
+		return false
+	}
+	for start := 0; start+len(wordRunes) <= len(nameRunes); start++ {
+		match := true
+		for i := range wordRunes {
+			if nameRunes[start+i] != wordRunes[i] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		leftBoundary := start == 0 || !unicode.IsLetter(nameRunes[start-1]) && !unicode.IsNumber(nameRunes[start-1])
+		end := start + len(wordRunes)
+		rightBoundary := end == len(nameRunes) || !unicode.IsLetter(nameRunes[end]) && !unicode.IsNumber(nameRunes[end])
+		if leftBoundary && rightBoundary {
+			return true
+		}
+	}
+	return false
 }
 
 func (r Rule) MatchIDs(name, email string) []string {

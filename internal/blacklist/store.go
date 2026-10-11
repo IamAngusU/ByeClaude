@@ -36,6 +36,8 @@ func Load(repo *gitx.Repo) (attribution.RuleSet, bool, error) {
 	defaults := preset.Claude()
 	for i := range set.Rules {
 		if legacyClaudeRule(set.Rules[i], defaults) {
+			set.Rules[i].NameContains = nil
+			set.Rules[i].NameWords = append([]string(nil), defaults.NameWords...)
 			if len(set.Rules[i].MessageLines) == 0 {
 				set.Rules[i].MessageLines = append([]string(nil), defaults.MessageLines...)
 			}
@@ -49,7 +51,8 @@ func Load(repo *gitx.Repo) (attribution.RuleSet, bool, error) {
 
 func legacyClaudeRule(rule, defaults attribution.Rule) bool {
 	return rule.RuleID == defaults.RuleID &&
-		len(rule.NameContains) == 1 && strings.EqualFold(strings.TrimSpace(rule.NameContains[0]), defaults.NameContains[0]) &&
+		len(rule.NameContains) == 1 && strings.EqualFold(strings.TrimSpace(rule.NameContains[0]), "claude") &&
+		len(rule.NameWords) == 0 &&
 		len(rule.EmailDomains) == 1 && strings.EqualFold(strings.TrimPrefix(strings.TrimSpace(rule.EmailDomains[0]), "@"), defaults.EmailDomains[0]) &&
 		len(rule.ExactEmails) == 0
 }

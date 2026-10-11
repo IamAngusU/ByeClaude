@@ -8,7 +8,7 @@ import "github.com/IamAngusU/ByeClaude/internal/attribution"
 func Claude() attribution.Rule {
 	return attribution.Rule{
 		RuleID:       "claude-anthropic",
-		NameContains: []string{"claude"},
+		NameWords:    []string{"claude"},
 		EmailDomains: []string{"anthropic.com"},
 		MessageLines: []string{
 			"Generated with Claude Code",

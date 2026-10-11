@@ -2,12 +2,12 @@
   "rules": [
     {
       "id": "claude-anthropic",
-      "name_contains": ["claude"],
+      "name_words": ["claude"],
       "email_domains": ["anthropic.com"]
     },
     {
       "id": "codex-openai",
-      "name_contains": ["codex"],
+      "name_words": ["codex"],
       "exact_emails": ["noreply@openai.com"]
     },
     {

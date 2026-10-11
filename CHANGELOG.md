@@ -4,6 +4,19 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+### Safety and correctness
+
+- Refuse `clean --apply` in a shallow or otherwise unsafe repository even
+  when its visible history contains no selected metadata.
+- Match the built-in Claude identity as a complete display-name word, keeping
+  Claude Code variants while protecting names such as Claudette; migrate
+  saved legacy default policies to the safer boundary automatically.
+- Serialize empty scan and plan collections as stable JSON arrays for CI and
+  other automation consumers.
+- Batch rewritten commit objects through one verified Git writer instead of
+  starting one process per commit; the measured 16,501-commit Windows clean
+  sample dropped from 456.4 seconds to 31.3 seconds (14.6x) locally.
+
 ## v0.1.0-alpha.10 - 2026-10-10
 
 ### Project

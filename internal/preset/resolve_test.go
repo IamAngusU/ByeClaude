@@ -14,6 +14,9 @@ func TestClaudeMatchesBuiltInIdentity(t *testing.T) {
 	if !rule.Match("Claude", "noreply@anthropic.com") {
 		t.Fatal("built-in rule did not match Claude identity")
 	}
+	if rule.Match("Claudette Example", "claudette@anthropic.com") {
+		t.Fatal("built-in rule matched a human name that only starts with Claude")
+	}
 	if rule.Match("Human", "human@example.com") {
 		t.Fatal("built-in rule matched unrelated identity")
 	}
