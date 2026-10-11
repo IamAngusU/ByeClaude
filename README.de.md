@@ -39,7 +39,7 @@ Ich nutze Claude Code selbst nicht in meinem täglichen Workflow. Die Claude-Att
 <summary><strong>Windows · in PowerShell einfügen</strong></summary>
 
 ```powershell
-irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.10/install.ps1 | iex
+irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.11/install.ps1 | iex
 ```
 
 </details>
@@ -48,7 +48,7 @@ irm https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.10/instal
 <summary><strong>macOS / Linux · in Bash, Zsh oder sh einfügen</strong></summary>
 
 ```sh
-(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.10/install.sh -o "$f" && sh "$f")
+(f="$(mktemp)" && trap 'rm -f -- "$f"' EXIT && curl -fsSL https://raw.githubusercontent.com/IamAngusU/ByeClaude/v0.1.0-alpha.11/install.sh -o "$f" && sh "$f")
 ```
 
 </details>

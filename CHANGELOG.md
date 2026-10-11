@@ -4,6 +4,8 @@ All notable changes to ByeClaude are documented here.
 
 ## Unreleased
 
+## v0.1.0-alpha.11 - 2026-10-11
+
 ### Safety and correctness
 
 - Refuse `clean --apply` in a shallow or otherwise unsafe repository even
