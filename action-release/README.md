@@ -1,11 +1,11 @@
 # Pinned Action engine
 
-The composite Action downloads **v0.1.0-alpha.9** from the canonical release.
-Its source is `98370d566d8e70a0f6e150614c438b88474c5801`.
+The composite Action downloads **v0.1.0-alpha.11** from the canonical release.
+Its source is `e2cb214f143d13a3725e1ffcd94b794a69220987`.
 The six binary hashes in this directory were verified against that release's
 checksums, build provenance and GitHub artifact attestations. The release gate
 also built the complete release set byte-for-byte twice.
-[Build evidence](https://github.com/angusu-de/ByeClaude/actions/runs/38058927021).
+[Build evidence](https://github.com/angusu-de/ByeClaude/actions/runs/38129645151).
 
 Action revisions and CLI releases are versioned separately: the Action pins an
 already published, reviewed engine. It never resolves `latest`, runs Go, reads
