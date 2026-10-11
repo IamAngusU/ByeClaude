@@ -80,6 +80,7 @@ The hook stores the absolute path to the validated rules file. If that file late
     {
       "id": "provider-or-policy-id",
       "name_contains": ["display name fragment"],
+      "name_words": ["complete display name word"],
       "email_domains": ["example.com"],
       "exact_emails": ["bot@example.com"],
       "message_lines": ["Generated with Example Tool"],
@@ -92,6 +93,7 @@ The hook stores the absolute path to the validated rules file. If that file late
 Within one rule:
 
 - multiple `name_contains` values are OR conditions;
+- `name_words` uses case-insensitive complete words, so `claude` does not match `Claudette`;
 - `email_domains` and `exact_emails` are alternative allowed email conditions;
 - if both a name constraint and an email constraint are present, both sides must match;
 - email-domain matching requires a real `@domain` boundary;

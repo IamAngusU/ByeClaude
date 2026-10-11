@@ -87,8 +87,15 @@ func (r *Repo) RunInput(input []byte, args ...string) ([]byte, error) {
 }
 
 func (r *Repo) RunInputContext(ctx context.Context, input []byte, args ...string) ([]byte, error) {
+	return r.RunInputInDirContext(ctx, r.Root, input, args...)
+}
+
+// RunInputInDirContext runs Git from a caller-controlled working directory.
+// It is used for safe, short relative paths when a batch protocol consumes
+// filenames from stdin; repository selection remains an explicit Git argument.
+func (r *Repo) RunInputInDirContext(ctx context.Context, dir string, input []byte, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- arguments are passed directly to Git without a shell
-	cmd.Dir = r.Root
+	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

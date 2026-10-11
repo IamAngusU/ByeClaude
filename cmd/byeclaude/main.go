@@ -382,6 +382,12 @@ func runClean(args []string) error {
 	if *unpushed && *push && *remote != plan.Remote {
 		return fmt.Errorf("--unpushed verified upstream remote %q; use --remote %s or omit --push", plan.Remote, plan.Remote)
 	}
+	// Applying is a destructive operation even when the visible selection is
+	// empty. Fail closed on incomplete or otherwise unsafe repository state
+	// before returning the no-op success path.
+	if *apply && !plan.RewriteReady {
+		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
+	}
 	if plan.MatchedCommits == 0 {
 		if *jsonOut {
 			fmt.Println(clean.JSON(plan))
@@ -406,9 +412,6 @@ func runClean(args []string) error {
 			fmt.Println("dry run      no refs changed; re-run with --apply to rewrite locally")
 		}
 		return nil
-	}
-	if !plan.RewriteReady {
-		return fmt.Errorf("cannot apply rewrite: %s", plan.RewriteBlocker)
 	}
 	var report model.RewriteReport
 	if *unpushed {

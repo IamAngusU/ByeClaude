@@ -84,8 +84,12 @@ func TestLoadHydratesOnlyLegacyBuiltInClaudeRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	set, _, err := Load(repo)
-	if err != nil || len(set.Rules[0].MessageLines) == 0 || len(set.Rules[0].TrailerKeys) == 0 {
+	if err != nil || len(set.Rules[0].MessageLines) == 0 || len(set.Rules[0].TrailerKeys) == 0 ||
+		len(set.Rules[0].NameContains) != 0 || len(set.Rules[0].NameWords) != 1 || set.Rules[0].NameWords[0] != "claude" {
 		t.Fatalf("legacy built-in was not hydrated: %+v, %v", set, err)
+	}
+	if set.Match("Claudette Example", "claudette@anthropic.com") {
+		t.Fatal("legacy built-in policy retained unsafe substring matching")
 	}
 
 	custom := `{"rules":[{"id":"claude-anthropic","exact_emails":["custom@example.org"]}]}`

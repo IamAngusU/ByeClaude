@@ -286,6 +286,26 @@ func TestCleanRepositoryAndCommandValidation(t *testing.T) {
 	}
 }
 
+func TestCleanApplyRejectsShallowRepositoryWithoutVisibleMatches(t *testing.T) {
+	source := createCLIRepository(t, true)
+	if err := os.WriteFile(filepath.Join(source, "clean.txt"), []byte("clean tip\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, source, "add", "clean.txt")
+	runGit(t, source, "commit", "-q", "-m", "clean visible tip")
+
+	clone := filepath.Join(t.TempDir(), "shallow")
+	cloneURL := "file:///" + filepath.ToSlash(source)
+	runGit(t, t.TempDir(), "clone", "-q", "--depth", "1", cloneURL, clone)
+	if got := runGit(t, clone, "rev-parse", "--is-shallow-repository"); got != "true" {
+		t.Fatalf("fixture is not shallow: %q", got)
+	}
+	err := runClean([]string{"--repo", clone, "--apply"})
+	if err == nil || !strings.Contains(err.Error(), "shallow repository") {
+		t.Fatalf("clean --apply accepted incomplete history without visible matches: %v", err)
+	}
+}
+
 func TestHookInstallRemoveLifecycle(t *testing.T) {
 	dir := createCLIRepository(t, false)
 	args := []string{"install", "--repo", dir}

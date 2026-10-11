@@ -132,6 +132,7 @@ func ScanIncludingRemotesContext(ctx context.Context, repo *gitx.Repo, includeRe
 	report := model.ScanReport{
 		Repository:  repo.Root,
 		Commits:     len(commits),
+		Matches:     []model.Match{},
 		RuleMatches: map[string]int{},
 	}
 	matchedCommits := map[string]bool{}
@@ -352,6 +353,11 @@ func rewriteWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher a
 		RemoteVerified: selection.remoteVerified,
 		CommitsVisited: len(commits),
 	}
+	commitBatch, err := newObjectBatch(repo, "commit")
+	if err != nil {
+		return report, nil, err
+	}
+	defer commitBatch.Close()
 	mapping := make(map[string]string, len(commits))
 	err = repo.CatFileBatchEach(ctx, commits, "commit", func(_ int, sha string, raw []byte) error {
 		obj, err := parseCommit(raw)
@@ -379,11 +385,10 @@ func rewriteWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher a
 		if err != nil || obj.tree() == "" || newObject.tree() != obj.tree() {
 			return fmt.Errorf("tree verification failed before writing rewritten commit %s", sha)
 		}
-		newSHAOut, err := repo.RunInputContext(ctx, newRaw, "hash-object", "-t", "commit", "-w", "--stdin")
+		newSHA, err := commitBatch.Stage(newRaw)
 		if err != nil {
 			return err
 		}
-		newSHA := strings.TrimSpace(string(newSHAOut))
 		mapping[sha] = newSHA
 		report.CommitsRewritten++
 		report.CreditsRemoved += len(removed)
@@ -394,6 +399,12 @@ func rewriteWithSelectionContext(ctx context.Context, repo *gitx.Repo, matcher a
 	})
 	if err != nil {
 		return report, mapping, err
+	}
+	if err := commitBatch.Flush(ctx); err != nil {
+		return report, mapping, fmt.Errorf("write rewritten commits: %w", err)
+	}
+	if err := commitBatch.Close(); err != nil {
+		return report, mapping, fmt.Errorf("remove rewritten commit staging data: %w", err)
 	}
 
 	newRefs := make(map[string]string, len(refs))

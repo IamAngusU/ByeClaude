@@ -23,6 +23,7 @@ ByeClaude is intentionally small, but the boundary around a Git history rewrite 
 | [Hooks and GitHub Actions](automation.md) | You want Claude attribution blocked before merge or future commit creation. |
 | [Troubleshooting](troubleshooting.md) | GitHub still shows a contributor, a push is rejected, or ByeClaude refuses to rewrite. |
 | [Synthetic history benchmark](performance.md) | You want to reproduce scan/rewrite scaling on your own hardware. |
+| [Torture benchmark v1.4 results](benchmark-v1.4.md) | Review the independent 16,731-commit safety corpus, findings and post-fix measurements. |
 | [Fixture repository suite](fixtures.md) | You want disposable real Git repositories that exercise the product safely. |
 | [Release integrity](supply-chain.md) | You want to verify checksums, SBOM contents, build provenance or reproducibility claims. |
 

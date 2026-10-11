@@ -63,10 +63,10 @@ func ParseRuleSet(data []byte) (RuleSet, error) {
 			return RuleSet{}, fmt.Errorf("duplicate rule id %q", rule.RuleID)
 		}
 		seen[rule.RuleID] = true
-		if len(rule.NameContains) == 0 && len(rule.EmailDomains) == 0 && len(rule.ExactEmails) == 0 && len(rule.MessageLines) == 0 && len(rule.TrailerKeys) == 0 {
+		if len(rule.NameContains) == 0 && len(rule.NameWords) == 0 && len(rule.EmailDomains) == 0 && len(rule.ExactEmails) == 0 && len(rule.MessageLines) == 0 && len(rule.TrailerKeys) == 0 {
 			return RuleSet{}, fmt.Errorf("rule %q has no match constraints", rule.RuleID)
 		}
-		for _, group := range [][]string{rule.NameContains, rule.EmailDomains, rule.ExactEmails, rule.MessageLines, rule.TrailerKeys} {
+		for _, group := range [][]string{rule.NameContains, rule.NameWords, rule.EmailDomains, rule.ExactEmails, rule.MessageLines, rule.TrailerKeys} {
 			for _, value := range group {
 				if strings.TrimSpace(value) == "" || strings.IndexFunc(value, unicode.IsControl) >= 0 {
 					return RuleSet{}, fmt.Errorf("rule %q has a blank or control-character constraint", rule.RuleID)
