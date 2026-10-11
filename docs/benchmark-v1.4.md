@@ -39,7 +39,7 @@ set and their `default_positive` field was set to false. The original archive
 and baseline report remained unchanged. The explicit custom-provider rules
 were not narrowed and continued to exercise their declared substring policy.
 
-The final candidate passed all 29 full-suite checks:
+The released alpha.11 engine passed all 29 full-suite checks:
 
 | Check | Result |
 | --- | ---: |
@@ -66,7 +66,7 @@ claims. The supplied runner could not record RSS because its optional
 `psutil` dependency was absent; manual observation during the baseline stayed
 around 25–27 MiB.
 
-| Operation | alpha.10 | final candidate |
+| Operation | alpha.10 | alpha.11 |
 | --- | ---: | ---: |
 | Default scan median | 0.891 s | 0.995 s |
 | Default scan throughput | 18,512.7 commits/s | 16,582.3 commits/s |
@@ -78,6 +78,6 @@ their SHA-1 or SHA-256 Git object IDs in process, and asking one
 `git hash-object --stdin-paths` process to write the batch. ByeClaude compares
 every returned Git hash with its calculated ID before it updates any ref.
 
-The same candidate passed `go vet ./...`, `go test ./...`, `go test -race
+The same alpha.11 source passed `go vet ./...`, `go test ./...`, `go test -race
 ./...`, and 74.5% statement coverage locally. The benchmark is synthetic and
 measures declared Git metadata; it does not detect AI-authored code.
